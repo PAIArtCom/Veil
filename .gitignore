@@ -1,0 +1,27 @@
+# Binaries & build output
+/bin/
+/dist/
+/build/
+*.exe
+*.out
+*.test
+
+# Go
+/vendor/
+*.prof
+coverage.txt
+coverage.html
+
+# Local secrets / runtime state (NEVER commit)
+*.key
+.opencloak/
+*.local.yaml
+*.local.toml
+.env
+.env.*
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
