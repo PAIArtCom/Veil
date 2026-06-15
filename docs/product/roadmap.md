@@ -29,6 +29,14 @@ real values, provider-aware restore errors are visible, the local command execut
 real value, files on disk contain no `CLK_` tokens, streamed tokens survive arbitrary byte
 splits, and a second turn hits the prompt cache.
 
+**Milestones** — detailed plan in [phase-0-plan.md](../architecture/phase-0-plan.md):
+
+- **Spikes** — integration reality-check (real Claude Code → local proxy; capture wire + SSE shapes) and the streaming split-token holdback algorithm.
+- **M1 — Text engine.** `token` · `mapstore` · `detect/l1` · `resolver` · `mask` → `Mask`/`Restore` over text, with fixtures.
+- **M2 — Anthropic wire (buffered).** `wire/anthropic` + `MaskRequest`/`RestoreResponse` against real captured payloads.
+- **M3 — Streaming restore.** chunk-level holdback + SSE-event; byte-split fixtures.
+- **M4 — Proxy + end-to-end.** standalone Claude Code proxy + embed in one real gateway; pass all exit criteria.
+
 ## Phase 1 — Ecosystem
 
 **Goal:** breadth and hardening.

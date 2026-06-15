@@ -13,7 +13,7 @@ nothing is stored ad hoc.
 | Directory | Audience | Contents |
 |---|---|---|
 | [`product/`](product/) | Decision-makers, community | Vision, strategy, open-core boundary, roadmap |
-| [`architecture/`](architecture/) | Engineers | System overview, threat model, decision records (ADRs) |
+| [`architecture/`](architecture/) | Engineers | System overview, threat model, decision records (ADRs), Phase 0 implementation plan |
 | [`concepts/`](concepts/) | Engineers, integrators | Normative specs: redaction model, token spec, detection layers |
 | [`sdk/`](sdk/) | Integrators | The general integration contract, API reference, integration guide |
 | [`guides/`](guides/) | End users, operators | Setup & deployment for specific tools |
