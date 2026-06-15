@@ -1,14 +1,16 @@
 // White-box tests (package proxy): the suite constructs Proxy values directly so
-// it can substitute a custom engineAPI that deterministically fails RestoreSSEEvent
-// (exit criterion #5) — the real gjson/sjson restore is too lenient to error on
-// demand. All upstream traffic targets an httptest loopback server (no real
-// network); the engine uses a fixed key so masked tokens are deterministic.
+// it can substitute a custom engineAPI whose SSE stream restorer deterministically
+// fails on a chosen event (exit criterion #5) and one whose restorer fails to
+// build (streaming fail-closed) — the real gjson/sjson restore is too lenient to
+// error on demand. All upstream traffic targets an httptest loopback server (no
+// real network); the engine uses a fixed key so masked tokens are deterministic.
 package proxy
 
 import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -21,6 +23,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/tidwall/gjson"
 
 	opencloak "github.com/cloakia/opencloak"
 )
@@ -195,13 +199,118 @@ func TestBufferedRoundTrip(t *testing.T) {
 	}
 }
 
-// ---- Test 2: streaming round-trip across byte boundaries (exit #7, #3) -------
+// splitTokenStream builds an Anthropic-shaped SSE byte stream that echoes tok
+// SPLIT ACROSS multiple content_block_delta events — the failure mode that
+// shipped in M4 because the old fake upstream emitted whole tokens. A text block
+// (index 0) splits "key <tok>" across three text_delta events at interior token
+// positions; a tool_use block (index 1) splits the serialized input JSON
+// {"dsn":"<tok>"} across two input_json_delta fragments at a point inside the
+// token. Both blocks get start/stop; the stream is bracketed by message_start
+// and message_stop. The exact split offsets are deterministic functions of the
+// token shape.
+func splitTokenStream(tok string) string {
+	// Text fragments: cut "<tok>" at two interior positions (mid-TYPE, mid-hex).
+	u := strings.Index(tok, "_") // after CLK
+	typeEnd := strings.Index(tok[u+1:], "_") + u + 1
+	tf := []string{tok[:u+1], tok[u+1 : typeEnd+3], tok[typeEnd+3:]}
 
-// The fake upstream writes its SSE response ONE BYTE AT A TIME with a flush after
-// each byte, forcing the proxy's frame buffer to reassemble events (and the
-// tokens inside them) across arbitrary read boundaries. The reassembled
-// client-side stream must restore tokens with no residual CLK_.
-func TestStreamingRoundTripByteBoundaries(t *testing.T) {
+	// Tool fragments: cut the serialized {"dsn":"<tok>"} inside the token.
+	toolComplete := `{"dsn":"` + tok + `"}`
+	toolCut := strings.Index(toolComplete, tok) + 5
+	jf := []string{jsonEsc(toolComplete[:toolCut]), jsonEsc(toolComplete[toolCut:])}
+
+	var sse strings.Builder
+	sse.WriteString("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\"}}\n\n")
+	sse.WriteString("event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"key " + tf[0] + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tf[1] + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tf[2] + " end\"}}\n\n")
+	sse.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n")
+	sse.WriteString("event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tu_9\",\"name\":\"run\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"" + jf[0] + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"" + jf[1] + "\"}}\n\n")
+	sse.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1}\n\n")
+	sse.WriteString("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+	return sse.String()
+}
+
+// jsonEsc escapes s for embedding inside a JSON string literal that is itself a
+// data: line value (so the partial_json string carries escaped JSON).
+func jsonEsc(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b[1 : len(b)-1]) // drop the surrounding quotes
+}
+
+// toolInputFromStream parses the client SSE stream, reconstructs index 1's
+// tool_use input by concatenating its input_json_delta partial_json fragments,
+// and returns the decoded {"dsn": ...} value. It asserts the reconstruction is
+// valid JSON.
+func toolInputDSN(t *testing.T, clientStream []byte) string {
+	t.Helper()
+	var pj strings.Builder
+	sc := bufio.NewScanner(bytes.NewReader(clientStream))
+	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for sc.Scan() {
+		line := strings.TrimSuffix(sc.Text(), "\r")
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		val := strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " ")
+		if val == "" || val == "[DONE]" {
+			continue
+		}
+		if gjson.Get(val, "delta.type").Str == "input_json_delta" && gjson.Get(val, "index").Int() == 1 {
+			pj.WriteString(gjson.Get(val, "delta.partial_json").Str)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatalf("scan client stream: %v", err)
+	}
+	var input struct {
+		DSN string `json:"dsn"`
+	}
+	if err := json.Unmarshal([]byte(pj.String()), &input); err != nil {
+		t.Fatalf("reassembled tool_use.input is not valid JSON: %q: %v", pj.String(), err)
+	}
+	return input.DSN
+}
+
+// reassembleTextDeltas parses the client SSE stream and concatenates every
+// text_delta's delta.text — the visible text the agent renders.
+func reassembleTextDeltas(t *testing.T, clientStream []byte) string {
+	t.Helper()
+	var b strings.Builder
+	sc := bufio.NewScanner(bytes.NewReader(clientStream))
+	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for sc.Scan() {
+		line := strings.TrimSuffix(sc.Text(), "\r")
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		val := strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " ")
+		if val == "" || val == "[DONE]" {
+			continue
+		}
+		if !json.Valid([]byte(val)) {
+			t.Fatalf("client data payload is not valid JSON: %q", val)
+		}
+		if gjson.Get(val, "delta.type").Str == "text_delta" {
+			b.WriteString(gjson.Get(val, "delta.text").Str)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		t.Fatalf("scan client stream: %v", err)
+	}
+	return b.String()
+}
+
+// ---- Test 2: streaming round-trip, tokens SPLIT ACROSS events (exit #3,#4,#7)-
+
+// The fake upstream emits a token split across multiple content_block_delta
+// events (text and tool_use). The reassembled client stream must restore the
+// text token, deliver the tool input as ONE consolidated JSON value that decodes
+// to the real secret (exit #4), and carry no residual CLK_.
+func TestStreamingRoundTripSplitAcrossEvents(t *testing.T) {
 	engine := newTestEngine(t)
 
 	var received atomic.Int64
@@ -212,21 +321,11 @@ func TestStreamingRoundTripByteBoundaries(t *testing.T) {
 		if tok == "" {
 			t.Errorf("upstream: masked request had no CLK_ token: %s", body)
 		}
-		// Build an Anthropic-shaped SSE stream echoing the token in a text_delta
-		// and an input_json_delta, then a final message_stop.
-		var sse strings.Builder
-		sse.WriteString("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_1\"}}\n\n")
-		sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"key " + tok + "\"}}\n\n")
-		sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"dsn\\\":\\\"" + tok + "\\\"}\"}}\n\n")
-		sse.WriteString("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
-
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
-		flusher := w.(http.Flusher)
-		for _, b := range []byte(sse.String()) {
-			_, _ = w.Write([]byte{b})
-			flusher.Flush()
-		}
+		fl := w.(http.Flusher)
+		_, _ = io.WriteString(w, splitTokenStream(tok))
+		fl.Flush()
 	}))
 	defer upstream.Close()
 
@@ -252,21 +351,79 @@ func TestStreamingRoundTripByteBoundaries(t *testing.T) {
 	if bytes.Contains(clientStream, []byte("CLK_")) {
 		t.Fatalf("residual CLK_ token in client stream: %s", clientStream)
 	}
-	if !bytes.Contains(clientStream, []byte(awsKey)) {
-		t.Fatalf("original secret not restored in client stream: %s", clientStream)
+	// Text token restored despite the 3-way split.
+	if got := reassembleTextDeltas(t, clientStream); got != "key "+awsKey+" end" {
+		t.Fatalf("reassembled text = %q, want %q", got, "key "+awsKey+" end")
 	}
-	// The final event and the non-restored message_start must survive.
+	// Exit #4: the tool input decodes to the REAL secret, not a CLK_ literal.
+	if dsn := toolInputDSN(t, clientStream); dsn != awsKey {
+		t.Fatalf("reassembled tool_use.input dsn = %q, want %q", dsn, awsKey)
+	}
+	// Exactly one consolidated input_json_delta survived for the tool block.
+	if n := strings.Count(string(clientStream), `"input_json_delta"`); n != 1 {
+		t.Fatalf("want exactly 1 input_json_delta in client stream, got %d: %s", n, clientStream)
+	}
+	// Block skeleton preserved.
 	if !bytes.Contains(clientStream, []byte("message_stop")) {
-		t.Fatalf("final message_stop event missing from client stream: %s", clientStream)
+		t.Fatalf("final message_stop missing: %s", clientStream)
 	}
-	// Event framing must be preserved (blank-line separators present).
-	if !bytes.Contains(clientStream, []byte("\n\n")) {
-		t.Fatalf("SSE event separators missing from client stream: %s", clientStream)
+	if n := strings.Count(string(clientStream), "event: content_block_start"); n != 2 {
+		t.Fatalf("want 2 content_block_start events, got %d", n)
 	}
-	// Verify each restored data: line is still valid framing parseable by an
-	// SSE reader (event:/data: pairs).
-	if n := strings.Count(string(clientStream), "event: content_block_delta"); n != 2 {
-		t.Fatalf("expected 2 content_block_delta events, got %d: %s", n, clientStream)
+	if n := strings.Count(string(clientStream), "event: content_block_stop"); n != 2 {
+		t.Fatalf("want 2 content_block_stop events, got %d", n)
+	}
+}
+
+// ---- Test 2b: F (byte × event) — split-token stream, one byte at a time ------
+
+// The same split-across-events stream is written ONE BYTE AT A TIME with a flush
+// after each byte, exercising the frame buffer (cross-TCP-read reassembly) AND
+// the cross-event holdback together. This is the real exit-#7 test.
+func TestStreamingSplitAcrossEventsByteAtATime(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		body, _ := io.ReadAll(r.Body)
+		tok := tokenRe.FindString(string(body))
+		if tok == "" {
+			t.Errorf("upstream: masked request had no CLK_ token: %s", body)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl := w.(http.Flusher)
+		for _, b := range []byte(splitTokenStream(tok)) {
+			_, _ = w.Write([]byte{b})
+			fl.Flush()
+		}
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"claude-opus-4-5","max_tokens":1024,"stream":true,"messages":[{"role":"user","content":"use ` + awsKey + `"}]}`
+	resp, err := http.Post(front.URL+"/v1/messages", "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientStream, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 1 {
+		t.Fatalf("upstream received %d requests, want 1", received.Load())
+	}
+	if bytes.Contains(clientStream, []byte("CLK_")) {
+		t.Fatalf("byte-at-a-time: residual CLK_ token in client stream: %s", clientStream)
+	}
+	if got := reassembleTextDeltas(t, clientStream); got != "key "+awsKey+" end" {
+		t.Fatalf("byte-at-a-time: reassembled text = %q, want %q", got, "key "+awsKey+" end")
+	}
+	if dsn := toolInputDSN(t, clientStream); dsn != awsKey {
+		t.Fatalf("byte-at-a-time: tool_use.input dsn = %q, want %q", dsn, awsKey)
 	}
 }
 
@@ -536,20 +693,41 @@ func TestTransparentPassThrough(t *testing.T) {
 
 // ---- Test 8: restore error visibility (exit #5) ------------------------------
 
-// errOnTokenEngine wraps a real engine but makes RestoreSSEEvent fail for any
-// event payload containing a CLK_ token. This deterministically exercises the
-// "restore errors are surfaced, never swallowed; the stream is not dropped" path
-// without relying on gjson/sjson to error (it does not).
+// errOnTokenStream is an sseRestorer that fails Event for any payload containing
+// a CLK_ token, exercising the "restore errors are surfaced, never swallowed;
+// the stream is not dropped" path (exit #5) through the 1→N event pipeline
+// without relying on gjson/sjson to error (it does not). Non-token events and
+// Flush delegate to a real *opencloak.SSEStream so the rest of the stream
+// behaves normally.
+type errOnTokenStream struct {
+	inner   *opencloak.SSEStream
+	failErr error
+}
+
+func (s errOnTokenStream) Event(ctx context.Context, eventData []byte) ([][]byte, error) {
+	if bytes.Contains(eventData, []byte("CLK_")) {
+		return nil, s.failErr
+	}
+	return s.inner.Event(ctx, eventData)
+}
+
+func (s errOnTokenStream) Flush(ctx context.Context) ([][]byte, error) {
+	return s.inner.Flush(ctx)
+}
+
+// errOnTokenEngine wraps a real engine but returns an errOnTokenStream from
+// NewSSEStreamRestorer so the streaming-restore error path is injectable.
 type errOnTokenEngine struct {
 	*opencloak.Engine
 	failErr error
 }
 
-func (e errOnTokenEngine) RestoreSSEEvent(ctx context.Context, st *opencloak.State, eventData []byte) ([]byte, error) {
-	if bytes.Contains(eventData, []byte("CLK_")) {
-		return nil, e.failErr
+func (e errOnTokenEngine) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+	inner, err := e.Engine.NewSSEStreamRestorer(st)
+	if err != nil {
+		return nil, err
 	}
-	return e.Engine.RestoreSSEEvent(ctx, st, eventData)
+	return errOnTokenStream{inner: inner, failErr: e.failErr}, nil
 }
 
 func TestRestoreErrorVisibleStreamNotDropped(t *testing.T) {
@@ -565,9 +743,13 @@ func TestRestoreErrorVisibleStreamNotDropped(t *testing.T) {
 			t.Errorf("upstream: masked request had no token: %s", body)
 		}
 		var sse strings.Builder
-		// One event that will trigger the restore error (contains a token)...
-		sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tok + "\"}}\n\n")
-		// ...and one benign event that must still be relayed (stream not dropped).
+		// A text block whose delta carries a token (mid-block) triggers the
+		// restore error...
+		sse.WriteString("event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\"}}\n\n")
+		sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tok + " x\"}}\n\n")
+		// ...and benign events that must still be relayed (stream not dropped),
+		// including the message_stop after the failing block.
+		sse.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n")
 		sse.WriteString("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -617,9 +799,11 @@ func TestRestoreErrorVisibleStreamNotDropped(t *testing.T) {
 // ---- Buffered restore-error visibility (exit #5, buffered path) --------------
 
 // errBufferedEngine wraps a real engine but fails RestoreResponse, so the
-// buffered path's "log + relay raw upstream body" behavior is exercised.
+// buffered path's "log + relay raw upstream body" behavior is exercised. It
+// embeds engineAdapter so the streaming seam (NewSSEStreamRestorer) is satisfied
+// even though the buffered path never uses it.
 type errBufferedEngine struct {
-	*opencloak.Engine
+	engineAdapter
 	failErr error
 }
 
@@ -644,7 +828,7 @@ func TestBufferedRestoreErrorVisibleRawRelayed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("proxy.New: %v", err)
 	}
-	px.engine = errBufferedEngine{Engine: real, failErr: failErr}
+	px.engine = errBufferedEngine{engineAdapter: engineAdapter{Engine: real}, failErr: failErr}
 
 	front := httptest.NewServer(px)
 	defer front.Close()
@@ -663,6 +847,72 @@ func TestBufferedRestoreErrorVisibleRawRelayed(t *testing.T) {
 	// The raw upstream body is still delivered so the local user gets a response.
 	if string(clientBody) != rawResp {
 		t.Fatalf("raw upstream body not relayed on restore error: got %s", clientBody)
+	}
+}
+
+// ---- Fail-closed: NewSSEStreamRestorer error aborts the stream (no leak) -----
+
+// failRestorerEngine returns an error from NewSSEStreamRestorer, modeling an
+// unsupported provider / invalid state on the streaming path. The proxy must
+// fail closed with a 502 BEFORE committing the streamed response, never relaying
+// the upstream SSE body (which would leak unrestored tokens).
+type failRestorerEngine struct {
+	*opencloak.Engine
+	failErr error
+}
+
+func (e failRestorerEngine) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+	return nil, e.failErr
+}
+
+func TestStreamRestorerBuildErrorFailsClosed(t *testing.T) {
+	real := newTestEngine(t)
+
+	var sentBody atomic.Bool
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		tok := tokenRe.FindString(string(body))
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl := w.(http.Flusher)
+		// An SSE body carrying a token. If the proxy relayed it on a restorer
+		// build error, the token would leak — so this body must never reach the
+		// client.
+		_, _ = io.WriteString(w, "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\""+tok+"\"}}\n\n")
+		fl.Flush()
+		sentBody.Store(true)
+	}))
+	defer upstream.Close()
+
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	px, err := New(real, upstream.URL, logger)
+	if err != nil {
+		t.Fatalf("proxy.New: %v", err)
+	}
+	px.engine = failRestorerEngine{Engine: real, failErr: errors.New("synthetic stream-restorer build failure")}
+
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"claude-opus-4-5","max_tokens":16,"stream":true,"messages":[{"role":"user","content":"use ` + awsKey + `"}]}`
+	resp, err := http.Post(front.URL+"/v1/messages", "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502; body=%s", resp.StatusCode, clientBody)
+	}
+	// No upstream token (or any SSE body) leaked to the client.
+	if bytes.Contains(clientBody, []byte("CLK_")) || bytes.Contains(clientBody, []byte("content_block_delta")) {
+		t.Fatalf("upstream SSE body leaked on restorer build failure: %s", clientBody)
+	}
+	// The error is surfaced (logged), not swallowed.
+	if !strings.Contains(logBuf.String(), "build SSE stream restorer") {
+		t.Fatalf("restorer build error not logged: %s", logBuf.String())
 	}
 }
 

@@ -324,12 +324,106 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 	return out, restoreErr
 }
 
+// SSEStream is a stateful, single-stream SSE restorer. It wraps a provider's
+// wire.StreamRestorer with the scope-bound restore closure and accumulates
+// residual-token counts across the whole stream, emitting one residual_token
+// audit event at Flush — mirroring the RestoreStreamChunk/FlushStream lifecycle
+// (accumulate while relaying, audit once at end of stream).
+//
+// Unlike the stateless RestoreSSEEvent, an SSEStream holds the provider's
+// cross-event holdback (e.g. a CLK_ token split across content_block_delta
+// events), so the proxy can drive it one complete event at a time and have
+// split tokens reassembled before any restore is attempted.
+//
+// Concurrency: an SSEStream is single-writer. One instance serves exactly one
+// response stream, driven sequentially by one relay goroutine; it holds no lock.
+type SSEStream struct {
+	sr       wire.StreamRestorer
+	engine   *Engine
+	restore  wire.RestoreFunc
+	residual map[string]int // residual token TYPE -> count, accumulated over the stream
+}
+
+// NewSSEStreamRestorer returns a stateful SSE restorer bound to st (dispatching
+// via st.provider/st.op), wrapping the provider walker with the scope-bound
+// restore closure and residual-token auditing. A nil/incomplete State or an
+// unsupported provider returns an error (fail-closed): the proxy must obtain a
+// restorer before relaying any body, so a failure here aborts the stream rather
+// than forwarding tokens unrestored.
+func (e *Engine) NewSSEStreamRestorer(st *State) (*SSEStream, error) {
+	if st == nil || st.provider == "" || st.op == "" {
+		return nil, ErrInvalidState
+	}
+	prov, err := wire.Lookup(st.provider)
+	if err != nil {
+		return nil, err
+	}
+	sr, err := prov.NewStreamRestorer(st.op)
+	if err != nil {
+		// Includes wire.ErrStreamingUnsupported; surfaced for fail-closed handling.
+		return nil, err
+	}
+	residual := make(map[string]int)
+	return &SSEStream{
+		sr:       sr,
+		engine:   e,
+		restore:  e.restoreScan(st.scope, residual),
+		residual: residual,
+	}, nil
+}
+
+// Event consumes one complete provider SSE event payload and returns zero or
+// more complete event payloads to emit downstream, in order. Residual tokens are
+// counted into the stream's running total and audited once at Flush.
+func (s *SSEStream) Event(ctx context.Context, eventData []byte) ([][]byte, error) {
+	return s.sr.Event(eventData, s.restore)
+}
+
+// Flush returns any events still held at end of stream and, if an audit sink is
+// configured and any residual tokens were seen across the stream, records a
+// single residual_token audit event with the accumulated counts. It uses the
+// caller's ctx so a relay can attribute residuals to the in-flight request.
+func (s *SSEStream) Flush(ctx context.Context) ([][]byte, error) {
+	out, err := s.sr.Flush(s.restore)
+	if s.engine.cfg.Audit != nil {
+		if counts := residualCounts(s.residual); len(counts) > 0 {
+			s.engine.cfg.Audit.Record(ctx, AuditEvent{Kind: "residual_token", Counts: counts})
+		}
+	}
+	return out, err
+}
+
 // lookup returns a token→value resolver bound to scope. It is the single place
 // that consults the mapstore for restore, shared by the wire restore closures
 // and the streaming holdback Restorer.
 func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 	return func(tok string) (string, bool) {
 		return e.store.Get(scope, tok)
+	}
+}
+
+// restoreScan returns a RestoreFunc that replaces CLK_… tokens found in text
+// with their stored values under scope (unknown tokens left as-is, consistent
+// with the text-surface Restore), counting every validly-shaped but unresolved
+// token into residual by TYPE string. It is the single token-scan shared by the
+// buffered/SSE-event surface (a per-call residual map) and the stateful SSE
+// stream (a per-stream residual map accumulated across many Event calls). The
+// caller owns residual and converts it for audit; all invocations happen on the
+// caller's single goroutine, so no locking is needed.
+func (e *Engine) restoreScan(scope Scope, residual map[string]int) wire.RestoreFunc {
+	lookup := e.lookup(scope)
+	return func(text string) (string, error) {
+		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
+			if v, ok := lookup(tok); ok {
+				return v
+			}
+			// Unknown but validly-shaped token: leave as-is and count by TYPE.
+			if typ, ok := token.ParseType(tok); ok {
+				residual[typ]++
+			}
+			return tok
+		})
+		return result, nil
 	}
 }
 
@@ -344,23 +438,8 @@ func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 // same goroutine within one RestoreResponse/RestoreSSEEvent call, so no locking
 // is needed.
 func (e *Engine) restoreFuncTracking(st *State) (wire.RestoreFunc, func() map[Type]int) {
-	lookup := e.lookup(st.scope)
 	residual := make(map[string]int)
-
-	restore := func(text string) (string, error) {
-		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-			if v, ok := lookup(tok); ok {
-				return v
-			}
-			// Unknown but validly-shaped token: leave as-is and count by TYPE.
-			if typ, ok := token.ParseType(tok); ok {
-				residual[typ]++
-			}
-			return tok
-		})
-		return result, nil
-	}
-
+	restore := e.restoreScan(st.scope, residual)
 	snapshot := func() map[Type]int { return residualCounts(residual) }
 	return restore, snapshot
 }

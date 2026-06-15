@@ -26,3 +26,4 @@ consequences.
 | [0008](0008-finding-model-and-conflict-resolution.md) | Finding model and conflict resolution | Accepted |
 | [0009](0009-state-lifecycle-and-scope.md) | State lifecycle and scoped mapstore | Accepted |
 | [0010](0010-restore-dispatch-and-errors.md) | Restore dispatch and error surface | Accepted |
+| [0011](0011-streaming-restore-cross-event-holdback.md) | Streaming restore across SSE event boundaries | Accepted |

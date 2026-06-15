@@ -20,10 +20,41 @@ import (
 // surfaced, never swallowed" guarantee (exit criterion #5) can be exercised —
 // the real gjson/sjson restore path is too lenient to error on demand. New
 // accepts the concrete *opencloak.Engine, so production wiring is unaffected.
+//
+// NewSSEStreamRestorer returns an sseRestorer (an interface, not the concrete
+// *opencloak.SSEStream) so the streaming-restore error path stays injectable.
 type engineAPI interface {
 	MaskRequest(ctx context.Context, scope opencloak.Scope, provider, op string, body []byte) ([]byte, *opencloak.State, error)
 	RestoreResponse(ctx context.Context, st *opencloak.State, body []byte) ([]byte, error)
-	RestoreSSEEvent(ctx context.Context, st *opencloak.State, eventData []byte) ([]byte, error)
+	NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error)
+}
+
+// sseRestorer is the per-stream stateful SSE restorer the proxy drives: it
+// consumes one complete event payload at a time (Event) and drains held
+// cross-event state at end of stream (Flush). *opencloak.SSEStream satisfies it;
+// tests substitute a failing implementation to exercise exit criterion #5.
+type sseRestorer interface {
+	Event(ctx context.Context, eventData []byte) ([][]byte, error)
+	Flush(ctx context.Context) ([][]byte, error)
+}
+
+// engineAdapter adapts a concrete *opencloak.Engine to engineAPI: the engine's
+// NewSSEStreamRestorer returns the concrete *opencloak.SSEStream, but engineAPI
+// needs it widened to the sseRestorer interface so the seam stays testable.
+type engineAdapter struct {
+	*opencloak.Engine
+}
+
+// NewSSEStreamRestorer widens the engine's concrete *opencloak.SSEStream return
+// to the sseRestorer interface. A nil *opencloak.SSEStream is returned as a nil
+// interface (not a non-nil interface wrapping a nil pointer) so an error result
+// carries a usable nil restorer.
+func (a engineAdapter) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+	s, err := a.Engine.NewSSEStreamRestorer(st)
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 // Proxy is the reference base-URL proxy http.Handler.
@@ -52,7 +83,9 @@ func New(engine *opencloak.Engine, upstream string, log *slog.Logger) (*Proxy, e
 		log = slog.Default()
 	}
 	return &Proxy{
-		engine:   engine,
+		// Wrap the concrete engine so its NewSSEStreamRestorer (which returns the
+		// concrete *opencloak.SSEStream) satisfies engineAPI's interface return.
+		engine:   engineAdapter{Engine: engine},
 		upstream: u,
 		// A dedicated client (not http.DefaultClient) with no Timeout: an SSE
 		// response body may stay open for minutes. Per-attempt dial/TLS

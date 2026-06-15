@@ -1,5 +1,7 @@
 package wire
 
+import "errors"
+
 // RestoreFunc restores tokens in a text value using the State selected by the caller.
 // It returns an error for missing mappings, invalid state, or other restore failures.
 type RestoreFunc func(text string) (string, error)
@@ -18,6 +20,24 @@ type MaskedSpan struct {
 	MaskedText string
 }
 
+// ErrStreamingUnsupported is returned by NewStreamRestorer for providers/ops
+// that have no streaming restorer yet (callers fail closed or fall back).
+var ErrStreamingUnsupported = errors.New("wire: streaming restore unsupported")
+
+// StreamRestorer restores tokens across a provider's SSE event sequence,
+// holding cross-event state per content block. One StreamRestorer serves one
+// response stream and is single-writer.
+type StreamRestorer interface {
+	// Event consumes ONE complete provider SSE event payload (the bytes of a
+	// single `data:` JSON value, already frame-reassembled by the caller) and
+	// returns zero or more complete event payloads to emit downstream, in order
+	// (more when a held tail flushes alongside a stop; fewer when a delta is
+	// buffered). restore replaces complete CLK_ tokens (and counts residuals).
+	Event(eventData []byte, restore RestoreFunc) ([][]byte, error)
+	// Flush returns any events still held at end of stream.
+	Flush(restore RestoreFunc) ([][]byte, error)
+}
+
 // Provider extracts and applies text for one provider family while preserving the
 // provider's native JSON shape. It does not normalize requests into a shared IR.
 type Provider interface {
@@ -25,4 +45,7 @@ type Provider interface {
 	ApplyRequest(op string, body []byte, spans []MaskedSpan) ([]byte, error)
 	RestoreResponse(op string, body []byte, restore RestoreFunc) ([]byte, error)
 	RestoreSSEEvent(op string, eventData []byte, restore RestoreFunc) ([]byte, error)
+	// NewStreamRestorer returns a fresh, single-stream StreamRestorer for op, or
+	// ErrStreamingUnsupported when the provider has no streaming restorer for it.
+	NewStreamRestorer(op string) (StreamRestorer, error)
 }
