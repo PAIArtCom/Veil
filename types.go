@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/cloakia/opencloak/internal/stream"
 	"github.com/cloakia/opencloak/internal/types"
 )
 
@@ -48,6 +49,12 @@ type State struct {
 	scope    Scope
 	provider string
 	op       string
+
+	// stream is the lazily-initialized holdback restorer backing the raw
+	// streaming surface (RestoreStreamChunk/FlushStream). It is created on the
+	// first RestoreStreamChunk call and is single-writer: one stream per State,
+	// driven by one relay goroutine.
+	stream *stream.Restorer
 }
 
 // Scope returns the mapstore namespace associated with st. A nil State returns the

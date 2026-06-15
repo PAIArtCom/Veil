@@ -8,6 +8,7 @@ import (
 	"github.com/cloakia/opencloak/internal/detect"
 	"github.com/cloakia/opencloak/internal/mapstore"
 	"github.com/cloakia/opencloak/internal/mask"
+	"github.com/cloakia/opencloak/internal/stream"
 	"github.com/cloakia/opencloak/internal/token"
 	"github.com/cloakia/opencloak/internal/types"
 	"github.com/cloakia/opencloak/internal/wire"
@@ -250,24 +251,59 @@ func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([
 		return nil, err
 	}
 
-	restoreFunc := e.makeRestoreFunc(st)
-	return prov.RestoreResponse(st.op, body, restoreFunc)
+	restoreFunc, residuals := e.restoreFuncTracking(st)
+	out, restoreErr := prov.RestoreResponse(st.op, body, restoreFunc)
+	e.auditResidual(ctx, residuals)
+	return out, restoreErr
 }
 
 // ---- Streaming surface ----------------------------------------------------------
 
 // RestoreStreamChunk restores tokens in a raw streamed chunk, holding back partial
 // tokens across chunk boundaries. This is the universal streaming method: it works
-// even when the host relays raw bytes with arbitrary chunk boundaries. It intentionally
-// has no context or error return for the hot relay path; audit around FlushStream.
+// even when the host relays raw bytes with arbitrary chunk boundaries. It returns
+// the bytes that are safe to forward now; bytes belonging to a token that may be
+// completed by a later chunk are held internally until proven complete (then they
+// surface on a subsequent call) or until FlushStream.
 //
-// TODO(phase0): implement. Currently a pass-through placeholder.
-func (e *Engine) RestoreStreamChunk(st *State, chunk []byte) []byte { return chunk }
+// A nil State disables restore: the chunk is returned unchanged. The holdback
+// restorer is created lazily on the first call and bound to st's scope. There is
+// intentionally no context or error return on this hot relay path; residual-token
+// auditing happens once at FlushStream.
+func (e *Engine) RestoreStreamChunk(st *State, chunk []byte) []byte {
+	if st == nil {
+		return chunk
+	}
+	if st.stream == nil {
+		st.stream = stream.NewRestorer(e.lookup(st.scope))
+	}
+	return st.stream.Write(chunk)
+}
 
-// FlushStream returns any bytes held back by RestoreStreamChunk at end of stream.
+// FlushStream restores and returns any bytes held back by RestoreStreamChunk at
+// end of stream, and emits a single residual-token audit event for the whole
+// stream if any validly-shaped but unknown tokens were seen. It returns nil and
+// records nothing when st is nil or st never streamed.
 //
-// TODO(phase0): implement.
-func (e *Engine) FlushStream(st *State) []byte { return nil }
+// FlushStream has no caller context by design (the relay's request context may
+// already be finished when the body drains), so it audits with
+// context.Background().
+func (e *Engine) FlushStream(st *State) []byte {
+	if st == nil || st.stream == nil {
+		return nil
+	}
+	out := st.stream.Flush()
+
+	if e.cfg.Audit != nil {
+		if counts := residualCounts(st.stream.ResidualCounts()); len(counts) > 0 {
+			e.cfg.Audit.Record(context.Background(), AuditEvent{
+				Kind:   "residual_token",
+				Counts: counts,
+			})
+		}
+	}
+	return out
+}
 
 // RestoreSSEEvent restores tokens in a single parsed SSE event payload. It dispatches
 // via st.Provider/st.Op, so provider-specific event JSON can be restored without
@@ -282,22 +318,78 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 		return nil, err
 	}
 
-	restoreFunc := e.makeRestoreFunc(st)
-	return prov.RestoreSSEEvent(st.op, eventData, restoreFunc)
+	restoreFunc, residuals := e.restoreFuncTracking(st)
+	out, restoreErr := prov.RestoreSSEEvent(st.op, eventData, restoreFunc)
+	e.auditResidual(ctx, residuals)
+	return out, restoreErr
 }
 
-// makeRestoreFunc returns a RestoreFunc that replaces CLK_… tokens found in
-// text with their stored values under st's scope. Unknown tokens are left as-is
-// (consistent with the text-surface Restore behavior).
-func (e *Engine) makeRestoreFunc(st *State) wire.RestoreFunc {
-	scope := st.scope
-	return func(text string) (string, error) {
+// lookup returns a token→value resolver bound to scope. It is the single place
+// that consults the mapstore for restore, shared by the wire restore closures
+// and the streaming holdback Restorer.
+func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
+	return func(tok string) (string, bool) {
+		return e.store.Get(scope, tok)
+	}
+}
+
+// restoreFuncTracking returns a RestoreFunc that replaces CLK_… tokens found in
+// text with their stored values under st's scope (unknown tokens left as-is,
+// consistent with the text-surface Restore) plus a snapshot accessor that
+// reports residual tokens — validly-shaped CLK_… tokens that were not found in
+// st's scope — grouped by TYPE. Callers use it to emit a residual_token audit
+// event after a buffered or SSE-event restore, mirroring the streaming surface.
+//
+// The closure and the snapshot share a residual map; both are invoked by the
+// same goroutine within one RestoreResponse/RestoreSSEEvent call, so no locking
+// is needed.
+func (e *Engine) restoreFuncTracking(st *State) (wire.RestoreFunc, func() map[Type]int) {
+	lookup := e.lookup(st.scope)
+	residual := make(map[string]int)
+
+	restore := func(text string) (string, error) {
 		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-			if v, ok := e.store.Get(scope, tok); ok {
+			if v, ok := lookup(tok); ok {
 				return v
+			}
+			// Unknown but validly-shaped token: leave as-is and count by TYPE.
+			if typ, ok := token.ParseType(tok); ok {
+				residual[typ]++
 			}
 			return tok
 		})
 		return result, nil
+	}
+
+	snapshot := func() map[Type]int { return residualCounts(residual) }
+	return restore, snapshot
+}
+
+// residualCounts converts a TYPE-string→count map (as produced by the token
+// grammar parser) into the Type-keyed map carried by AuditEvent.Counts. It
+// returns a non-nil map only when there is at least one count, so callers can
+// use len(...) == 0 to skip emitting an empty audit event.
+func residualCounts(byType map[string]int) map[Type]int {
+	if len(byType) == 0 {
+		return nil
+	}
+	out := make(map[Type]int, len(byType))
+	for k, v := range byType {
+		out[Type(k)] = v
+	}
+	return out
+}
+
+// auditResidual records a single residual_token audit event for the supplied
+// snapshot when an audit sink is configured and at least one residual token was
+// seen. It uses the caller's ctx so the buffered and SSE-event restore surfaces
+// attribute residuals to the in-flight request (the streaming surface audits
+// separately in FlushStream with a background context).
+func (e *Engine) auditResidual(ctx context.Context, residuals func() map[Type]int) {
+	if e.cfg.Audit == nil {
+		return
+	}
+	if counts := residuals(); len(counts) > 0 {
+		e.cfg.Audit.Record(ctx, AuditEvent{Kind: "residual_token", Counts: counts})
 	}
 }
