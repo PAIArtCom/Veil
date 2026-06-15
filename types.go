@@ -1,0 +1,118 @@
+package opencloak
+
+import (
+	"errors"
+	"strings"
+)
+
+// Type is a category of sensitive data. It is embedded in every token as
+// CLK_<TYPE>_<id> so that handling and restore can branch on the category.
+// See docs/concepts/token-spec.md.
+type Type string
+
+const (
+	TypeSecret Type = "SECRET" // API keys, tokens, passwords, private keys, connection strings
+	TypeEmail  Type = "EMAIL"
+	TypePhone  Type = "PHONE"
+	TypeIPv4   Type = "IPV4"
+	TypeIPv6   Type = "IPV6"
+	TypeCard   Type = "CARD"
+	TypeAcct   Type = "ACCT"
+	TypeURL    Type = "URL"
+	TypeDate   Type = "DATE"
+	TypePerson Type = "PERSON" // L2 (semantic); disabled by default
+	TypeAddr   Type = "ADDR"   // L2 (semantic); disabled by default
+)
+
+// Finding is a detected sensitive region within a piece of text, as UTF-8 byte
+// offsets [Start, End). Score is normalized to 0..1 and Source names the detector
+// or rule that produced the finding, for example "l1:gitleaks:github-pat".
+// Findings are resolved for overlaps before masking; see docs/architecture/decisions/0008.
+type Finding struct {
+	Start  int
+	End    int
+	Type   Type
+	Score  float64
+	Source string
+}
+
+// Scope selects the mapstore namespace for a request/stream lifecycle. The zero
+// value is the single-user local scope. Multi-user embedders should set Tenant;
+// long-lived agent workflows should set Session and, when useful, Project.
+type Scope struct {
+	Tenant  string
+	Session string
+	Project string
+}
+
+// State holds token<->value reverse mappings for a masked text or wire request and the
+// matching restore lifecycle. It records the Scope and, for wire calls, the provider/op
+// selected by MaskRequest so buffered and SSE-event restores can dispatch to the same
+// provider walker. Obtain it from Mask or MaskRequest and pass it to the matching
+// Restore* calls. See docs/architecture/decisions/0009.
+//
+// Skeleton: the internal fields are owned by the mapstore implementation.
+type State struct {
+	scope    Scope
+	provider string
+	op       string
+}
+
+// Scope returns the mapstore namespace associated with st. A nil State returns the
+// zero single-user local scope.
+func (st *State) Scope() Scope {
+	if st == nil {
+		return Scope{}
+	}
+	return st.scope
+}
+
+// Provider returns the provider tag associated with st.
+func (st *State) Provider() string {
+	if st == nil {
+		return ""
+	}
+	return st.provider
+}
+
+// Op returns the provider operation associated with st.
+func (st *State) Op() string {
+	if st == nil {
+		return ""
+	}
+	return st.op
+}
+
+// ErrNotImplemented is returned by skeleton operations that are not built yet.
+// Callers MUST treat it as fail-closed: block the request, never forward plaintext.
+var ErrNotImplemented = errors.New("opencloak: not implemented")
+
+// ErrInvalidState is returned when a restore path receives nil State or, for provider
+// shaped responses, a State without provider/op metadata.
+var ErrInvalidState = errors.New("opencloak: invalid state")
+
+// ErrBlocked is returned by Mask or MaskRequest when a finding's type is configured
+// with OperatorBlock: the request is refused rather than masked, so a transport can map
+// it to a blocked-by-policy response.
+var ErrBlocked = errors.New("opencloak: blocked by policy")
+
+// BlockedError reports which sensitive types caused an OperatorBlock decision. It wraps
+// ErrBlocked for errors.Is checks.
+type BlockedError struct {
+	Types []Type
+}
+
+func (e *BlockedError) Error() string {
+	if len(e.Types) == 0 {
+		return ErrBlocked.Error()
+	}
+	names := make([]string, len(e.Types))
+	for i, t := range e.Types {
+		names[i] = string(t)
+	}
+	return ErrBlocked.Error() + ": " + strings.Join(names, ", ")
+}
+
+func (e *BlockedError) Is(target error) bool {
+	return target == ErrBlocked
+}

@@ -3,9 +3,10 @@
 This is the map of OpenCloak's documentation. Docs are organized by audience and purpose;
 nothing is stored ad hoc.
 
-> **Repository status:** pre-implementation. These documents describe decided product and
-> architecture intent. Documents that describe interfaces or setup which do **not exist
-> yet** are explicitly marked **Planned / Draft**.
+> **Repository status:** scaffold. These documents describe decided product and
+> architecture intent, alongside a compiling Go scaffold with no engine behavior yet.
+> Documents that describe interfaces or setup which do **not exist yet** are explicitly
+> marked **Planned / Draft**.
 
 ## Layout
 

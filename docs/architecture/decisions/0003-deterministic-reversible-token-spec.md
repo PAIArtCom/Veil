@@ -20,15 +20,16 @@ can branch and restore can find tokens), and robust if it accidentally lands in 
 Use the token form **`CLK_<TYPE>_<id>`**:
 
 - `CLK_` namespace prefix — greppable, collision-resistant, unmistakable.
-- `<TYPE>` ∈ `SECRET | EMAIL | PHONE | IPV4 | CARD | PERSON | ADDR | URL | DATE | ACCT | …`
+- `<TYPE>` ∈ `SECRET | EMAIL | PHONE | IPV4 | IPV6 | CARD | PERSON | ADDR | URL | DATE | ACCT | …`
 - `<id>` = first 12 hex of `HMAC-SHA256(normalize(value), local_key)`.
 
 Properties: **deterministic** (same value → same token, no session dependence → caches
 stay warm), **type-aware**, **bijective** (token→value via the local map; collisions
 avoided by length and a check-and-extend on insert), **identifier-safe** (matches
 `[A-Za-z_][A-Za-z0-9_]*`, so it survives landing in source without breaking syntax and is
-preserved well by models). Restore matches `\bCLK_[A-Z]+_[0-9a-f]{12}\b`. Full normative
-detail in the [token spec](../../concepts/token-spec.md).
+preserved well by models). Restore scans for the fixed `CLK_[A-Z0-9]+_[0-9a-f]{12}`
+structure and validates type/id segments; it must not rely solely on word-boundary regex
+matching. Full normative detail in the [token spec](../../concepts/token-spec.md).
 
 ## Alternatives considered
 
@@ -42,8 +43,8 @@ detail in the [token spec](../../concepts/token-spec.md).
 ## Consequences
 
 - The forward direction is stateless (pure HMAC); only the reverse map needs storage,
-  enabling the in-memory scope in [ADR-0005](0005-global-in-memory-scope.md).
+  enabling the scoped in-memory mapstore in [ADR-0009](0009-state-lifecycle-and-scope.md).
 - A stable **`local_key`** (e.g. `~/.opencloak/key`, generated once) is the root of
   determinism and must persist across restarts.
 - The identifier-safe form bounds the blast radius of an orphaned token (valid syntax, not
-  broken output); an egress scan still flags residual `CLK_` tokens.
+  broken output); residual-token scans still flag leftover `CLK_` tokens.

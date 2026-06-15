@@ -12,11 +12,11 @@ single host gateway.
 
 ## Decision
 
-Build a **transport-agnostic engine** as the open-source core — pure functions for
-detection, tokenization, and mask/restore — and expose it through interchangeable
+Build a **transport-agnostic engine** as the open-source core — shared detection,
+tokenization, mask/restore, and state logic — and expose it through interchangeable
 transports:
 
-- standalone local proxy (Claude/Codex base-URL),
+- standalone local proxy (Claude Code first; Codex planned through base-URL provider config),
 - embeddable Go library (`import`),
 - HTTP/gRPC service (for non-Go hosts),
 - (optionally) a plugin for a host that offers an interceptor API.

@@ -14,7 +14,9 @@ CLK_<TYPE>_<id>
 | `<TYPE>` | Uppercase category code (see enum). Lets handling branch and restore classify. |
 | `<id>` | First **12** hex chars of `HMAC-SHA256(normalize(value), local_key)`. |
 
-Restore matches: `\bCLK_[A-Z]+_[0-9a-f]{12}\b`
+Restore pattern: `CLK_[A-Z0-9]+_[0-9a-f]{12}`. Implementations should scan for the fixed
+`CLK_` structure and validate type/id segments; do not rely solely on word-boundary regex
+matching, because a token may sit next to identifier characters.
 
 Example: `sk-live-9f8a7b6c…` → `CLK_SECRET_7f3a9c2e1b8d`
 
@@ -29,8 +31,9 @@ Example: `sk-live-9f8a7b6c…` → `CLK_SECRET_7f3a9c2e1b8d`
 
 ## Properties (required)
 
-- **Deterministic.** Same `normalize(value)` → same token, globally, with no randomness and
-  no session dependence. This keeps prompt caches warm and multi-turn context coherent.
+- **Deterministic.** Same `normalize(value)` → same token for a given local key, with no
+  randomness and no request dependence. This keeps prompt caches warm and multi-turn
+  context coherent.
 - **Type-aware.** The embedded `TYPE` allows per-type handling (e.g. default-off for
   `PERSON`) and classification on restore.
 - **Bijective.** `token → value` resolves via the in-memory map. Truncation to 12 hex (48
@@ -61,4 +64,9 @@ For structured types where the model benefits from a realistic shape (e.g. valid
 phone or email format), a per-type *format-preserving* replacement (a valid-looking but
 fake value, deterministically derived) may be used instead of the opaque `CLK_…` form.
 This is an opt-in refinement, not the default, because it complicates a single uniform
-restore regex.
+restore scanner. The `CLK_` scanner only covers `OperatorToken`; format-preserving
+operators need type-specific reverse strategies and fixtures.
+
+`OperatorRedact` is intentionally irreversible and must not write a reversible mapping.
+It is useful for policy choices where local restoration is not required, but it cannot
+support agent tool execution that needs the real value.

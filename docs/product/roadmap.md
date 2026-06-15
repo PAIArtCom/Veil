@@ -13,21 +13,29 @@ caches, no orphaned tokens). Everything else is downstream.
 
 - Engine library: **L1-only** detection (secrets + structured PII — no NER model yet).
 - Deterministic, reversible, type-aware [token spec](../concepts/token-spec.md).
+- Finding conflict resolution (same-type merge, cross-type precedence) before masking.
+- Scoped `State` with provider/op metadata for provider-aware restore.
+- Per-type transform operators (`token`, `format_preserving`, `redact`, `block`, `ignore`)
+  in the public policy shape.
 - Mask/restore over text, over the Anthropic wire format, and **stateful streaming
   restore** (tolerating tokens split across arbitrary byte boundaries).
 - Validate by embedding the engine in **one real gateway**, plus a minimal standalone
   Claude Code proxy adapter.
 
 **Exit criteria:** a real task ("use my local DB connection string to run a migration")
-runs through Claude Code where the model only ever sees tokens, the local command executes
-with the real value, files on disk contain no `CLK_` tokens, and a second turn hits the
-prompt cache.
+runs through Claude Code where the model only ever sees deterministic tokens, overlapping
+findings produce one correct token, tool results and tool-call arguments are restored to
+real values, provider-aware restore errors are visible, the local command executes with the
+real value, files on disk contain no `CLK_` tokens, streamed tokens survive arbitrary byte
+splits, and a second turn hits the prompt cache.
 
 ## Phase 1 — Ecosystem
 
 **Goal:** breadth and hardening.
 
-- Codex support (OpenAI Responses API) and a generalized provider adapter set; Gemini.
+- Codex support (OpenAI Responses API), maintained provider adapters for OpenAI
+  Chat/Responses and Gemini, and only then a decision on whether a public third-party
+  adapter registration API is worth freezing.
 - HTTP/gRPC service wrapper for non-Go gateways.
 - Optional **L2** local NER layer (semantic PII: names, addresses) — opt-in, run only on
   per-turn new content to bound latency. Person detection default-off, user-configurable.

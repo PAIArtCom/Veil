@@ -6,8 +6,9 @@ the binary ships. The security invariants below are firm regardless.
 ## Run model
 
 OpenCloak's standalone transport is a **long-lived local daemon**. Its process memory holds
-the token↔value map for all tools pointed at it (global scope —
-[ADR-0005](../architecture/decisions/0005-global-in-memory-scope.md)).
+scoped token↔value maps for tools pointed at it; each proxied request/stream gets an
+explicit `State`, with optional longer-lived session/project namespaces for multi-turn
+self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 
 ## Security invariants (non-negotiable)
 
@@ -24,14 +25,14 @@ the token↔value map for all tools pointed at it (global scope —
 ## Configuration (planned surface)
 
 - Listen address (default `127.0.0.1:8788`).
-- Per-type detection toggles; rule set selection.
+- Per-type transform operators; rule set selection.
 - Optional local map cache (off by default; in-memory is the default).
 - Key path (default `~/.opencloak/key`, generated on first run).
 
 ## Observability (planned)
 
-- Local-only counters: requests processed, spans masked by type, blocked (fail-closed)
-  requests, residual-token egress flags.
+- Local-only counters: requests processed, findings masked by type, blocked (fail-closed)
+  requests, residual-token flags.
 - Any aggregate reporting to a control plane (Cloakia) is opt-in and subject to
   audit-data minimization ([open-core boundary](../product/open-core-boundary.md)).
 

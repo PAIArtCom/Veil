@@ -52,14 +52,16 @@ boundary.
 ## The completeness guarantee
 
 A response can only reference tokens for values that were present in the request that
-produced it. The engine created those token→value entries while masking that same request.
-Therefore the reverse map always contains what a response needs — independent of scope or
-restarts. This is the property that lets the map be a simple in-memory cache
-([ADR-0005](../architecture/decisions/0005-global-in-memory-scope.md)).
+produced it. The engine created those token→value entries while masking that same request,
+so the matching live `State` should contain what that response needs. This guarantee is
+scoped: restore must use the same request/stream state and namespace. Across another
+tenant/session/project scope, or after a restart without an explicit persistent cache,
+restore may leave a residual token or surface an error; it must never consult another
+scope to make restoration succeed ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 
 ## Orphan tokens
 
 If the model mangles a token (splits it, re-encodes it) restore may miss it, leaving a
 `CLK_…` literal in output. Two mitigations: the [token form](token-spec.md) is
-identifier-safe (it does not break code syntax if it lands), and an egress scan flags any
-residual tokens so the failure is visible, not silent.
+identifier-safe (it does not break code syntax if it lands), and residual-token scans flag
+missed restores so the failure is visible, not silent.

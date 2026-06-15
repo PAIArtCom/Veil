@@ -24,7 +24,7 @@ validation references, not design targets. Full findings:
 | Provider normalization | Per-format (translation matrix) | Routing metadata only; payload per-format | None — per-format |
 | Streaming inbound | Parsed SSE, re-emitted | Mixed; **default same-protocol = raw byte passthrough** | Mixed; **dominant path = raw 32 KB passthrough** |
 
-The three span "richest" to "barest." The contract is pinned to the barest.
+The three range from "richest" to "barest." The contract is pinned to the barest.
 
 ## The four invariants → the contract
 
@@ -40,36 +40,47 @@ The three span "richest" to "barest." The contract is pinned to the barest.
    restore that tolerates a token split across chunks; it **also** offers an event-level
    restore for gateways that already parse SSE.
 4. **No host plugin registry can be assumed** (only 1 of 3 has one). → The SDK is a
-   **library of pure functions**. Integrators call it at their own seams; wiring is their
-   (small) job.
+   **small library API**. Integrators call it at their own seams; wiring is their (small)
+   job.
 
-## The layered API
+## The three API surfaces
 
 ```go
 package opencloak
 
-// L0 — text level (universal fallback; any integrator can use it)
-func Mask(text string) string
-func Restore(text string) string
+import "context"
 
-// L1 — wire-format level (per provider; operates on native JSON bytes)
-func MaskRequest(provider, op string, body []byte) (masked []byte, st *State, err error)
-func RestoreResponse(st *State, body []byte) []byte            // buffered / non-stream
+// Text surface — universal fallback; any integrator can use it.
+func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error)
+func (e *Engine) Restore(ctx context.Context, st *State, text string) (string, error)
 
-// L2 — streaming level
-func RestoreStreamChunk(st *State, chunk []byte) []byte        // stateful; byte-split tolerant — UNIVERSAL
-func FlushStream(st *State) []byte                             // emit any held-back tail
-func RestoreSSEEvent(st *State, eventData []byte) []byte       // ergonomic; for parsed-SSE hosts
+// Wire surface — per provider; operates on native JSON bytes.
+func (e *Engine) MaskRequest(ctx context.Context, scope Scope, provider, op string, body []byte) (masked []byte, st *State, err error)
+func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([]byte, error)   // buffered / non-stream
+
+// Stream surface.
+func (e *Engine) RestoreStreamChunk(st *State, chunk []byte) []byte        // stateful; byte-split tolerant — UNIVERSAL
+func (e *Engine) FlushStream(st *State) []byte                             // emit any held-back tail
+func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byte) ([]byte, error) // ergonomic; for parsed-SSE hosts
 ```
 
-- **State.** A process-global store is the default (zero bookkeeping; correct by the
-  [completeness guarantee](../concepts/redaction-model.md) + determinism). An explicit
-  `*State` handle is available for hosts that need per-request or per-tenant isolation.
+These names are deliberately not `L0/L1/L2`: detection already uses `L1` for pattern
+rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Stream.
+
+- **Scope and State.** `Mask` and `MaskRequest` take a `Scope` for tenant/session/project
+  namespace and return an explicit `*State` handle for the matching restore. `State`
+  records `provider`/`op` for wire calls so buffered and parsed-event restore can use the
+  same provider walker ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 - **Provider tag.** `provider`/`op` select the wire-aware walker (which JSON paths hold
   text). Every surveyed gateway can supply this tag.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,
   Orbit default). Use `RestoreSSEEvent` if you already parse SSE events (CLIProxyAPI,
   Orbit's transform path). Both share the same `State`.
+- **Restore error surface.** Text, buffered response, and parsed-SSE restore return
+  errors and receive `ctx` so callers can audit deliberately. Raw chunk restore and
+  `FlushStream` are provider-agnostic hot-path helpers without `ctx` or an error return;
+  callers should audit residual-token detection around the stream lifecycle
+  ([ADR-0010](../architecture/decisions/0010-restore-dispatch-and-errors.md)).
 
 See the [integration guide](integration-guide.md) for wiring patterns and the
 [API reference](api-reference.md) for the full proposed surface.

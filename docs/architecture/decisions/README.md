@@ -20,5 +20,9 @@ consequences.
 | [0002](0002-engine-transport-split.md) | Engine / transport split (one core, many shells) | Accepted |
 | [0003](0003-deterministic-reversible-token-spec.md) | Deterministic, reversible, type-aware token spec | Accepted |
 | [0004](0004-auth-pass-through.md) | Authentication is pass-through, engine is credential-free | Accepted |
-| [0005](0005-global-in-memory-scope.md) | Global, in-memory mapping scope | Accepted |
+| [0005](0005-global-in-memory-scope.md) | Global, in-memory mapping scope | Superseded by ADR-0009 |
 | [0006](0006-l1-only-mvp-defer-l2.md) | L1-only MVP; defer the L2 NER model | Accepted |
+| [0007](0007-code-and-module-layout.md) | Code & module layout | Accepted |
+| [0008](0008-finding-model-and-conflict-resolution.md) | Finding model and conflict resolution | Accepted |
+| [0009](0009-state-lifecycle-and-scope.md) | State lifecycle and scoped mapstore | Accepted |
+| [0010](0010-restore-dispatch-and-errors.md) | Restore dispatch and error surface | Accepted |

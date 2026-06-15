@@ -40,8 +40,11 @@ These must hold for every change touching detection, masking, restore, or egress
 4. **Credential pass-through.** The engine never holds or needs provider credentials; the
    transport forwards the tool's own auth header unchanged.
    ([ADR-0004](decisions/0004-auth-pass-through.md).)
-5. **The reverse map is local.** Token→value mapping stays in process memory (optionally a
-   local cache); it is never transmitted. ([ADR-0005](decisions/0005-global-in-memory-scope.md).)
+5. **The reverse map is local and scoped.** Token→value mapping stays in process memory
+   (optionally a local cache), is scoped by request/stream and namespace, and is never
+   transmitted. ([ADR-0009](decisions/0009-state-lifecycle-and-scope.md).)
+   Cross-scope restore must fail visibly or leave a residual token; it must never restore
+   from another tenant/session/project namespace.
 6. **Tokens are not invertible without the local key.** `id = HMAC(value, local_key)`; an
    observer of tokens alone cannot recover values. (The real protection is that values
    never leave; this is defense in depth.)
@@ -50,8 +53,10 @@ These must hold for every change touching detection, masking, restore, or egress
 
 - **Orphan tokens.** If the model mangles a token (splits, re-encodes), restore may miss
   it and a `CLK_…` literal could land in output. Mitigations: an identifier-safe token
-  form that survives in code without breaking syntax, and an egress scan that flags
-  residual tokens. ([Token spec](../concepts/token-spec.md).)
+  form that survives in code without breaking syntax, and residual-token scans owned by
+  `internal/stream` for raw streams and `internal/mask` for final text/wire buffers. Hits
+  are audited as `AuditEvent{Kind:"residual_token"}` without sensitive values. ([Token
+  spec](../concepts/token-spec.md).)
 - **Detection false negatives.** L1 patterns cannot catch unstructured PII; that is what
   the optional L2 layer is for. Coverage is a tunable, documented trade-off — never a
   silent guarantee.

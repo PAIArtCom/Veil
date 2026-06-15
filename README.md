@@ -10,8 +10,9 @@ values with reversible tokens**; when the response comes back it **restores them
 model never sees the real data — but your terminal, your files, and the agent's tool
 calls all run with the real values.
 
-> **Status: pre-implementation.** This repository currently holds the product and
-> architecture documentation. The engine is being built. See [`docs/`](docs/README.md).
+> **Status: scaffold.** This repository contains the product/architecture documentation
+> plus a compiling Go scaffold. Engine behavior is not implemented yet. See
+> [`docs/`](docs/README.md).
 
 ---
 
@@ -66,7 +67,8 @@ OpenCloak is **one engine with different shells** (see
 [architecture overview](docs/architecture/overview.md)):
 
 1. **Standalone local proxy** — point your CLI's base URL at it
-   (`ANTHROPIC_BASE_URL` for Claude Code, a custom `model_providers` entry for Codex).
+   (`ANTHROPIC_BASE_URL` for Claude Code; Codex support is planned via a custom
+   `model_providers` entry).
    Credentials pass straight through; only the request body is rewritten.
 2. **Embeddable Go library** — drop the engine into your own gateway and call it at your
    request/response seams. The SDK is **general-purpose**, validated against several real

@@ -2,8 +2,9 @@
 
 **Status:** Accepted (L1 normative; L2 planned). MVP scope: [ADR-0006](../architecture/decisions/0006-l1-only-mvp-defer-l2.md).
 
-Detection finds the sensitive spans that the [tokenizer](token-spec.md) then masks. It is
-layered so the common, high-value case needs no model.
+Detection finds sensitive `Finding` values that the resolver de-overlaps before the
+[tokenizer](token-spec.md) masks them. It is layered so the common, high-value case needs
+no model.
 
 ## L1 — Patterns (MVP)
 
@@ -12,7 +13,7 @@ Fast, deterministic, no model. Catches data with **structure**.
 | Technique | Catches |
 |---|---|
 | Regex rule sets (gitleaks-style) | API keys, provider tokens, private keys |
-| Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key` |
+| Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key`; strict bare high-entropy fallback |
 | Checksums (e.g. Luhn) | Credit-card numbers, validated identifiers |
 | Structured patterns | Emails, phones, IPv4/IPv6, connection strings, URLs |
 
@@ -22,6 +23,13 @@ string is down-weighted. L1 reuses the proven approach of the `privacy-filter` p
 
 **Categories → token TYPE:** `SECRET`, `EMAIL`, `PHONE`, `IPV4`/`IPV6`, `CARD`, `ACCT`,
 `URL`, `DATE`.
+
+Every L1 detector emits `Finding{Start, End, Type, Score, Source}`. Candidates that require
+validation (for example Luhn checks) are dropped if validation fails. Entropy can validate
+or rank a regex candidate, and it can also originate a finding for an otherwise-unmatched
+high-entropy value when contextual or strict false-positive controls pass. Overlaps are
+resolved centrally before masking; individual detectors do not get to decide global
+precedence.
 
 ## L2 — Local NER (planned, Phase 1, opt-in)
 
@@ -37,10 +45,10 @@ spaCy (lightweight baseline).
 ### Consistency hazard (L2-specific)
 
 A model may catch "Jane Doe" on turn 1 but miss it on turn 5, which would both leak and
-break that span's cache. Resolution: **the model only *discovers* entities; the
-deterministic map *enforces* a stable pseudonym thereafter** — once a span is masked, every
-later occurrence is replaced by deterministic string match regardless of whether the model
-re-detects it.
+break that entity's cache. Resolution: **the model only *discovers* entities; the
+deterministic map *enforces* a stable pseudonym thereafter** — once an entity is masked,
+every later occurrence is replaced by deterministic string match regardless of whether the
+model re-detects it.
 
 ## Pluggable by design
 

@@ -24,9 +24,11 @@ many developers, it belongs in **Cloakia** (commercial).
 | Per-provider adapters (Claude Code, Codex, …) | ✅ | |
 | Standalone local proxy | ✅ | |
 | Embeddable SDK + HTTP/gRPC service | ✅ | |
+| **Local single-user web console** (localhost-only) | ✅ | |
 | Local, file-based configuration & rule sets | ✅ | |
 | Centralized policy authoring & **push to a fleet** | | ✅ |
 | Cross-developer **audit & compliance dashboards** | | ✅ |
+| **Multi-tenant management / audit console** | | ✅ |
 | SSO / RBAC / team management | | ✅ |
 | Enterprise entity dictionaries managed centrally | | ✅ |
 | SIEM / log export, reporting | | ✅ |

@@ -1,6 +1,9 @@
 # ADR-0005 — Global, in-memory mapping scope
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0009](0009-state-lifecycle-and-scope.md)
+
+> Superseded decision. Do not implement the global-only scope described below. Current
+> architecture uses explicit `Scope` and request/stream `State` handles per ADR-0009.
 
 ## Context
 
