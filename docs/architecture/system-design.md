@@ -13,6 +13,7 @@ opencloak/                       module github.com/cloakia/opencloak
 ├── doc.go types.go interfaces.go engine.go    [scaffold] PUBLIC API (root package)
 │
 ├── internal/
+│   ├── types/             [scaffold] shared data types (Finding/Scope/Type/Policy/operators); root re-exports as transparent aliases
 │   ├── detect/            [scaffold] detection pipeline, fail-closed orchestration
 │   │   ├── l1/            [scaffold] regex + entropy + Luhn + context keywords
 │   │   │                                  rules merge: privacy-filter + gitleaks (go:embed)
@@ -44,6 +45,7 @@ only after the exit criteria in the roadmap pass against a real agent flow.
 | Package | Responsibility |
 |---|---|
 | `opencloak` (root) | Public API: `Engine`, `New`, Text/Wire/Stream methods, `Scope`/`State`, `Finding`, policy operators, and extension interfaces. The only package external code imports. |
+| `internal/types` | Shared data types (`Finding`,`Scope`,`Type`,`Policy`,operators); the root package re-exports them as transparent aliases — breaks the root↔internal import cycle while keeping the public API byte-identical. |
 | `internal/detect` | Run the configured detector layers; emit `Finding` values; enforce fail-closed. |
 | `internal/detect/l1` | Pattern detection: regex rule sets (privacy-filter + gitleaks), Shannon entropy + context keywords/bare fallback, checksums (Luhn). |
 | `internal/detect/resolver` | Merge same-type overlaps, resolve cross-type conflicts, and emit non-overlapping findings. |

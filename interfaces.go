@@ -1,6 +1,10 @@
 package opencloak
 
-import "context"
+import (
+	"context"
+
+	"github.com/cloakia/opencloak/internal/types"
+)
 
 // Detector finds sensitive findings in text. The L1 pattern detector is built in;
 // implement this interface to plug in an L2 local NER model (Phase 1) for semantic
@@ -10,37 +14,31 @@ type Detector interface {
 }
 
 // TransformOperator selects how a resolved finding is transformed.
-type TransformOperator string
+type TransformOperator = types.TransformOperator
 
 const (
 	// OperatorToken replaces values with deterministic reversible CLK_<TYPE>_<id>
 	// tokens. This is the OpenCloak default.
-	OperatorToken TransformOperator = "token"
+	OperatorToken TransformOperator = types.OperatorToken
 	// OperatorFormatPreserving is reserved for deterministic realistic surrogates
 	// such as valid-looking emails or phone numbers. (Phase 1.)
-	OperatorFormatPreserving TransformOperator = "format_preserving"
+	OperatorFormatPreserving TransformOperator = types.OperatorFormatPreserving
 	// OperatorRedact replaces values with a non-reversible marker. (Phase 1.)
-	OperatorRedact TransformOperator = "redact"
+	OperatorRedact TransformOperator = types.OperatorRedact
 	// OperatorBlock blocks the request when the type is found; Mask/MaskRequest return
 	// ErrBlocked or *BlockedError.
-	OperatorBlock TransformOperator = "block"
+	OperatorBlock TransformOperator = types.OperatorBlock
 	// OperatorIgnore leaves the type unmodified.
-	OperatorIgnore TransformOperator = "ignore"
+	OperatorIgnore TransformOperator = types.OperatorIgnore
 )
 
 // TypePolicy configures detection/transformation for one sensitive data type. The
 // zero Operator means "use Policy.DefaultOperator".
-type TypePolicy struct {
-	Operator TransformOperator
-}
+type TypePolicy = types.TypePolicy
 
 // Policy is the resolved detection/redaction configuration: the default transform
 // operator, per-type overrides, active L1 rule sets, and later custom dictionaries.
-type Policy struct {
-	DefaultOperator TransformOperator   // empty = OperatorToken
-	Types           map[Type]TypePolicy // per-type overrides; OperatorIgnore disables a type
-	RuleSets        []string            // active L1 rule sets, e.g. "privacy-filter", "gitleaks"
-}
+type Policy = types.Policy
 
 // PolicyProvider supplies the active Policy for a scope. The open-source default reads
 // local files and may ignore scope; Cloakia implements this to fetch and hot-reload

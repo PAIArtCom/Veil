@@ -3,47 +3,39 @@ package opencloak
 import (
 	"errors"
 	"strings"
+
+	"github.com/cloakia/opencloak/internal/types"
 )
 
 // Type is a category of sensitive data. It is embedded in every token as
 // CLK_<TYPE>_<id> so that handling and restore can branch on the category.
 // See docs/concepts/token-spec.md.
-type Type string
+type Type = types.Type
 
 const (
-	TypeSecret Type = "SECRET" // API keys, tokens, passwords, private keys, connection strings
-	TypeEmail  Type = "EMAIL"
-	TypePhone  Type = "PHONE"
-	TypeIPv4   Type = "IPV4"
-	TypeIPv6   Type = "IPV6"
-	TypeCard   Type = "CARD"
-	TypeAcct   Type = "ACCT"
-	TypeURL    Type = "URL"
-	TypeDate   Type = "DATE"
-	TypePerson Type = "PERSON" // L2 (semantic); disabled by default
-	TypeAddr   Type = "ADDR"   // L2 (semantic); disabled by default
+	TypeSecret Type = types.TypeSecret
+	TypeEmail  Type = types.TypeEmail
+	TypePhone  Type = types.TypePhone
+	TypeIPv4   Type = types.TypeIPv4
+	TypeIPv6   Type = types.TypeIPv6
+	TypeCard   Type = types.TypeCard
+	TypeAcct   Type = types.TypeAcct
+	TypeURL    Type = types.TypeURL
+	TypeDate   Type = types.TypeDate
+	TypePerson Type = types.TypePerson
+	TypeAddr   Type = types.TypeAddr
 )
 
 // Finding is a detected sensitive region within a piece of text, as UTF-8 byte
 // offsets [Start, End). Score is normalized to 0..1 and Source names the detector
 // or rule that produced the finding, for example "l1:gitleaks:github-pat".
 // Findings are resolved for overlaps before masking; see docs/architecture/decisions/0008.
-type Finding struct {
-	Start  int
-	End    int
-	Type   Type
-	Score  float64
-	Source string
-}
+type Finding = types.Finding
 
 // Scope selects the mapstore namespace for a request/stream lifecycle. The zero
 // value is the single-user local scope. Multi-user embedders should set Tenant;
 // long-lived agent workflows should set Session and, when useful, Project.
-type Scope struct {
-	Tenant  string
-	Session string
-	Project string
-}
+type Scope = types.Scope
 
 // State holds token<->value reverse mappings for a masked text or wire request and the
 // matching restore lifecycle. It records the Scope and, for wire calls, the provider/op
