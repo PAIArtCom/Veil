@@ -10,6 +10,11 @@ import (
 	"github.com/cloakia/opencloak/internal/mask"
 	"github.com/cloakia/opencloak/internal/token"
 	"github.com/cloakia/opencloak/internal/types"
+	"github.com/cloakia/opencloak/internal/wire"
+
+	// Side-effect import: registers the "anthropic" provider in the wire
+	// registry when the engine package is imported.
+	_ "github.com/cloakia/opencloak/internal/wire/anthropic"
 )
 
 // Engine is the OpenCloak de-identification engine. Construct it with New and use it
@@ -98,17 +103,13 @@ func ignoredByPolicy(policy types.Policy) func(types.Finding) bool {
 	}
 }
 
-// Mask replaces detected sensitive values in text with deterministic, reversible
-// tokens (CLK_<TYPE>_<id>). It returns the State needed to restore the same text surface.
-func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error) {
-	policy, err := e.activePolicy(ctx, scope)
-	if err != nil {
-		return "", nil, err
-	}
-
-	// Build a pre-resolution filter so ignored-type findings are stripped
-	// before conflict resolution runs. This prevents an ignored finding from
-	// winning a cross-type conflict and thereby suppressing a maskable one.
+// maskText is the shared masking core used by both Mask and MaskRequest.
+// It detects sensitive values in text, masks them using the resolved policy,
+// accumulates token→value entries in the store under scope, and returns the
+// masked text. If any type hits OperatorBlock the blocked types are returned
+// (text will equal the original). Detection errors are returned as-is
+// (fail-closed).
+func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope, text string) (masked string, blocked []Type, err error) {
 	preFilter := ignoredByPolicy(policy)
 
 	findings, err := e.detector.Detect(ctx, text, preFilter)
@@ -119,17 +120,37 @@ func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked str
 	result := mask.Apply(text, findings, scope, policy, e.store, e.keyer, e.collisions)
 
 	if len(result.Blocked) > 0 {
-		blocked := make([]Type, len(result.Blocked))
+		blockedTypes := make([]Type, len(result.Blocked))
 		for i, t := range result.Blocked {
-			blocked[i] = t
+			blockedTypes[i] = t
 		}
-		sort.Slice(blocked, func(i, j int) bool {
-			return string(blocked[i]) < string(blocked[j])
+		sort.Slice(blockedTypes, func(i, j int) bool {
+			return string(blockedTypes[i]) < string(blockedTypes[j])
 		})
+		return "", blockedTypes, nil
+	}
+
+	return result.Masked, nil, nil
+}
+
+// Mask replaces detected sensitive values in text with deterministic, reversible
+// tokens (CLK_<TYPE>_<id>). It returns the State needed to restore the same text surface.
+func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error) {
+	policy, err := e.activePolicy(ctx, scope)
+	if err != nil {
+		return "", nil, err
+	}
+
+	maskedText, blocked, err := e.maskText(ctx, policy, scope, text)
+	if err != nil {
+		return "", nil, err
+	}
+
+	if len(blocked) > 0 {
 		return "", nil, &BlockedError{Types: blocked}
 	}
 
-	return result.Masked, &State{scope: scope}, nil
+	return maskedText, &State{scope: scope}, nil
 }
 
 // tokenRe matches any CLK_… token in text.
@@ -157,24 +178,80 @@ func (e *Engine) Restore(ctx context.Context, st *State, text string) (string, e
 // the masked body plus the State needed to restore the response. scope selects the
 // mapstore namespace. provider is e.g. "anthropic" or "openai-responses"; op is the
 // operation, e.g. "messages".
-//
-// TODO(phase0): implement. Until then it returns ErrNotImplemented so callers fail
-// closed and never forward plaintext.
 func (e *Engine) MaskRequest(ctx context.Context, scope Scope, provider, op string, body []byte) (masked []byte, st *State, err error) {
-	return nil, nil, ErrNotImplemented
+	policy, err := e.activePolicy(ctx, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	prov, err := wire.Lookup(provider)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	spans, err := prov.ExtractRequest(op, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Accumulate all blocked types across spans.
+	var allBlocked []Type
+	maskedSpans := make([]wire.MaskedSpan, 0, len(spans))
+
+	for _, span := range spans {
+		maskedText, blocked, maskErr := e.maskText(ctx, policy, scope, span.Text)
+		if maskErr != nil {
+			return nil, nil, maskErr
+		}
+		if len(blocked) > 0 {
+			allBlocked = append(allBlocked, blocked...)
+		}
+		maskedSpans = append(maskedSpans, wire.MaskedSpan{
+			Path:       span.Path,
+			MaskedText: maskedText,
+		})
+	}
+
+	if len(allBlocked) > 0 {
+		// Deduplicate and sort.
+		seen := make(map[Type]struct{}, len(allBlocked))
+		unique := allBlocked[:0]
+		for _, t := range allBlocked {
+			if _, ok := seen[t]; !ok {
+				seen[t] = struct{}{}
+				unique = append(unique, t)
+			}
+		}
+		sort.Slice(unique, func(i, j int) bool {
+			return string(unique[i]) < string(unique[j])
+		})
+		return nil, nil, &BlockedError{Types: unique}
+	}
+
+	maskedBody, err := prov.ApplyRequest(op, body, maskedSpans)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return maskedBody, &State{scope: scope, provider: provider, op: op}, nil
 }
 
 // RestoreResponse restores tokens in a complete (non-streaming) provider response body.
 // It uses st.Provider and st.Op to dispatch through the same provider walker that masked
 // the request. Restore errors are returned explicitly so callers can audit via ctx or
 // choose whether to surface residual tokens to the trusted local user.
-//
-// TODO(phase0): implement. Until then it returns ErrNotImplemented.
 func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([]byte, error) {
 	if st == nil || st.provider == "" || st.op == "" {
 		return nil, ErrInvalidState
 	}
-	return nil, ErrNotImplemented
+
+	prov, err := wire.Lookup(st.provider)
+	if err != nil {
+		return nil, err
+	}
+
+	restoreFunc := e.makeRestoreFunc(st)
+	return prov.RestoreResponse(st.op, body, restoreFunc)
 }
 
 // ---- Streaming surface ----------------------------------------------------------
@@ -195,11 +272,32 @@ func (e *Engine) FlushStream(st *State) []byte { return nil }
 // RestoreSSEEvent restores tokens in a single parsed SSE event payload. It dispatches
 // via st.Provider/st.Op, so provider-specific event JSON can be restored without
 // rewriting non-text fields. Use RestoreStreamChunk for raw byte relay.
-//
-// TODO(phase0): implement. Until then it returns ErrNotImplemented.
 func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byte) ([]byte, error) {
 	if st == nil || st.provider == "" || st.op == "" {
 		return nil, ErrInvalidState
 	}
-	return nil, ErrNotImplemented
+
+	prov, err := wire.Lookup(st.provider)
+	if err != nil {
+		return nil, err
+	}
+
+	restoreFunc := e.makeRestoreFunc(st)
+	return prov.RestoreSSEEvent(st.op, eventData, restoreFunc)
+}
+
+// makeRestoreFunc returns a RestoreFunc that replaces CLK_… tokens found in
+// text with their stored values under st's scope. Unknown tokens are left as-is
+// (consistent with the text-surface Restore behavior).
+func (e *Engine) makeRestoreFunc(st *State) wire.RestoreFunc {
+	scope := st.scope
+	return func(text string) (string, error) {
+		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
+			if v, ok := e.store.Get(scope, tok); ok {
+				return v
+			}
+			return tok
+		})
+		return result, nil
+	}
 }
