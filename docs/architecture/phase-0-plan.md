@@ -155,5 +155,16 @@ Milestones are checked off here as their DoD + fixtures pass:
   restorer was built and validated against the adversarial split fixtures.*
 - [x] M1 — Text engine — `fa2d455`
 - [x] M2 — Anthropic wire (buffered) — `ae157c7`
-- [x] M3 — Streaming restore — `858dd58`
-- [ ] M4 — Standalone proxy + end-to-end validation
+- [x] M3 — Streaming restore — `858dd58` (transport-byte holdback) + `8049faf`
+  (cross-event holdback, [ADR-0011](decisions/0011-streaming-restore-cross-event-holdback.md))
+- [x] M4 — Standalone proxy + CLI — `70e2400` + `8049faf` — *code-complete and
+  simulation-verified: the eight exit criteria are covered by the proxy/engine test suite
+  (fake upstream that splits tokens across events). The live real-Claude-Code acceptance
+  (criteria #1–#8 on real Anthropic traffic + the Spike-A fixture capture) is the documented
+  manual step — see the [Claude Code guide](../guides/claude-code.md#phase-0-acceptance-checklist).
+  Secondary DoD (embed in a real gateway, e.g. clipal) deferred to early Phase 1 per plan.*
+
+**Phase 0 status:** the mask → forward → restore loop is implemented end-to-end (text,
+buffered wire, and streaming with cross-event token reassembly), fail-closed, behind a
+loopback-only base-URL proxy, with `gofmt`/`vet`/`go test`/`-race` green. Remaining to call
+Phase 0 fully *accepted*: the manual live run against real Claude Code.

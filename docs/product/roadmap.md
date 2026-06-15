@@ -37,6 +37,8 @@ splits, and a second turn hits the prompt cache.
 - **M3 — Streaming restore.** chunk-level holdback + SSE-event; byte-split fixtures.
 - **M4 — Proxy + end-to-end.** standalone Claude Code proxy + embed in one real gateway; pass all exit criteria.
 
+**Status (code-complete, simulation-verified).** M1–M4 are implemented and `gofmt`/`vet`/`go test`/`-race` green: the mask → forward → restore loop runs end-to-end over text, the buffered Anthropic wire, and streaming — including reassembly of tokens the model regenerates split across SSE events ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)) — fail-closed, behind a loopback-only base-URL proxy. The eight exit criteria are covered by the test suite; the live run against real Claude Code and the gateway-embed (secondary DoD) are the remaining acceptance steps (see the [Claude Code guide](../guides/claude-code.md#phase-0-acceptance-checklist)).
+
 ## Phase 1 — Ecosystem
 
 **Goal:** breadth and hardening.
