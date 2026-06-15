@@ -1,0 +1,340 @@
+package proxy
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+
+	opencloak "github.com/cloakia/opencloak"
+)
+
+// engineAPI is the slice of *opencloak.Engine the proxy depends on. Depending on
+// an interface rather than the concrete type lets tests substitute a restorer
+// that deterministically fails on a chosen SSE event so the "restore errors are
+// surfaced, never swallowed" guarantee (exit criterion #5) can be exercised —
+// the real gjson/sjson restore path is too lenient to error on demand. New
+// accepts the concrete *opencloak.Engine, so production wiring is unaffected.
+type engineAPI interface {
+	MaskRequest(ctx context.Context, scope opencloak.Scope, provider, op string, body []byte) ([]byte, *opencloak.State, error)
+	RestoreResponse(ctx context.Context, st *opencloak.State, body []byte) ([]byte, error)
+	RestoreSSEEvent(ctx context.Context, st *opencloak.State, eventData []byte) ([]byte, error)
+}
+
+// Proxy is the reference base-URL proxy http.Handler.
+type Proxy struct {
+	engine   engineAPI
+	upstream *url.URL        // e.g. https://api.anthropic.com
+	client   *http.Client    // streaming-friendly: no overall Timeout
+	scope    opencloak.Scope // Phase 0: a fixed default scope (the zero value)
+	log      *slog.Logger
+}
+
+// New constructs a Proxy that masks requests through engine and relays them to
+// upstream (an absolute http/https base URL such as https://api.anthropic.com).
+// If log is nil a default text logger to stderr is used. The returned client has
+// no overall timeout so it does not abort long-lived SSE streams; transport-level
+// dial/TLS timeouts come from http.DefaultTransport.
+func New(engine *opencloak.Engine, upstream string, log *slog.Logger) (*Proxy, error) {
+	if engine == nil {
+		return nil, errors.New("proxy: nil engine")
+	}
+	u, err := parseUpstream(upstream)
+	if err != nil {
+		return nil, err
+	}
+	if log == nil {
+		log = slog.Default()
+	}
+	return &Proxy{
+		engine:   engine,
+		upstream: u,
+		// A dedicated client (not http.DefaultClient) with no Timeout: an SSE
+		// response body may stay open for minutes. Per-attempt dial/TLS
+		// timeouts are inherited from http.DefaultTransport.
+		client: &http.Client{Transport: http.DefaultTransport},
+		scope:  opencloak.Scope{},
+		log:    log,
+	}, nil
+}
+
+// parseUpstream validates that raw is an absolute http(s) base URL with a host.
+func parseUpstream(raw string) (*url.URL, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, errors.New("proxy: empty upstream URL")
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("proxy: parse upstream %q: %w", raw, err)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("proxy: upstream %q must be http or https", raw)
+	}
+	if u.Host == "" {
+		return nil, fmt.Errorf("proxy: upstream %q has no host", raw)
+	}
+	return u, nil
+}
+
+// hopByHopHeaders are connection-scoped headers that must not be forwarded
+// across a proxy hop (RFC 7230 §6.1). Content-Length is handled separately
+// because the masked/restored body length differs from the original.
+var hopByHopHeaders = map[string]struct{}{
+	"Connection":          {},
+	"Keep-Alive":          {},
+	"Proxy-Authenticate":  {},
+	"Proxy-Authorization": {},
+	"Proxy-Connection":    {},
+	"Te":                  {}, // canonicalized "TE"
+	"Trailer":             {},
+	"Transfer-Encoding":   {},
+	"Upgrade":             {},
+}
+
+// isHopByHop reports whether a canonicalized header key is hop-by-hop and so
+// must be stripped when relaying. "Proxy-*" headers are all hop-by-hop.
+func isHopByHop(canonKey string) bool {
+	if _, ok := hopByHopHeaders[canonKey]; ok {
+		return true
+	}
+	return strings.HasPrefix(canonKey, "Proxy-")
+}
+
+// ServeHTTP routes the request. Only POST /v1/messages is masked; everything
+// else is forwarded transparently with body and headers untouched.
+func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
+		p.serveMessages(w, r)
+		return
+	}
+	p.serveTransparent(w, r)
+}
+
+// serveMessages handles the masked POST /v1/messages path.
+func (p *Proxy) serveMessages(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		// Could not read the client body; nothing was forwarded.
+		p.log.Error("proxy: read request body", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to read request body")
+		return
+	}
+
+	masked, state, err := p.engine.MaskRequest(r.Context(), p.scope, "anthropic", "messages", body)
+	if err != nil {
+		// Fail-closed: on ANY masking error the plaintext request is never
+		// forwarded upstream. A policy block maps to 403; any other error maps
+		// to 502. Both return before a single upstream byte is sent.
+		var blocked *opencloak.BlockedError
+		if errors.As(err, &blocked) {
+			p.log.Warn("proxy: request blocked by policy", "types", typeNames(blocked.Types))
+			writeAnthropicError(w, http.StatusForbidden, "blocked_by_policy",
+				"request blocked by local policy: "+strings.Join(typeNames(blocked.Types), ", "))
+			return
+		}
+		p.log.Error("proxy: mask request failed (fail-closed, not forwarded)", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "request could not be processed")
+		return
+	}
+
+	// Build the upstream request: same method, upstream host + the incoming
+	// path and raw query, masked body.
+	upReq, err := p.newUpstreamRequest(r, masked)
+	if err != nil {
+		p.log.Error("proxy: build upstream request", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
+		return
+	}
+
+	resp, err := p.client.Do(upReq)
+	if err != nil {
+		// Transport error reaching upstream: fail-closed (nothing to relay).
+		p.log.Error("proxy: upstream transport error", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "upstream request failed")
+		return
+	}
+	defer resp.Body.Close()
+
+	if isEventStream(resp.Header.Get("Content-Type")) {
+		p.relayStream(w, r, resp, state)
+		return
+	}
+	p.relayBuffered(w, r, resp, state)
+}
+
+// newUpstreamRequest builds the masked upstream request, copying non-hop-by-hop
+// client headers verbatim — including the credential (Authorization / x-api-key)
+// and Anthropic version/beta headers. The proxy holds no credentials of its own;
+// it forwards whatever the client sent (ADR-0004).
+func (p *Proxy) newUpstreamRequest(r *http.Request, body []byte) (*http.Request, error) {
+	target := *p.upstream
+	target.Path = singleJoiningSlash(p.upstream.Path, r.URL.Path)
+	target.RawQuery = r.URL.RawQuery
+
+	upReq, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	copyHeaders(upReq.Header, r.Header)
+	// Content-Length must reflect the masked body, not the original.
+	upReq.ContentLength = int64(len(body))
+	upReq.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
+	return upReq, nil
+}
+
+// relayBuffered relays a complete (non-streaming) upstream response: read the
+// whole body, restore tokens, and write the result. On a restore error the raw
+// upstream body is written so the trusted local user still gets a response
+// (residual tokens are audited by the engine); the error is logged, never
+// swallowed (exit criterion #5).
+func (p *Proxy) relayBuffered(w http.ResponseWriter, r *http.Request, resp *http.Response, state *opencloak.State) {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		p.log.Error("proxy: read upstream response body", "err", err)
+		copyHeaders(w.Header(), resp.Header)
+		w.Header().Del("Content-Length")
+		w.WriteHeader(http.StatusBadGateway)
+		return
+	}
+
+	out := body
+	if restored, rerr := p.engine.RestoreResponse(r.Context(), state, body); rerr != nil {
+		// Surface the restore error; still relay the raw upstream body so the
+		// local user is not left without a response.
+		p.log.Error("proxy: restore response failed (relaying raw upstream body)", "err", rerr)
+	} else {
+		out = restored
+	}
+
+	copyHeaders(w.Header(), resp.Header)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(out)))
+	w.WriteHeader(resp.StatusCode)
+	if _, err := w.Write(out); err != nil {
+		p.log.Error("proxy: write buffered response to client", "err", err)
+	}
+}
+
+// serveTransparent forwards a non-/v1/messages request verbatim: the body and
+// headers are untouched outbound, and the upstream response (status, headers,
+// body) is relayed unchanged. No masking or restore occurs on this path.
+func (p *Proxy) serveTransparent(w http.ResponseWriter, r *http.Request) {
+	target := *p.upstream
+	target.Path = singleJoiningSlash(p.upstream.Path, r.URL.Path)
+	target.RawQuery = r.URL.RawQuery
+
+	upReq, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), r.Body)
+	if err != nil {
+		p.log.Error("proxy: build transparent request", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
+		return
+	}
+	copyHeaders(upReq.Header, r.Header)
+	upReq.ContentLength = r.ContentLength
+
+	resp, err := p.client.Do(upReq)
+	if err != nil {
+		p.log.Error("proxy: transparent upstream transport error", "err", err)
+		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "upstream request failed")
+		return
+	}
+	defer resp.Body.Close()
+
+	copyHeaders(w.Header(), resp.Header)
+	w.WriteHeader(resp.StatusCode)
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		p.log.Error("proxy: relay transparent response body", "err", err)
+	}
+}
+
+// copyHeaders copies every non-hop-by-hop header from src to dst. Content-Length
+// is treated as hop-by-hop here because the masked/restored body length differs
+// from the original; callers set it explicitly for buffered bodies and drop it
+// for streamed bodies.
+func copyHeaders(dst, src http.Header) {
+	for k, vs := range src {
+		if isHopByHop(k) || k == "Content-Length" {
+			continue
+		}
+		for _, v := range vs {
+			dst.Add(k, v)
+		}
+	}
+}
+
+// isEventStream reports whether a Content-Type names a Server-Sent Events stream.
+func isEventStream(contentType string) bool {
+	return strings.Contains(strings.ToLower(contentType), "text/event-stream")
+}
+
+// typeNames renders blocked types as their string names for error messages.
+func typeNames(types []opencloak.Type) []string {
+	out := make([]string, len(types))
+	for i, t := range types {
+		out[i] = string(t)
+	}
+	return out
+}
+
+// singleJoiningSlash joins two URL path segments with exactly one slash,
+// mirroring net/http/httputil.NewSingleHostReverseProxy's joiner.
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		if a == "" {
+			return b
+		}
+		return a + "/" + b
+	}
+	return a + b
+}
+
+// writeAnthropicError writes an Anthropic-shaped JSON error. The body is a fixed
+// template so it never carries provider payload or sensitive values.
+func writeAnthropicError(w http.ResponseWriter, status int, errType, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Del("Content-Length")
+	w.WriteHeader(status)
+	// Hand-built to keep the exact Anthropic error envelope and avoid pulling
+	// json marshaling onto this small fixed shape; message is JSON-escaped.
+	body := `{"type":"error","error":{"type":"` + errType + `","message":` + jsonString(message) + `}}`
+	_, _ = io.WriteString(w, body)
+}
+
+// jsonString returns s as a JSON string literal (with surrounding quotes),
+// escaping the characters that must not appear raw inside a JSON string.
+func jsonString(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 2)
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			if r < 0x20 {
+				fmt.Fprintf(&b, `\u%04x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}

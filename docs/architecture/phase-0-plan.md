@@ -148,9 +148,12 @@ behavior (the enum stays; only `token` / `ignore` / `block` are implemented in P
 
 Milestones are checked off here as their DoD + fixtures pass:
 
-- [ ] Spike A — integration reality check
-- [ ] Spike B — streaming holdback algorithm
-- [ ] M1 — Text engine
-- [ ] M2 — Anthropic wire (buffered)
-- [ ] M3 — Streaming restore
+- [~] Spike A — integration reality check — *not run as a standalone throwaway; the
+  wire walker was built against the documented Anthropic `/v1/messages` shapes, and the
+  real-Claude-Code capture is folded into the M4 manual acceptance runbook.*
+- [x] Spike B — streaming holdback algorithm — *folded into M3: the chunk-level holdback
+  restorer was built and validated against the adversarial split fixtures.*
+- [x] M1 — Text engine — `fa2d455`
+- [x] M2 — Anthropic wire (buffered) — `ae157c7`
+- [x] M3 — Streaming restore — `858dd58`
 - [ ] M4 — Standalone proxy + end-to-end validation
