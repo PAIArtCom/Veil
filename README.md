@@ -10,10 +10,10 @@ values with reversible tokens**; when the response comes back it **restores them
 model never sees the real data — but your terminal, your files, and the agent's tool
 calls all run with the real values.
 
-> **Status: Phase 0 implementation.** The text engine, Anthropic Messages wire
-> masking/restore, streaming restore, and loopback Claude Code proxy are
-> code-complete and simulation-verified. Live Claude Code acceptance remains the
-> final Phase 0 acceptance step. See [`docs/`](docs/README.md).
+> **Status: Phase 0 accepted for the Claude Code proxy path.** The text engine,
+> Anthropic Messages wire masking/restore, streaming restore, and loopback Claude
+> Code proxy are implemented, test-verified, and live-accepted against real Claude
+> Code traffic. See the [Phase 0 acceptance report](docs/architecture/phase-0-acceptance.md).
 
 ---
 
@@ -38,7 +38,6 @@ tokens on the trusted local side.
 
 ## Open Questions
 
-- [ ] How should live Claude Code acceptance evidence against real Anthropic traffic be recorded? (open since: 2026-06)
 - [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)
 - [ ] What exact behavior should `redact` and `format_preserving` operators use in Phase 1? (open since: 2026-06)
 

@@ -3,10 +3,10 @@
 This is the map of OpenCloak's documentation. Docs are organized by audience and purpose;
 nothing is stored ad hoc.
 
-> **Repository status:** Phase 0 implementation. Docs describe the implemented text
-> engine, Anthropic wire path, streaming restore, and loopback proxy, plus planned
-> Phase 1+ surfaces. Documents that describe interfaces or setup which do **not exist
-> yet** are explicitly marked **Planned / Draft**.
+> **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
+> Docs describe the implemented text engine, Anthropic wire path, streaming restore,
+> and loopback proxy, plus planned Phase 1+ surfaces. Documents that describe interfaces
+> or setup which do **not exist yet** are explicitly marked **Planned / Draft**.
 
 ## Purpose
 
@@ -29,7 +29,6 @@ SDK, guide, and research documentation.
 ## Open Questions
 
 - [ ] Which embedded gateway will be the first Phase 1 validation target? (open since: 2026-06)
-- [ ] How much live Claude Code acceptance evidence should be committed versus kept as local run logs? (open since: 2026-06)
 
 ## Layout
 

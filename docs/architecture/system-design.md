@@ -37,8 +37,8 @@ opencloak/                       module github.com/cloakia/opencloak
 
 `implemented` means behavior exists with automated fixtures; `partial` means only the named
 subcommands are live; `scaffold` means the package boundary exists but does not yet claim
-behavior. Phase 0 is accepted only after the exit criteria in the roadmap pass against a
-real Claude Code flow.
+behavior. Phase 0 is accepted for the standalone Claude Code proxy after the exit criteria
+in the roadmap pass against a real Claude Code flow.
 
 ## Component responsibilities
 
@@ -119,20 +119,21 @@ provider tags.
 
 ## Phase 0 cut
 
-**Implement:** `token`, scoped `mapstore`/`State`, `detect/l1` (with a starter merged rule
-set), finding conflict resolution, per-type transform operators, `mask`,
+**Implement:** `token`, scoped `mapstore`/`State`, `detect/l1` (with built-in starter
+rules), finding conflict resolution, per-type transform operators, `mask`,
 `wire/anthropic`, provider-aware buffered/SSE restore, `stream` (raw chunk-level), the root
 façade methods, `internal/proxy` (Claude Code endpoint), and `opencloak proxy`.
-Validate by embedding the engine in one real gateway plus the standalone proxy, against
-the end-to-end task in the [roadmap](../product/roadmap.md).
+Validate the standalone proxy against the end-to-end task in the
+[roadmap](../product/roadmap.md). The real-gateway embed validation is Phase 1 hardening.
 
 **Defer (Phase 1):** L2 detector, the non-Anthropic `wire` providers, `service`
 (HTTP/gRPC), and the local `console` beyond a minimal status view.
 
 ## Build status
 
-Phase 0 is implemented and simulation-verified: `gofmt` clean, `go vet ./...` clean,
-`go build ./...` ok, `go test ./...` and `go test -race ./...` pass, and the binary help
-path runs. Implemented scope covers the text engine, Anthropic Messages buffered wire,
-streaming restore, and loopback proxy. Remaining Phase 0 acceptance is the live Claude
-Code runbook; non-Anthropic providers, service, and console remain Phase 1+.
+Phase 0 is accepted for the standalone Claude Code proxy path: `gofmt` clean,
+`go vet ./...` clean, `go build ./...` ok, `go test ./...` and `go test -race ./...`
+pass, the binary help path runs, and the live Claude Code acceptance report is recorded in
+[phase-0-acceptance.md](phase-0-acceptance.md). Implemented scope covers the text engine,
+Anthropic Messages buffered wire, streaming restore, and loopback proxy. Non-Anthropic
+providers, service, and console remain Phase 1+.
