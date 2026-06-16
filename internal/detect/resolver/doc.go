@@ -3,5 +3,5 @@
 // conflicts are resolved by score, length, and start offset. See
 // docs/architecture/decisions/0008-finding-model-and-conflict-resolution.md.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package resolver

@@ -2,8 +2,10 @@ package l1
 
 import (
 	"context"
+	"net/netip"
 	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/cloakia/opencloak/internal/types"
@@ -15,7 +17,15 @@ type rule struct {
 	source string
 	score  float64
 	re     *regexp.Regexp
-	// validate is an optional post-match validator; returning false drops the finding.
+	// group selects which regexp submatch becomes the finding span. 0 (the
+	// default) uses the whole match. A positive value uses that capture group,
+	// which lets a rule require surrounding context (e.g. a leading boundary)
+	// without including it in the masked span. RE2 has no lookbehind, so a rule
+	// that must not start mid-token captures the boundary in the full match and
+	// the real value in a group.
+	group int
+	// validate is an optional post-match validator; returning false drops the
+	// finding. It receives the selected group's text.
 	validate func(match string) bool
 }
 
@@ -37,9 +47,16 @@ func (d *Detector) Detect(_ context.Context, text string) ([]types.Finding, erro
 
 	// Apply each structural rule.
 	for _, r := range d.rules {
-		locs := r.re.FindAllStringIndex(text, -1)
+		// When a rule selects a submatch group, use SubmatchIndex so the finding
+		// span is the group (the real value), not the full match (which may
+		// include a leading boundary char the regex needed for anchoring).
+		locs := r.re.FindAllStringSubmatchIndex(text, -1)
 		for _, loc := range locs {
-			start, end := loc[0], loc[1]
+			si, ei := 2*r.group, 2*r.group+1
+			if ei >= len(loc) || loc[si] < 0 {
+				continue // group did not participate in this match
+			}
+			start, end := loc[si], loc[ei]
 			matched := text[start:end]
 			if r.validate != nil && !r.validate(matched) {
 				continue // drop invalid candidates
@@ -154,6 +171,46 @@ func buildRules() []rule {
 			re:     regexp.MustCompile(`\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b`),
 		},
 
+		// IPv6 (capture group 1), validated by netip plus two guards.
+		//
+		// Two false-positive classes from language scope/path syntax must be
+		// blocked, because masking them would corrupt outbound source code — the
+		// very traffic this tool protects:
+		//
+		//  1. Suffix-grabbing. The regex would otherwise grab the trailing hex run
+		//     of an identifier: "namespace::func" -> "ace::f", "interface::m" ->
+		//     "face::", "DataFace::x" -> "Face::". The fix is a LEFT BOUNDARY: the
+		//     address must start at string start or after a byte that is neither an
+		//     identifier char nor a colon. Inside an identifier every preceding byte
+		//     is a letter/digit/underscore, so no in-identifier start is possible.
+		//     RE2 has no lookbehind, so the boundary is part of the full match and
+		//     the address is capture group 1 (see rule.group).
+		//  2. Tiny ambiguous forms. "a::b" / "::1" are valid compressed IPv6 yet
+		//     indistinguishable from short paths; a real, privacy-relevant literal
+		//     has a hextet of >=3 hex digits (2001, db8, fe80). We require one.
+		//
+		// Trade-off: bare tiny forms (::1, a::b, 0:0:0:0:0:0:0:1) are not masked in
+		// Phase 0. Partial IPv6 coverage is documented in detection-layers.md.
+		{
+			typ:    types.TypeIPv6,
+			source: "l1:ipv6",
+			score:  0.90,
+			re:     regexp.MustCompile(`(?:^|[^0-9A-Za-z_:])((?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4})`),
+			group:  1,
+			validate: func(match string) bool {
+				addr, err := netip.ParseAddr(match)
+				if err != nil || !addr.Is6() {
+					return false
+				}
+				for _, hextet := range strings.Split(match, ":") {
+					if len(hextet) >= 3 {
+						return true
+					}
+				}
+				return false
+			},
+		},
+
 		// Credit card — 13-19 digits, optional spaces/dashes every 4 digits, Luhn.
 		{
 			typ:    types.TypeCard,
@@ -169,6 +226,18 @@ func buildRules() []rule {
 			},
 		},
 
+		// IBAN account identifiers — validated by ISO 13616 mod-97. IBANs are
+		// canonically uppercase; the rule is case-sensitive so it does not fire on
+		// the ~1% of lowercase 2-alpha/2-digit/alnum identifiers (tokens, IDs) that
+		// would otherwise pass mod-97 by chance.
+		{
+			typ:      types.TypeAcct,
+			source:   "l1:iban",
+			score:    0.90,
+			re:       regexp.MustCompile(`\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b`),
+			validate: ibanValid,
+		},
+
 		// Phone — loose E.164 and common US/intl formats.
 		{
 			typ:    types.TypePhone,
@@ -182,7 +251,19 @@ func buildRules() []rule {
 			typ:    types.TypeURL,
 			source: "l1:url",
 			score:  0.85,
-			re:     regexp.MustCompile(`https?://[^\s"'<>]+`),
+			re:     regexp.MustCompile(`(?i)\b(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"'<>]+`),
+		},
+
+		// ISO calendar date.
+		{
+			typ:    types.TypeDate,
+			source: "l1:date:iso",
+			score:  0.60,
+			re:     regexp.MustCompile(`\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b`),
+			validate: func(match string) bool {
+				_, err := time.Parse("2006-01-02", match)
+				return err == nil
+			},
 		},
 
 		// ---- Secrets ----

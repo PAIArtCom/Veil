@@ -4,5 +4,5 @@
 // handling lives in resolver. An optional L2 NER detector attaches via the public
 // opencloak.Detector interface. See docs/concepts/detection-layers.md.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package detect

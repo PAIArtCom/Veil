@@ -47,17 +47,21 @@ func collect(t *testing.T, restore wire.RestoreFunc, events ...[]byte) [][]byte 
 	return append(out, outs...)
 }
 
-// NewStreamRestorer never reports unsupported for the Anthropic provider (the
-// single Phase 0 SSE shape); it must return a usable restorer for any op.
+// NewStreamRestorer accepts the Phase 0 Anthropic Messages op and rejects every
+// other op so unsupported endpoint shapes fail closed.
 func TestNewStreamRestorerSupported(t *testing.T) {
 	p := &provider{}
-	for _, op := range []string{"messages", "", "anything"} {
-		sr, err := p.NewStreamRestorer(op)
-		if err != nil {
-			t.Fatalf("NewStreamRestorer(%q) error = %v, want nil", op, err)
-		}
-		if sr == nil {
-			t.Fatalf("NewStreamRestorer(%q) = nil restorer", op)
+	sr, err := p.NewStreamRestorer("messages")
+	if err != nil {
+		t.Fatalf("NewStreamRestorer(messages) error = %v, want nil", err)
+	}
+	if sr == nil {
+		t.Fatal("NewStreamRestorer(messages) = nil restorer")
+	}
+
+	for _, op := range []string{"", "responses", "anything"} {
+		if sr, err := p.NewStreamRestorer(op); err == nil || sr != nil {
+			t.Fatalf("NewStreamRestorer(%q) = (%v, %v), want nil restorer and error", op, sr, err)
 		}
 	}
 }

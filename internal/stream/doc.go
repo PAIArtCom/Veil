@@ -4,5 +4,5 @@
 // SSE-event-level helper for hosts that already parse SSE. See
 // docs/concepts/redaction-model.md.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package stream

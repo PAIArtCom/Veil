@@ -1,6 +1,6 @@
 # Integration Guide
 
-**Status:** Draft (patterns are accepted; code examples are illustrative pending the engine).
+**Status:** Phase 0 implemented for Anthropic Messages; non-Anthropic providers remain planned.
 
 How to embed the OpenCloak engine into a gateway. The patterns below are the
 lowest-common-denominator wiring confirmed against three real gateways — see the

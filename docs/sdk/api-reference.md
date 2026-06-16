@@ -1,8 +1,8 @@
 # SDK API Reference
 
-**Status: Draft / scaffold.** A compiling scaffold exists, but behavior is not implemented
-yet. These signatures are the proposed surface derived from the [contract](contract.md);
-they may change before the engine ships.
+**Status: Phase 0 implemented / pre-release API.** The text surface, Anthropic Messages
+wire surface, streaming restore, and loopback proxy are implemented. Non-Anthropic
+providers and Phase 1 transform operators are reserved.
 
 ## Package
 
@@ -111,6 +111,7 @@ The SDK surface names avoid `L0/L1/L2` because detection uses `L1` for pattern r
 Phase 0 implements `"anthropic"`. `"openai-responses"`, `"openai-chat"`, and `"gemini"`
 are reserved planned provider tags.
 `op` is the endpoint/operation (e.g. `"messages"`, `"responses"`).
+Unsupported provider/op pairs fail closed.
 
 ## State
 
@@ -147,9 +148,15 @@ type Finding struct {
 var ErrNotImplemented error
 var ErrInvalidState error
 var ErrBlocked error
+var ErrUnsupportedOperator error
 
 type BlockedError struct {
     Types []Type
+}
+
+type UnsupportedOperatorError struct {
+    Type     Type
+    Operator TransformOperator
 }
 ```
 
@@ -159,7 +166,9 @@ the original body.
 
 `Restore`, `RestoreResponse`, and `RestoreSSEEvent` return `ErrInvalidState` for nil or
 incomplete `State` handles. `Mask` and `MaskRequest` return `ErrBlocked` or a
-`*BlockedError` when a finding's type is configured with `OperatorBlock`. Raw
-`RestoreStreamChunk`/`FlushStream` stay error-free hot-path helpers.
+`*BlockedError` when a finding's type is configured with `OperatorBlock`, and
+`ErrUnsupportedOperator` / `*UnsupportedOperatorError` when policy selects an operator
+this build cannot execute. Raw `RestoreStreamChunk`/`FlushStream` stay error-free
+hot-path helpers.
 
 See the [threat model](../architecture/threat-model.md).

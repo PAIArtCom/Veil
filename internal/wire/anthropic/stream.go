@@ -13,10 +13,12 @@ import (
 )
 
 // NewStreamRestorer returns a fresh stateful SSE restorer for the Anthropic
-// Messages stream. The op is accepted for symmetry with the rest of the
-// provider surface; Phase 0 has a single SSE shape (the Messages stream), so
-// every op maps to the same restorer.
+// Messages stream. Phase 0 supports only the Messages operation; unsupported
+// ops fail closed before any bytes are relayed.
 func (p *provider) NewStreamRestorer(op string) (wire.StreamRestorer, error) {
+	if err := validateMessagesOp(op); err != nil {
+		return nil, err
+	}
 	return &streamRestorer{blocks: make(map[int64]*blockState)}, nil
 }
 

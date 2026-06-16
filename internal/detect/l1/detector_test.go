@@ -69,6 +69,65 @@ func TestIPv4Negative(t *testing.T) {
 	}
 }
 
+// ---- IPv6 ----
+
+func TestIPv6Positive(t *testing.T) {
+	for _, addr := range []string{
+		"connect to 2001:db8:85a3::8a2e:370:7334",
+		"link-local fe80::1 here",
+		"prefix 2001:db8:: end",
+	} {
+		findings, err := det.Detect(ctx, addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasType(findings, types.TypeIPv6) {
+			t.Fatalf("expected IPV6 finding in %q", addr)
+		}
+	}
+}
+
+// TestIPv6Negative guards against the false positives the left boundary and the
+// hextet guard exist to prevent: language scope/path syntax ("::") and bare tiny
+// compressed forms that are ambiguous with code and low value. Masking any of
+// these would corrupt the source code this tool is meant to protect. The
+// scoped-identifier cases (where the regex would otherwise grab a hex *suffix* of
+// the preceding word, e.g. "namespace::func" -> "ace::f") are the regression
+// found by independent (Codex) audit.
+func TestIPv6Negative(t *testing.T) {
+	for _, src := range []string{
+		"not an address: abc:def",
+		"std::vector<int> v;",
+		"use foo::bar::Baz;",
+		"Class::method();",
+		"namespace a::b { }",
+		"result = crate::module::run();",
+		"loopback ::1 only",
+		// suffix-grab regression: hex tail of an identifier before "::".
+		"namespace::func",
+		"resolveNamespace::fetchConfig",
+		"interface::method",
+		"trace::span()",
+		"replace::all",
+		"DataFace::render",
+		"grpc::Status code",
+		"absl::string_view s",
+		"0:0:0:0:0:0:0:1 loopback long form",
+	} {
+		findings, err := det.Detect(ctx, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if hasType(findings, types.TypeIPv6) {
+			for _, f := range findings {
+				if f.Type == types.TypeIPv6 {
+					t.Errorf("unexpected IPV6 finding %q in %q", src[f.Start:f.End], src)
+				}
+			}
+		}
+	}
+}
+
 // ---- Credit Card / Luhn ----
 
 func TestCardPositiveLuhn(t *testing.T) {
@@ -90,6 +149,28 @@ func TestCardNegativeLuhn(t *testing.T) {
 	}
 	if hasType(findings, types.TypeCard) {
 		t.Fatal("unexpected CARD finding for Luhn-invalid number")
+	}
+}
+
+// ---- Account identifiers ----
+
+func TestIBANPositive(t *testing.T) {
+	findings, err := det.Detect(ctx, "iban GB82WEST12345698765432")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasType(findings, types.TypeAcct) {
+		t.Fatal("expected ACCT finding for valid IBAN")
+	}
+}
+
+func TestIBANNegative(t *testing.T) {
+	findings, err := det.Detect(ctx, "iban GB82TEST12345698765432")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasType(findings, types.TypeAcct) {
+		t.Fatal("unexpected ACCT finding for invalid IBAN")
 	}
 }
 
@@ -127,6 +208,16 @@ func TestURLPositive(t *testing.T) {
 	}
 }
 
+func TestConnectionStringPositive(t *testing.T) {
+	findings, err := det.Detect(ctx, "dsn postgres://admin:hunter2@db.example.com/prod")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasType(findings, types.TypeURL) {
+		t.Fatal("expected URL finding for postgres connection string")
+	}
+}
+
 func TestURLNegative(t *testing.T) {
 	findings, err := det.Detect(ctx, "just plain text no links")
 	if err != nil {
@@ -134,6 +225,28 @@ func TestURLNegative(t *testing.T) {
 	}
 	if hasType(findings, types.TypeURL) {
 		t.Fatal("unexpected URL finding")
+	}
+}
+
+// ---- Date ----
+
+func TestDatePositive(t *testing.T) {
+	findings, err := det.Detect(ctx, "expires on 2026-06-16")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasType(findings, types.TypeDate) {
+		t.Fatal("expected DATE finding")
+	}
+}
+
+func TestDateNegativeInvalidCalendarDate(t *testing.T) {
+	findings, err := det.Detect(ctx, "not a real date 2026-02-31")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasType(findings, types.TypeDate) {
+		t.Fatal("unexpected DATE finding for invalid calendar date")
 	}
 }
 

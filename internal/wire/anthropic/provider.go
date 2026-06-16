@@ -16,6 +16,22 @@ import (
 // provider implements wire.Provider for the Anthropic Messages API.
 type provider struct{}
 
+const messagesOp = "messages"
+
+func validateMessagesOp(op string) error {
+	if op != messagesOp {
+		return fmt.Errorf("anthropic: unsupported op %q", op)
+	}
+	return nil
+}
+
+func validateJSON(kind string, body []byte) error {
+	if !gjson.ValidBytes(body) {
+		return fmt.Errorf("anthropic: invalid %s JSON", kind)
+	}
+	return nil
+}
+
 // New returns a Provider for the Anthropic Messages API.
 func New() wire.Provider {
 	return &provider{}
@@ -38,6 +54,13 @@ func New() wire.Provider {
 // tools[] definitions are intentionally skipped (static schemas, not user data).
 // Blocks of type image/document/thinking are skipped.
 func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, error) {
+	if err := validateMessagesOp(op); err != nil {
+		return nil, err
+	}
+	if err := validateJSON("request", body); err != nil {
+		return nil, err
+	}
+
 	var spans []wire.TextSpan
 
 	// --- system field ---
@@ -198,6 +221,13 @@ func sjsonEscapeKey(key string) string {
 // based, not byte-offset based) they remain valid regardless of value-length
 // changes from earlier sets.
 func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan) ([]byte, error) {
+	if err := validateMessagesOp(op); err != nil {
+		return nil, err
+	}
+	if err := validateJSON("request", body); err != nil {
+		return nil, err
+	}
+
 	var err error
 	for _, sp := range spans {
 		body, err = sjson.SetBytes(body, sp.Path, sp.MaskedText)
@@ -216,6 +246,13 @@ func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan)
 // All other block types are left untouched. The body shape is preserved
 // byte-for-byte except for the restored string values.
 func (p *provider) RestoreResponse(op string, body []byte, restore wire.RestoreFunc) ([]byte, error) {
+	if err := validateMessagesOp(op); err != nil {
+		return nil, err
+	}
+	if err := validateJSON("response", body); err != nil {
+		return nil, err
+	}
+
 	content := gjson.GetBytes(body, "content")
 	if !content.Exists() {
 		return body, nil
@@ -267,6 +304,13 @@ func (p *provider) RestoreResponse(op string, body []byte, restore wire.RestoreF
 //
 // Any other event type is returned unchanged.
 func (p *provider) RestoreSSEEvent(op string, eventData []byte, restore wire.RestoreFunc) ([]byte, error) {
+	if err := validateMessagesOp(op); err != nil {
+		return nil, err
+	}
+	if err := validateJSON("SSE event", eventData); err != nil {
+		return nil, err
+	}
+
 	evType := gjson.GetBytes(eventData, "type").Str
 	if evType != "content_block_delta" {
 		return eventData, nil

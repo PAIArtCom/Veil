@@ -5,40 +5,40 @@
 This is the concrete software design that realizes the [architecture overview](overview.md)
 in Go. The layout decision and its rationale are [ADR-0007](decisions/0007-code-and-module-layout.md).
 
-## Module tree (scaffold vs planned)
+## Module tree (implemented vs planned)
 
 ```
 opencloak/                       module github.com/cloakia/opencloak
 │
-├── doc.go types.go interfaces.go engine.go    [scaffold] PUBLIC API (root package)
+├── doc.go types.go interfaces.go engine.go    [implemented] PUBLIC API (root package)
 │
 ├── internal/
-│   ├── types/             [scaffold] shared data types (Finding/Scope/Type/Policy/operators); root re-exports as transparent aliases
-│   ├── detect/            [scaffold] detection pipeline, fail-closed orchestration
-│   │   ├── l1/            [scaffold] regex + entropy + Luhn + context keywords
-│   │   │                                  rules merge: privacy-filter + gitleaks (go:embed)
-│   │   └── resolver/      [scaffold] Finding merge/de-overlap and precedence
-│   ├── mask/              [scaffold] offset-safe replacement + token mapping writes
-│   ├── token/            [scaffold] CLK_<TYPE>_<id>, HMAC, normalize, local key
-│   ├── mapstore/         [scaffold] token<->value reverse map (State), scoped in-mem
-│   ├── wire/             [scaffold] internal provider-native JSON adapters
-│   │   ├── anthropic/    [scaffold] /v1/messages  (Phase 0)
+│   ├── types/             [implemented] shared data types (Finding/Scope/Type/Policy/operators); root re-exports as transparent aliases
+│   ├── detect/            [implemented] detection pipeline, fail-closed orchestration
+│   │   ├── l1/            [implemented] regex + entropy + validators + context keywords
+│   │   └── resolver/      [implemented] Finding merge/de-overlap and precedence
+│   ├── mask/              [implemented] offset-safe replacement + token mapping writes
+│   ├── token/            [implemented] CLK_<TYPE>_<id>, HMAC, normalize, local key
+│   ├── mapstore/         [implemented] token<->value reverse map (State), scoped in-mem
+│   ├── wire/             [implemented] internal provider-native JSON adapters
+│   │   ├── anthropic/    [implemented] /v1/messages  (Phase 0)
 │   │   ├── openairesponses/   [planned]  /v1/responses (Codex, Phase 1)
 │   │   ├── openaichat/        [planned]  /v1/chat/completions (Phase 1)
 │   │   └── gemini/            [planned]  generateContent (Phase 1)
-│   ├── stream/           [scaffold] chunk-level (byte-split tolerant) + SSE-event
-│   ├── proxy/            [scaffold] standalone base-URL proxy (localhost, pass-through)
+│   ├── stream/           [implemented] chunk-level (byte-split tolerant) + SSE-event
+│   ├── proxy/            [implemented] standalone base-URL proxy (localhost, pass-through)
 │   ├── console/          [scaffold] LOCAL single-user web console (localhost)
 │   ├── config/           [scaffold] local PolicyProvider default
 │   └── service/          [phase1 scaffold] HTTP/gRPC service (Phase 1)
 │
-├── cmd/opencloak/        [scaffold] single binary: proxy | serve | console | mask
+├── cmd/opencloak/        [partial] proxy implemented; serve | console | mask are placeholders
 └── examples/embed/       [planned]          minimal "embed the engine" example
 ```
 
-"Scaffold" means the package boundary exists and compiles, but does not claim behavior is
-implemented. Most files are package docs or fail-closed placeholders. Phase 0 is complete
-only after the exit criteria in the roadmap pass against a real agent flow.
+`implemented` means behavior exists with automated fixtures; `partial` means only the named
+subcommands are live; `scaffold` means the package boundary exists but does not yet claim
+behavior. Phase 0 is accepted only after the exit criteria in the roadmap pass against a
+real Claude Code flow.
 
 ## Component responsibilities
 
@@ -131,7 +131,8 @@ the end-to-end task in the [roadmap](../product/roadmap.md).
 
 ## Build status
 
-The scaffold compiles today: `gofmt` clean, `go vet ./...` clean, `go build ./...` ok, the
-binary help path runs. Most method bodies are pass-through placeholders; `MaskRequest`,
-`RestoreResponse`, and `RestoreSSEEvent` return `ErrNotImplemented` so any premature
-integration fails closed instead of silently forwarding plaintext or claiming restore.
+Phase 0 is implemented and simulation-verified: `gofmt` clean, `go vet ./...` clean,
+`go build ./...` ok, `go test ./...` and `go test -race ./...` pass, and the binary help
+path runs. Implemented scope covers the text engine, Anthropic Messages buffered wire,
+streaming restore, and loopback proxy. Remaining Phase 0 acceptance is the live Claude
+Code runbook; non-Anthropic providers, service, and console remain Phase 1+.

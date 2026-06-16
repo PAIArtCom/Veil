@@ -1,6 +1,7 @@
 package mask
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/cloakia/opencloak/internal/mapstore"
@@ -32,7 +33,7 @@ func Apply(
 	store *mapstore.Store,
 	keyer *token.Keyer,
 	collisions map[string]string,
-) Result {
+) (Result, error) {
 	// Determine the default operator.
 	defOp := policy.DefaultOperator
 	if defOp == "" {
@@ -54,13 +55,13 @@ func Apply(
 			op = tp.Operator
 		}
 		a := action{finding: f, op: op}
-		if op == types.OperatorToken {
-			value := text[f.Start:f.End]
-			tok := keyer.Derive(f.Type, value, collisions)
-			store.Put(scope, tok, value)
-			a.tok = tok
-		} else if op == types.OperatorBlock {
+		switch op {
+		case types.OperatorToken, types.OperatorIgnore:
+			// handled after the full action list is validated
+		case types.OperatorBlock:
 			blockedSet[f.Type] = struct{}{}
+		default:
+			return Result{}, fmt.Errorf("mask: unsupported transform operator %q for type %s", op, f.Type)
 		}
 		actions = append(actions, a)
 	}
@@ -74,7 +75,18 @@ func Apply(
 		sort.Slice(blocked, func(i, j int) bool {
 			return string(blocked[i]) < string(blocked[j])
 		})
-		return Result{Masked: text, Blocked: blocked}
+		return Result{Masked: text, Blocked: blocked}, nil
+	}
+
+	for i := range actions {
+		if actions[i].op != types.OperatorToken {
+			continue
+		}
+		f := actions[i].finding
+		value := text[f.Start:f.End]
+		tok := keyer.Derive(f.Type, value, collisions)
+		store.Put(scope, tok, value)
+		actions[i].tok = tok
 	}
 
 	// Rebuild text right-to-left so byte offsets stay valid.
@@ -89,7 +101,7 @@ func Apply(
 		}
 	}
 
-	return Result{Masked: string(buf)}
+	return Result{Masked: string(buf)}, nil
 }
 
 // replaceBytes replaces buf[start:end] with replacement and returns the new

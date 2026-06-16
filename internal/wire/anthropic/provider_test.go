@@ -331,6 +331,32 @@ func TestMaskRequestEndToEnd(t *testing.T) {
 	}
 }
 
+func TestMaskRequestMalformedJSONFailsClosed(t *testing.T) {
+	e := newTestEngine(t)
+	body := []byte(`{"model":"claude-opus-4-5","messages":[{"role":"user","content":"AKIAIOSFODNN7EXAMPLE"}`)
+
+	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	if err == nil {
+		t.Fatalf("MaskRequest returned nil error; masked=%s st=%v", masked, st)
+	}
+	if masked != nil || st != nil {
+		t.Fatalf("malformed JSON must fail closed with nil output/state; masked=%s st=%v", masked, st)
+	}
+}
+
+func TestMaskRequestUnsupportedOperationFailsClosed(t *testing.T) {
+	e := newTestEngine(t)
+	body := []byte(`{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":"AKIAIOSFODNN7EXAMPLE"}]}`)
+
+	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "responses", body)
+	if err == nil {
+		t.Fatalf("MaskRequest returned nil error for unsupported op; masked=%s st=%v", masked, st)
+	}
+	if masked != nil || st != nil {
+		t.Fatalf("unsupported op must fail closed with nil output/state; masked=%s st=%v", masked, st)
+	}
+}
+
 // ---- Determinism / cache-stability -------------------------------------------
 
 // TestMaskRequestDeterminism verifies that masking the same body twice

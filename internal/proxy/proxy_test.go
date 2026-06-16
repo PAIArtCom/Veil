@@ -533,6 +533,42 @@ func TestMaskErrorFailClosed(t *testing.T) {
 	}
 }
 
+func TestMalformedJSONFailClosed(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	px, logBuf := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"claude-opus-4-5","max_tokens":1024,"messages":[{"role":"user","content":"key ` + awsKey + `"}]`
+	resp, err := http.Post(front.URL+"/v1/messages", "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502; body=%s", resp.StatusCode, clientBody)
+	}
+	if received.Load() != 0 {
+		t.Fatalf("malformed JSON request was forwarded upstream %d times, want 0", received.Load())
+	}
+	if bytes.Contains(clientBody, []byte(awsKey)) {
+		t.Fatalf("error body leaked request secret: %s", clientBody)
+	}
+	if !strings.Contains(logBuf.String(), "mask request failed") {
+		t.Fatalf("expected mask-error log, got: %s", logBuf.String())
+	}
+}
+
 // ---- Test 5: auth pass-through -----------------------------------------------
 
 // The client's credential headers must reach upstream byte-for-byte; the proxy

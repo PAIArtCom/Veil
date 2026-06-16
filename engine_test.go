@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	opencloak "github.com/cloakia/opencloak"
@@ -153,6 +154,43 @@ func TestTokenDeterministicAcrossCalls(t *testing.T) {
 	}
 }
 
+func TestConcurrentMaskingNoRace(t *testing.T) {
+	e := newTestEngine(t)
+	text := "key=AKIAIOSFODNN7EXAMPLE email=user@example.com"
+
+	var wg sync.WaitGroup
+	errs := make(chan error, 64)
+	for i := 0; i < 32; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 20; j++ {
+				masked, st, err := e.Mask(ctx, opencloak.Scope{Session: "concurrent"}, text)
+				if err != nil {
+					errs <- err
+					return
+				}
+				restored, err := e.Restore(ctx, st, masked)
+				if err != nil {
+					errs <- err
+					return
+				}
+				if restored != text {
+					errs <- errors.New("concurrent round-trip mismatch")
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // ---- Restore(nil) returns ErrInvalidState ----
 
 func TestRestoreNilState(t *testing.T) {
@@ -283,6 +321,61 @@ func TestIgnorePolicyLeaveTypeUnchanged(t *testing.T) {
 	// Secret should still be masked.
 	if strings.Contains(masked, "AKIAIOSFODNN7EXAMPLE") {
 		t.Fatalf("secret should still be masked; got %q", masked)
+	}
+}
+
+func TestUnsupportedOperatorFailsClosed(t *testing.T) {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i + 1)
+	}
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "key")
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		t.Fatalf("write test key: %v", err)
+	}
+
+	cases := []struct {
+		name   string
+		policy opencloak.Policy
+	}{
+		{
+			name: "deferred format preserving",
+			policy: opencloak.Policy{
+				DefaultOperator: opencloak.OperatorToken,
+				Types: map[opencloak.Type]opencloak.TypePolicy{
+					opencloak.TypeSecret: {Operator: opencloak.OperatorFormatPreserving},
+				},
+			},
+		},
+		{
+			name: "unknown default",
+			policy: opencloak.Policy{
+				DefaultOperator: opencloak.TransformOperator("surrogate"),
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e, err := opencloak.New(opencloak.Config{
+				KeyPath: keyPath,
+				Policy:  &staticPolicy{p: tc.policy},
+			})
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			masked, st, err := e.Mask(ctx, opencloak.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
+			if err == nil {
+				t.Fatalf("Mask returned nil error; masked=%q state=%v", masked, st)
+			}
+			if !errors.Is(err, opencloak.ErrUnsupportedOperator) {
+				t.Fatalf("expected ErrUnsupportedOperator, got %T: %v", err, err)
+			}
+			if masked != "" || st != nil {
+				t.Fatalf("unsupported operator must fail closed with no output/state; got masked=%q st=%v", masked, st)
+			}
+		})
 	}
 }
 
@@ -456,4 +549,23 @@ type staticPolicy struct {
 
 func (s *staticPolicy) Policy(_ context.Context, _ opencloak.Scope) (opencloak.Policy, error) {
 	return s.p, nil
+}
+
+// TestDateNotMaskedByDefault verifies the default policy ignores DATE: L1
+// detects ISO dates, but masking every date hurts model utility with little
+// privacy gain, so the built-in policy leaves them untouched (a caller policy
+// can opt in). A secret in the same text is still masked.
+func TestDateNotMaskedByDefault(t *testing.T) {
+	e := newTestEngine(t)
+	text := "deploy on 2026-06-16 with key AKIAIOSFODNN7EXAMPLE"
+	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(masked, "2026-06-16") {
+		t.Errorf("date was masked under default policy; got %q", masked)
+	}
+	if strings.Contains(masked, "AKIAIOSFODNN7EXAMPLE") {
+		t.Errorf("secret leaked (not masked); got %q", masked)
+	}
 }

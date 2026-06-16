@@ -1,6 +1,7 @@
 # SDK Integration Contract
 
-**Status:** Accepted (contract); API surface is **Draft** until the engine lands.
+**Status:** Accepted (contract); the Phase 0 API surface is implemented and
+simulation-verified, while non-Anthropic providers and Phase 1 operators remain reserved.
 
 OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the
@@ -72,7 +73,8 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   records `provider`/`op` for wire calls so buffered and parsed-event restore can use the
   same provider walker ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 - **Provider tag.** `provider`/`op` select the wire-aware walker (which JSON paths hold
-  text). Every surveyed gateway can supply this tag.
+  text). Every surveyed gateway can supply this tag. Unsupported provider/op pairs and
+  malformed provider JSON return errors and must be treated as fail-closed.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,
   Orbit default). Use `RestoreSSEEvent` if you already parse SSE events (CLIProxyAPI,
   Orbit's transform path). Both share the same `State`.

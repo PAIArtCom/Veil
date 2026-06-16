@@ -82,7 +82,7 @@ func (st *State) Op() string {
 	return st.op
 }
 
-// ErrNotImplemented is returned by skeleton operations that are not built yet.
+// ErrNotImplemented is reserved for planned operations that are not built yet.
 // Callers MUST treat it as fail-closed: block the request, never forward plaintext.
 var ErrNotImplemented = errors.New("opencloak: not implemented")
 
@@ -94,6 +94,11 @@ var ErrInvalidState = errors.New("opencloak: invalid state")
 // with OperatorBlock: the request is refused rather than masked, so a transport can map
 // it to a blocked-by-policy response.
 var ErrBlocked = errors.New("opencloak: blocked by policy")
+
+// ErrUnsupportedOperator is returned when Policy selects a transform operator
+// that this build cannot execute. Phase 0 supports token/block/ignore only;
+// format_preserving and redact are reserved for Phase 1 and fail closed here.
+var ErrUnsupportedOperator = errors.New("opencloak: unsupported transform operator")
 
 // BlockedError reports which sensitive types caused an OperatorBlock decision. It wraps
 // ErrBlocked for errors.Is checks.
@@ -114,4 +119,22 @@ func (e *BlockedError) Error() string {
 
 func (e *BlockedError) Is(target error) bool {
 	return target == ErrBlocked
+}
+
+// UnsupportedOperatorError reports the unsupported operator selected by policy.
+// It wraps ErrUnsupportedOperator for errors.Is checks.
+type UnsupportedOperatorError struct {
+	Type     Type
+	Operator TransformOperator
+}
+
+func (e *UnsupportedOperatorError) Error() string {
+	if e.Type == "" {
+		return ErrUnsupportedOperator.Error() + ": default=" + string(e.Operator)
+	}
+	return ErrUnsupportedOperator.Error() + ": " + string(e.Type) + "=" + string(e.Operator)
+}
+
+func (e *UnsupportedOperatorError) Is(target error) bool {
+	return target == ErrUnsupportedOperator
 }

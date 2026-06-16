@@ -3,5 +3,5 @@
 // project, or tenant namespace. Active stream state must not be evicted by TTL. See
 // docs/architecture/decisions/0009-state-lifecycle-and-scope.md.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package mapstore

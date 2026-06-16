@@ -1,6 +1,5 @@
-// Package l1 implements pattern-based detection: regex rule sets, Shannon entropy
-// with context keywords, and checksums (e.g. Luhn). Rule sets merge two sources —
-// the privacy-filter rules and the gitleaks rules — embedded via go:embed.
+// Package l1 implements pattern-based detection: regex rules, Shannon entropy
+// with context keywords, checksums (e.g. Luhn), and structured validators.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package l1

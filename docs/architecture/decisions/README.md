@@ -4,6 +4,29 @@ This directory holds the record of *why* OpenCloak is built the way it is. Each 
 captures one decision: its context, the choice, the alternatives rejected, and the
 consequences.
 
+## Purpose
+
+Architecture Decision Records preserve the reasoning behind OpenCloak's core product,
+security, API, and implementation choices.
+
+## Principles
+
+- MUST: Keep ADRs numbered and immutable once accepted.
+- MUST: Change a prior decision by adding a superseding ADR and updating this index.
+- SHOULD: Record context, decision, alternatives, and consequences with concrete links when possible.
+- MUST: Treat ADRs as active implementation constraints until superseded.
+
+## Boundaries
+
+- Does NOT handle: Task plans, release notes, or implementation logs (see: ../../README.md)
+- Does NOT handle: Editing accepted ADRs to hide drift instead of adding a new ADR or explicit status change (see: README.md)
+- Does NOT handle: Tracking whether every downstream implementation task is done (see: ../system-design.md)
+
+## Open Questions
+
+- [ ] Does future Phase 1 provider expansion require a new ADR for public adapter boundaries? (open since: 2026-06)
+- [ ] What Phase 1 ADR should define format-preserving and redact operator semantics before use? (open since: 2026-06)
+
 ## Conventions
 
 - **Numbered and immutable.** Once an ADR is `Accepted`, it is not rewritten. To change a

@@ -2,7 +2,7 @@
 // 12 hex of HMAC-SHA256(normalize(value), localKey). Tokens are deterministic,
 // type-aware, bijective, and identifier-safe. See docs/concepts/token-spec.md.
 //
-// Status: scaffold only; no behavior yet.
+// Status: Phase 0 implemented.
 package token
 
 // Prefix is the namespace prefix of every OpenCloak token: CLK_<TYPE>_<id>.

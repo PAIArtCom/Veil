@@ -24,6 +24,19 @@ string is down-weighted. L1 reuses the proven approach of the `privacy-filter` p
 **Categories → token TYPE:** `SECRET`, `EMAIL`, `PHONE`, `IPV4`/`IPV6`, `CARD`, `ACCT`,
 `URL`, `DATE`.
 
+**Phase 0 coverage notes (deliberate limits):**
+
+- **IPV6** is intentionally *partial*. A bare compressed form like `::1` or `a::b` is textually
+  identical to language scope/path syntax (`std::vector`, `crate::module`, `a::b`), so masking
+  it would corrupt source code — the traffic this tool protects. Phase 0 masks an IPv6 literal
+  only when it has a hextet of ≥3 hex digits (e.g. `2001:db8::1`, `fe80::1`); tiny ambiguous
+  forms are left untouched. Context-aware IPv6 is Phase 1.
+- **ACCT** covers checksum-validated **IBAN** (ISO 13616 mod-97) only; other account-number
+  formats are Phase 1.
+- **DATE** is detected but **ignored by the default policy** — most dates are not sensitive and
+  masking them all hurts model utility. A caller/Cloakia policy can opt in per type (the same
+  way `PERSON`/`ADDR` are off by default).
+
 Every L1 detector emits `Finding{Start, End, Type, Score, Source}`. Candidates that require
 validation (for example Luhn checks) are dropped if validation fails. Entropy can validate
 or rank a regex candidate, and it can also originate a finding for an otherwise-unmatched

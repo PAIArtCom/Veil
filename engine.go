@@ -2,8 +2,10 @@ package opencloak
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"sort"
+	"sync"
 
 	"github.com/cloakia/opencloak/internal/detect"
 	"github.com/cloakia/opencloak/internal/mapstore"
@@ -24,11 +26,12 @@ import (
 // The API has three entry surfaces: text, provider-native wire JSON, and streaming
 // restore. See docs/sdk/contract.md.
 type Engine struct {
-	cfg        Config
-	store      *mapstore.Store
-	keyer      *token.Keyer
-	detector   *detect.Orchestrator
-	collisions map[string]string
+	cfg         Config
+	store       *mapstore.Store
+	keyer       *token.Keyer
+	detector    *detect.Orchestrator
+	collisionMu sync.Mutex
+	collisions  map[string]string
 }
 
 // detectorAdapter wraps an opencloak.Detector (which uses the public type
@@ -66,21 +69,64 @@ func New(cfg Config) (*Engine, error) {
 
 // defaultPolicy is the built-in local policy: structured and secret types are
 // enabled with OperatorToken; PERSON and ADDR are ignored (L2, off by default).
+// DATE is detected by L1 but ignored by default: most dates (timestamps,
+// version dates) are not sensitive and masking them all hurts model utility
+// with little privacy gain. A caller/Cloakia policy can opt in per type.
 var defaultPolicy = types.Policy{
 	DefaultOperator: types.OperatorToken,
 	Types: map[types.Type]types.TypePolicy{
 		types.TypePerson: {Operator: types.OperatorIgnore},
 		types.TypeAddr:   {Operator: types.OperatorIgnore},
+		types.TypeDate:   {Operator: types.OperatorIgnore},
 	},
 }
 
 // activePolicy resolves the Policy for this call. If e.cfg.Policy is set it
 // is consulted; otherwise defaultPolicy is used.
 func (e *Engine) activePolicy(ctx context.Context, scope Scope) (types.Policy, error) {
+	var policy types.Policy
 	if e.cfg.Policy != nil {
-		return e.cfg.Policy.Policy(ctx, scope)
+		p, err := e.cfg.Policy.Policy(ctx, scope)
+		if err != nil {
+			return types.Policy{}, err
+		}
+		policy = p
+	} else {
+		policy = defaultPolicy
 	}
-	return defaultPolicy, nil
+	if err := validatePolicy(policy); err != nil {
+		return types.Policy{}, err
+	}
+	return policy, nil
+}
+
+// validatePolicy enforces the Phase 0 operator matrix before detection/masking
+// starts. Unknown or deferred operators fail closed even if a particular request
+// would not have produced a finding: policy uncertainty is not a pass-through mode.
+func validatePolicy(policy types.Policy) error {
+	if err := validateOperator("", policy.DefaultOperator); err != nil {
+		return err
+	}
+	for typ, tp := range policy.Types {
+		if err := validateOperator(typ, tp.Operator); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateOperator(typ types.Type, op types.TransformOperator) error {
+	if op == "" {
+		return nil
+	}
+	switch op {
+	case types.OperatorToken, types.OperatorBlock, types.OperatorIgnore:
+		return nil
+	case types.OperatorFormatPreserving, types.OperatorRedact:
+		return &UnsupportedOperatorError{Type: typ, Operator: op}
+	default:
+		return &UnsupportedOperatorError{Type: typ, Operator: op}
+	}
 }
 
 // ---- Text surface ---------------------------------------------------------------
@@ -118,7 +164,12 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 		return "", nil, err
 	}
 
-	result := mask.Apply(text, findings, scope, policy, e.store, e.keyer, e.collisions)
+	e.collisionMu.Lock()
+	result, err := mask.Apply(text, findings, scope, policy, e.store, e.keyer, e.collisions)
+	e.collisionMu.Unlock()
+	if err != nil {
+		return "", nil, fmt.Errorf("opencloak: mask text: %w", err)
+	}
 
 	if len(result.Blocked) > 0 {
 		blockedTypes := make([]Type, len(result.Blocked))

@@ -10,11 +10,37 @@ values with reversible tokens**; when the response comes back it **restores them
 model never sees the real data — but your terminal, your files, and the agent's tool
 calls all run with the real values.
 
-> **Status: scaffold.** This repository contains the product/architecture documentation
-> plus a compiling Go scaffold. Engine behavior is not implemented yet. See
-> [`docs/`](docs/README.md).
+> **Status: Phase 0 implementation.** The text engine, Anthropic Messages wire
+> masking/restore, streaming restore, and loopback Claude Code proxy are
+> code-complete and simulation-verified. Live Claude Code acceptance remains the
+> final Phase 0 acceptance step. See [`docs/`](docs/README.md).
 
 ---
+
+## Purpose
+
+OpenCloak provides a local de-identification engine and reference proxy for AI coding
+tools. It masks secrets and structured PII before LLM egress and restores reversible
+tokens on the trusted local side.
+
+## Principles
+
+- MUST: Mask before provider egress and restore only on local ingress.
+- MUST: Keep tokens deterministic, reversible, type-aware, and scoped.
+- MUST: Fail closed on detection, policy, parsing, provider, or masking uncertainty.
+- SHOULD: Keep the root Go package as the public SDK and implementation details under `internal/`.
+
+## Boundaries
+
+- Does NOT handle: Non-Anthropic provider implementations in Phase 0 (see: docs/architecture/overview.md)
+- Does NOT handle: L2 semantic PII, the HTTP/gRPC service, or the web console in Phase 0 (see: docs/product/roadmap.md)
+- Does NOT handle: Protection against a compromised local machine or malicious local process (see: docs/architecture/threat-model.md)
+
+## Open Questions
+
+- [ ] How should live Claude Code acceptance evidence against real Anthropic traffic be recorded? (open since: 2026-06)
+- [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)
+- [ ] What exact behavior should `redact` and `format_preserving` operators use in Phase 1? (open since: 2026-06)
 
 ## The problem
 

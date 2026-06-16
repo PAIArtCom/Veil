@@ -7,6 +7,7 @@
 // transports live under cmd/opencloak (proxy, serve, console). The integration contract
 // is documented in docs/sdk/contract.md.
 //
-// Status: scaffold only. Method bodies are not implemented yet; text and wire operations
-// return errors so callers fail closed and never forward plaintext.
+// Status: Phase 0 implements the text engine, Anthropic Messages wire masking/
+// restore, streaming restore, and the loopback proxy. Non-Anthropic providers,
+// the service API, and the console remain Phase 1+.
 package opencloak
