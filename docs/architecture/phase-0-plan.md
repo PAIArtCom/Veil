@@ -61,8 +61,8 @@ fixtures (split mid-`CLK_`, mid-hex, across three chunks; a `CLK_`-looking strin
   hex), per-type `normalize`, collision check-and-extend; `local_key` load/generate at
   `~/.opencloak/key` (0600).
 - `mapstore` — in-memory token↔value store keyed by `Scope` namespace; backs `State`.
-- `detect/l1` — starter detectors: regex rule set (merged privacy-filter + gitleaks subset,
-  `go:embed`), Shannon entropy + context keywords, Luhn; each emits
+- `detect/l1` — starter detectors: built-in high-value regex rules, Shannon entropy +
+  context keywords, validators/checksums (Luhn, IBAN, date parsing); each emits
   `Finding{Start,End,Type,Score,Source}`.
 - `detect/resolver` — drop invalid, same-type merge, cross-type precedence (score → length →
   start) per [ADR-0008](decisions/0008-finding-model-and-conflict-resolution.md).
@@ -125,9 +125,9 @@ standalone validation.
 
 ## Open implementation decisions (resolve as each milestone is reached)
 
-- **L1 rule sourcing** — which privacy-filter + gitleaks rules to embed; both are MIT, so
-  embedding/porting is fine; format under `go:embed` (JSON/TOML); start with a high-value subset,
-  not all 200+ rules.
+- **L1 rule sourcing** — resolved for Phase 0 by
+  [ADR-0012](decisions/0012-phase-0-l1-rule-sourcing.md): built-in starter rules ship now;
+  configurable rule sets are Phase 1 and non-empty `Policy.RuleSets` fails closed.
 - **Entropy threshold + context-keyword list** — start conservative; tune against fixtures to
   balance recall vs false positives.
 - **Token mechanics** — per-type `normalize` rules; collision check-and-extend; `local_key` = 32

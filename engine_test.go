@@ -379,6 +379,40 @@ func TestUnsupportedOperatorFailsClosed(t *testing.T) {
 	}
 }
 
+func TestUnsupportedRuleSetsFailClosed(t *testing.T) {
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i + 1)
+	}
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "key")
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		t.Fatalf("write test key: %v", err)
+	}
+
+	e, err := opencloak.New(opencloak.Config{
+		KeyPath: keyPath,
+		Policy: &staticPolicy{p: opencloak.Policy{
+			DefaultOperator: opencloak.OperatorToken,
+			RuleSets:        []string{"strict-secrets"},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	masked, st, err := e.Mask(ctx, opencloak.Scope{}, "hello world")
+	if err == nil {
+		t.Fatalf("Mask returned nil error; masked=%q state=%v", masked, st)
+	}
+	if !errors.Is(err, opencloak.ErrUnsupportedPolicyFeature) {
+		t.Fatalf("expected ErrUnsupportedPolicyFeature, got %T: %v", err, err)
+	}
+	if masked != "" || st != nil {
+		t.Fatalf("unsupported RuleSets must fail closed with no output/state; got masked=%q st=%v", masked, st)
+	}
+}
+
 // ---- Scope isolation ----
 
 func TestScopeIsolation(t *testing.T) {

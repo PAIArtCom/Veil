@@ -12,14 +12,14 @@ Fast, deterministic, no model. Catches data with **structure**.
 
 | Technique | Catches |
 |---|---|
-| Regex rule sets (gitleaks-style) | API keys, provider tokens, private keys |
-| Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key`; strict bare high-entropy fallback |
+| Built-in regex rules (gitleaks-style) | API keys, provider tokens, private keys |
+| Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key` |
 | Checksums (e.g. Luhn) | Credit-card numbers, validated identifiers |
 | Structured patterns | Emails, phones, IPv4/IPv6, connection strings, URLs |
 
-Context keywords reduce false positives: a high-entropy blob is only treated as a secret
-when a keyword (`secret`, `token`, `apikey`, …) sits nearby; an isolated high-entropy
-string is down-weighted. L1 reuses the proven approach of the `privacy-filter` project.
+Context keywords reduce false positives: in Phase 0, a high-entropy blob is only treated
+as a secret when a keyword (`secret`, `token`, `apikey`, …) sits nearby. Isolated
+high-entropy strings are not flagged; strict bare high-entropy fallback is Phase 1.
 
 **Categories → token TYPE:** `SECRET`, `EMAIL`, `PHONE`, `IPV4`/`IPV6`, `CARD`, `ACCT`,
 `URL`, `DATE`.
@@ -40,9 +40,8 @@ string is down-weighted. L1 reuses the proven approach of the `privacy-filter` p
 Every L1 detector emits `Finding{Start, End, Type, Score, Source}`. Candidates that require
 validation (for example Luhn checks) are dropped if validation fails. Entropy can validate
 or rank a regex candidate, and it can also originate a finding for an otherwise-unmatched
-high-entropy value when contextual or strict false-positive controls pass. Overlaps are
-resolved centrally before masking; individual detectors do not get to decide global
-precedence.
+high-entropy value when contextual controls pass. Overlaps are resolved centrally before
+masking; individual detectors do not get to decide global precedence.
 
 ## L2 — Local NER (planned, Phase 1, opt-in)
 
@@ -67,6 +66,6 @@ model re-detects it.
 
 The detector is an interface from day one. L1 is the built-in implementation; L2 attaches
 as an optional detector without touching the core. Coverage is always an explicit,
-documented trade-off (per-type on/off, rule sets) — never a silent guarantee. Detection
-runs **fail-closed**: on engine error, block rather than forward
-([threat model](../architecture/threat-model.md)).
+documented trade-off (per-type on/off; configurable rule sets are Phase 1) — never a
+silent guarantee. Detection runs **fail-closed**: on engine error, block rather than
+forward ([threat model](../architecture/threat-model.md)).

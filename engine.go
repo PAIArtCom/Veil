@@ -100,10 +100,14 @@ func (e *Engine) activePolicy(ctx context.Context, scope Scope) (types.Policy, e
 	return policy, nil
 }
 
-// validatePolicy enforces the Phase 0 operator matrix before detection/masking
-// starts. Unknown or deferred operators fail closed even if a particular request
-// would not have produced a finding: policy uncertainty is not a pass-through mode.
+// validatePolicy enforces the Phase 0 policy matrix before detection/masking
+// starts. Unknown or deferred operators/features fail closed even if a particular
+// request would not have produced a finding: policy uncertainty is not a
+// pass-through mode.
 func validatePolicy(policy types.Policy) error {
+	if len(policy.RuleSets) > 0 {
+		return &UnsupportedPolicyFeatureError{Feature: "RuleSets"}
+	}
 	if err := validateOperator("", policy.DefaultOperator); err != nil {
 		return err
 	}

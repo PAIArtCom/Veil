@@ -80,7 +80,7 @@ type TypePolicy struct {
 type Policy struct {
     DefaultOperator TransformOperator // empty = OperatorToken
     Types           map[Type]TypePolicy
-    RuleSets        []string
+    RuleSets        []string // Phase 1; Phase 0 rejects non-empty values
 }
 
 type PolicyProvider interface {
@@ -149,6 +149,7 @@ var ErrNotImplemented error
 var ErrInvalidState error
 var ErrBlocked error
 var ErrUnsupportedOperator error
+var ErrUnsupportedPolicyFeature error
 
 type BlockedError struct {
     Types []Type
@@ -157,6 +158,10 @@ type BlockedError struct {
 type UnsupportedOperatorError struct {
     Type     Type
     Operator TransformOperator
+}
+
+type UnsupportedPolicyFeatureError struct {
+    Feature string
 }
 ```
 
@@ -168,7 +173,8 @@ the original body.
 incomplete `State` handles. `Mask` and `MaskRequest` return `ErrBlocked` or a
 `*BlockedError` when a finding's type is configured with `OperatorBlock`, and
 `ErrUnsupportedOperator` / `*UnsupportedOperatorError` when policy selects an operator
-this build cannot execute. Raw `RestoreStreamChunk`/`FlushStream` stay error-free
-hot-path helpers.
+this build cannot execute. Non-empty `Policy.RuleSets` returns
+`ErrUnsupportedPolicyFeature` / `*UnsupportedPolicyFeatureError` in Phase 0. Raw
+`RestoreStreamChunk`/`FlushStream` stay error-free hot-path helpers.
 
 See the [threat model](../architecture/threat-model.md).

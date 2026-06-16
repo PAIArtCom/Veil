@@ -118,6 +118,10 @@ func parseUpstream(raw string) (*url.URL, error) {
 // across a proxy hop (RFC 7230 §6.1). Content-Length is handled separately
 // because the masked/restored body length differs from the original.
 var hopByHopHeaders = map[string]struct{}{
+	// OpenCloak rewrites response bodies. Do not forward the client's
+	// compression preferences upstream: net/http can transparently manage gzip
+	// only when it owns Accept-Encoding, and restore must see decoded bytes.
+	"Accept-Encoding":     {},
 	"Connection":          {},
 	"Keep-Alive":          {},
 	"Proxy-Authenticate":  {},

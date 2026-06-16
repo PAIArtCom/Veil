@@ -47,7 +47,7 @@ real Claude Code flow.
 | `opencloak` (root) | Public API: `Engine`, `New`, Text/Wire/Stream methods, `Scope`/`State`, `Finding`, policy operators, and extension interfaces. The only package external code imports. |
 | `internal/types` | Shared data types (`Finding`,`Scope`,`Type`,`Policy`,operators); the root package re-exports them as transparent aliases — breaks the root↔internal import cycle while keeping the public API byte-identical. |
 | `internal/detect` | Run the configured detector layers; emit `Finding` values; enforce fail-closed. |
-| `internal/detect/l1` | Pattern detection: regex rule sets (privacy-filter + gitleaks), Shannon entropy + context keywords/bare fallback, checksums (Luhn). |
+| `internal/detect/l1` | Pattern detection: built-in regex rules, Shannon entropy + context keywords, checksums/validators (Luhn, IBAN, date parsing). |
 | `internal/detect/resolver` | Merge same-type overlaps, resolve cross-type conflicts, and emit non-overlapping findings. |
 | `internal/mask` | Consume resolved findings, perform offset-safe replacement, call token strategy, write token mappings into `State`, and scan final text/wire buffers for residual tokens. |
 | `internal/token` | The `CLK_<TYPE>_<id>` format, HMAC derivation, `normalize`, and the local key. |

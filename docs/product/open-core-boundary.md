@@ -16,6 +16,8 @@ many developers, it belongs in **Cloakia** (commercial).
 
 ## Feature placement
 
+This table defines open-versus-paid placement, not Phase 0 implementation readiness.
+
 | Capability | OpenCloak (open) | Cloakia (paid) |
 |---|---|---|
 | Detection engine (L1 patterns; L2 NER when it lands) | ✅ | |
@@ -25,7 +27,7 @@ many developers, it belongs in **Cloakia** (commercial).
 | Standalone local proxy | ✅ | |
 | Embeddable SDK + HTTP/gRPC service | ✅ | |
 | **Local single-user web console** (localhost-only) | ✅ | |
-| Local, file-based configuration & rule sets | ✅ | |
+| Local, file-based configuration & configurable rule sets (planned) | ✅ | |
 | Centralized policy authoring & **push to a fleet** | | ✅ |
 | Cross-developer **audit & compliance dashboards** | | ✅ |
 | **Multi-tenant management / audit console** | | ✅ |

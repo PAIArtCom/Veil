@@ -1,6 +1,7 @@
 # ADR-0007 — Code & module layout
 
-**Status:** Accepted
+**Status:** Accepted; L1 rule-source claim partially superseded by
+[ADR-0012](0012-phase-0-l1-rule-sourcing.md)
 
 ## Context
 

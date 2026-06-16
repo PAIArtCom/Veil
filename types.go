@@ -100,6 +100,11 @@ var ErrBlocked = errors.New("opencloak: blocked by policy")
 // format_preserving and redact are reserved for Phase 1 and fail closed here.
 var ErrUnsupportedOperator = errors.New("opencloak: unsupported transform operator")
 
+// ErrUnsupportedPolicyFeature is returned when Policy uses a non-operator feature
+// this build cannot execute. Phase 0 rejects RuleSets instead of silently ignoring
+// them, so caller policy uncertainty cannot become plaintext pass-through.
+var ErrUnsupportedPolicyFeature = errors.New("opencloak: unsupported policy feature")
+
 // BlockedError reports which sensitive types caused an OperatorBlock decision. It wraps
 // ErrBlocked for errors.Is checks.
 type BlockedError struct {
@@ -137,4 +142,21 @@ func (e *UnsupportedOperatorError) Error() string {
 
 func (e *UnsupportedOperatorError) Is(target error) bool {
 	return target == ErrUnsupportedOperator
+}
+
+// UnsupportedPolicyFeatureError reports the unsupported Policy feature selected
+// by the caller. It wraps ErrUnsupportedPolicyFeature for errors.Is checks.
+type UnsupportedPolicyFeatureError struct {
+	Feature string
+}
+
+func (e *UnsupportedPolicyFeatureError) Error() string {
+	if e.Feature == "" {
+		return ErrUnsupportedPolicyFeature.Error()
+	}
+	return ErrUnsupportedPolicyFeature.Error() + ": " + e.Feature
+}
+
+func (e *UnsupportedPolicyFeatureError) Is(target error) bool {
+	return target == ErrUnsupportedPolicyFeature
 }

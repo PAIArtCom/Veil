@@ -59,7 +59,8 @@ type TypePolicy struct {
 	Operator TransformOperator
 }
 
-// Policy is the resolved detection/redaction configuration.
+// Policy is the resolved detection/redaction configuration. RuleSets is reserved
+// for Phase 1 and rejected by the Phase 0 engine when non-empty.
 type Policy struct {
 	DefaultOperator TransformOperator
 	Types           map[Type]TypePolicy

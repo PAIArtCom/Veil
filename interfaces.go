@@ -37,7 +37,8 @@ const (
 type TypePolicy = types.TypePolicy
 
 // Policy is the resolved detection/redaction configuration: the default transform
-// operator, per-type overrides, active L1 rule sets, and later custom dictionaries.
+// operator and per-type overrides. RuleSets is reserved for Phase 1; Phase 0 rejects
+// non-empty RuleSets with ErrUnsupportedPolicyFeature rather than silently ignoring it.
 type Policy = types.Policy
 
 // PolicyProvider supplies the active Policy for a scope. The open-source default reads

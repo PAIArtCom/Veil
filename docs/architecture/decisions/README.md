@@ -45,8 +45,9 @@ security, API, and implementation choices.
 | [0004](0004-auth-pass-through.md) | Authentication is pass-through, engine is credential-free | Accepted |
 | [0005](0005-global-in-memory-scope.md) | Global, in-memory mapping scope | Superseded by ADR-0009 |
 | [0006](0006-l1-only-mvp-defer-l2.md) | L1-only MVP; defer the L2 NER model | Accepted |
-| [0007](0007-code-and-module-layout.md) | Code & module layout | Accepted |
+| [0007](0007-code-and-module-layout.md) | Code & module layout | Partially superseded by ADR-0012 |
 | [0008](0008-finding-model-and-conflict-resolution.md) | Finding model and conflict resolution | Accepted |
 | [0009](0009-state-lifecycle-and-scope.md) | State lifecycle and scoped mapstore | Accepted |
 | [0010](0010-restore-dispatch-and-errors.md) | Restore dispatch and error surface | Accepted |
 | [0011](0011-streaming-restore-cross-event-holdback.md) | Streaming restore across SSE event boundaries | Accepted |
+| [0012](0012-phase-0-l1-rule-sourcing.md) | Phase 0 L1 rule sourcing and RuleSets behavior | Accepted |

@@ -9,6 +9,7 @@ package proxy
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1021,5 +1022,59 @@ func TestStreamedEventsAreWellFormed(t *testing.T) {
 	}
 	if !sawRestored {
 		t.Fatalf("restored secret not seen in any data line")
+	}
+}
+
+func TestStreamGzipResponseIsDecodedBeforeRestore(t *testing.T) {
+	engine := newTestEngine(t)
+	var upstreamAcceptEncoding atomic.Value
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamAcceptEncoding.Store(r.Header.Get("Accept-Encoding"))
+		body, _ := io.ReadAll(r.Body)
+		tok := tokenRe.FindString(string(body))
+		if tok == "" {
+			t.Fatalf("upstream: masked request had no CLK_ token: %s", body)
+		}
+		sse := "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tok + "\"}}\n\n" +
+			"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Content-Encoding", "gzip")
+		w.WriteHeader(http.StatusOK)
+		gz := gzip.NewWriter(w)
+		_, _ = io.WriteString(gz, sse)
+		_ = gz.Close()
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	req, err := http.NewRequest(http.MethodPost, front.URL+"/v1/messages", strings.NewReader(`{"model":"claude-opus-4-5","max_tokens":16,"stream":true,"messages":[{"role":"user","content":"`+awsKey+`"}]}`))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept-Encoding", "br, gzip")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if got := upstreamAcceptEncoding.Load().(string); strings.Contains(got, "br") {
+		t.Fatalf("client Accept-Encoding leaked upstream: %q", got)
+	}
+	if got := resp.Header.Get("Content-Encoding"); got != "" {
+		t.Fatalf("decoded/restored response must not keep Content-Encoding, got %q", got)
+	}
+	if bytes.Contains(clientBody, []byte("CLK_")) {
+		t.Fatalf("token survived gzip SSE restore: %s", clientBody)
+	}
+	if !bytes.Contains(clientBody, []byte(awsKey)) {
+		t.Fatalf("restored secret not seen in gzip SSE response: %s", clientBody)
 	}
 }
