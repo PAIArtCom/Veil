@@ -10,10 +10,12 @@ values with reversible tokens**; when the response comes back it **restores them
 model never sees the real data — but your terminal, your files, and the agent's tool
 calls all run with the real values.
 
-> **Status: Phase 0 accepted for the Claude Code proxy path.** The text engine,
-> Anthropic Messages wire masking/restore, streaming restore, and loopback Claude
-> Code proxy are implemented, test-verified, and live-accepted against real Claude
-> Code traffic. See the [Phase 0 acceptance report](docs/architecture/phase-0-acceptance.md).
+> **Status: v0.1.0 release-candidate hardening.** The text engine, Anthropic Messages
+> wire masking/restore, streaming restore, loopback Claude Code proxy, maintained SDK
+> embed reference integration, OpenAI Responses wire adapter, and local policy file are
+> implemented and test-verified. Claude Code is live-accepted; Codex/OpenAI Responses is
+> offline-verified and still requires a live controlled Codex acceptance run before
+> release-candidate readiness.
 
 ---
 
@@ -47,6 +49,40 @@ tokens on the trusted local side.
 
 - [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)
 - [ ] What exact behavior should `redact` and `format_preserving` operators use in Phase 1? (open since: 2026-06)
+
+## Quickstart
+
+Build and inspect the local proxy:
+
+```sh
+go build -o ./bin/opencloak ./cmd/opencloak
+./bin/opencloak version
+./bin/opencloak proxy --help
+```
+
+Run Claude Code through OpenCloak:
+
+```sh
+./bin/opencloak proxy --addr 127.0.0.1:8788
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
+claude
+```
+
+Optional local policy file:
+
+```json
+{
+  "default_operator": "token",
+  "types": {
+    "EMAIL": {"operator": "ignore"},
+    "SECRET": {"operator": "block"}
+  }
+}
+```
+
+Use `--policy /path/to/policy.json`, `OPENCLOAK_POLICY`, or
+`~/.opencloak/policy.json`. v0.1.0 policy files support `token`, `ignore`, and `block`;
+`redact`, `format_preserving`, and non-empty `rule_sets` fail closed.
 
 ## The problem
 
@@ -103,8 +139,9 @@ OpenCloak is **one engine with different shells** (see
    Responses).
    Credentials pass straight through; only the request body is rewritten.
 2. **Embeddable Go library** — drop the engine into your own gateway and call it at your
-   request/response seams. The SDK is **general-purpose**, validated against several real
-   gateways — not built for any single one. See the [SDK contract](docs/sdk/contract.md).
+   request/response seams. The SDK is **general-purpose** and validated by the maintained
+   in-repo reference integration; it is not built for any single gateway. See the
+   [SDK contract](docs/sdk/contract.md) and [`examples/embed`](examples/embed/).
 
 ## OpenCloak vs Cloakia
 
@@ -124,6 +161,9 @@ Start at the **[documentation map](docs/README.md)**. Highlights:
 - [Architecture overview](docs/architecture/overview.md) ·
   [Threat model](docs/architecture/threat-model.md) ·
   [Decision records](docs/architecture/decisions/README.md)
+- [Deployment guide](docs/guides/deployment.md) ·
+  [Release checklist](docs/guides/release-checklist.md) ·
+  [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
 - [SDK contract](docs/sdk/contract.md) ·
   [Gateway integration survey](docs/research/gateway-integration-survey.md)
 - [Claude Code guide](docs/guides/claude-code.md) · [Codex CLI guide](docs/guides/codex.md)

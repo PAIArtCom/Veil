@@ -37,6 +37,11 @@ wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
 
+```sh
+export OPENAI_API_KEY=... # use your normal Codex/OpenAI credential source
+codex
+```
+
 Codex sends `POST /v1/responses` with `stream=true` through this route. The proxy masks
 message input, top-level instructions, function-call output, and agentic call argument
 fields before upstream egress; it restores output text and function/MCP/custom/code

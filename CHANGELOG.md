@@ -7,11 +7,27 @@ release.
 
 ## [Unreleased]
 
-### Added
-- Project inception: product and architecture documentation.
-  - Product strategy, open-core boundary, and roadmap.
-  - Architecture overview, threat model, and the first decision records (ADRs).
-  - Core concept specs: redaction model, token spec, detection layers.
-  - General SDK integration contract and the gateway integration survey that informs it.
+No changes beyond the pending v0.1.0 release notes.
 
-_No engine code yet — see the [roadmap](docs/product/roadmap.md) for Phase 0 (MVP)._
+## [0.1.0] - Pending
+
+### Added
+- Local OpenCloak engine with L1 detection, conflict resolution, deterministic reversible
+  `CLK_` tokenization, scoped restore state, and fail-closed policy validation.
+- Public SDK text, provider-native wire, and stream restore surfaces.
+- Standalone loopback proxy for Anthropic Messages / Claude Code, live-accepted on
+  2026-06-17 against real Claude Code traffic.
+- OpenAI Responses provider path for Codex CLI with offline verification, sanitized
+  fixtures, and live acceptance still pending before release-candidate readiness.
+- Maintained `examples/embed` SDK reference integration outside the standalone proxy.
+- Local JSON policy file support for `token`, `ignore`, and `block`, with strict
+  fail-closed validation for unknown keys, reserved operators, and non-empty `rule_sets`.
+- Release documentation: deployment guide, Claude Code guide, Codex guide, SDK API
+  reference, security policy, and contribution guide.
+
+### Reserved / planned
+- OpenAI Chat, Gemini, remote MCP egress classification, L2 default-on semantic PII,
+  HTTP/gRPC service, local web console, `redact`, `format_preserving`, and configurable
+  rule packs remain planned or reserved.
+- Codex/OpenAI Responses remains offline-verified until a live controlled Codex acceptance
+  run passes.

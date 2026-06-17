@@ -29,7 +29,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   ├── stream/           [implemented] chunk-level (byte-split tolerant) + SSE-event
 │   ├── proxy/            [implemented] standalone base-URL proxy (localhost, pass-through)
 │   ├── console/          [scaffold] LOCAL single-user web console (localhost)
-│   ├── config/           [scaffold] local PolicyProvider default
+│   ├── config/           [implemented] strict local policy file loader
 │   └── service/          [phase1 scaffold] HTTP/gRPC service (Phase 1)
 │
 ├── cmd/opencloak/        [partial] proxy implemented; serve | console | mask are placeholders
@@ -120,14 +120,16 @@ when there is a real external adapter use case; until then, the stable public co
 ## Phase 0 cut
 
 **Implement:** `token`, scoped `mapstore`/`State`, `detect/l1` (with built-in starter
-rules), finding conflict resolution, per-type transform operators, `mask`,
+rules), finding conflict resolution, per-type `token`/`block`/`ignore` operators, `mask`,
 `wire/anthropic`, provider-aware buffered/SSE restore, `stream` (raw chunk-level), the root
 façade methods, `internal/proxy` (Claude Code endpoint), and `opencloak proxy`.
 Validate the standalone proxy against the end-to-end task in the
-[roadmap](../product/roadmap.md). The real-gateway embed validation is Phase 1 hardening.
+[roadmap](../product/roadmap.md). The maintained SDK embed reference integration is
+covered in `examples/embed`.
 
-**Defer (Phase 1):** L2 detector, the non-Anthropic `wire` providers, `service`
-(HTTP/gRPC), and the local `console` beyond a minimal status view.
+**Defer (Phase 1):** L2 detector, OpenAI Chat/Gemini `wire` providers, `service`
+(HTTP/gRPC), configurable rule packs, `redact`/`format_preserving` semantics, and the
+local `console` beyond a minimal status view.
 
 ## Build status
 
@@ -138,5 +140,6 @@ pass, the binary help path runs, and the live Claude Code acceptance report is r
 Anthropic Messages buffered wire, streaming restore, and loopback proxy. R2 release
 hardening adds the maintained `examples/embed` SDK reference integration outside the
 standalone proxy. R3 adds offline-verified OpenAI Responses provider support for Codex;
-the live Codex acceptance run remains a release gate. OpenAI Chat, Gemini, service, and
-console remain Phase 1+.
+the live Codex acceptance run remains a release gate. R4 adds strict local policy-file
+loading for `token`, `ignore`, and `block`. OpenAI Chat, Gemini, service, configurable
+rule packs, `redact`, `format_preserving`, and console remain Phase 1+.

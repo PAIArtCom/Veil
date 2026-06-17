@@ -5,9 +5,9 @@ nothing is stored ad hoc.
 
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
 > R2/R3 release hardening has added the maintained SDK embed reference integration and
-> offline-verified OpenAI Responses support for Codex. The live Codex acceptance run is
-> still required before v0.1.0 can be declared release-candidate ready. Documents that
-> describe interfaces or setup which do **not exist yet** are explicitly marked
+> offline-verified OpenAI Responses support for Codex. R4 added the local policy file.
+> The live Codex acceptance run is still required before v0.1.0 can be declared
+> release-candidate ready. Documents that describe interfaces or setup which do **not exist yet** are explicitly marked
 > **Planned / Draft**.
 
 ## Purpose
@@ -51,6 +51,14 @@ SDK, guide, and research documentation.
 | [`guides/`](guides/) | End users, operators | Setup & deployment for specific tools |
 | [`research/`](research/) | Contributors | Evidence trail behind the architecture decisions |
 
+Top-level release metadata:
+
+- [README](../README.md) / [README.zh-CN](../README.zh-CN.md)
+- [Changelog](../CHANGELOG.md)
+- [Security policy](../SECURITY.md)
+- [Contribution guide](../CONTRIBUTING.md)
+- [Release checklist](guides/release-checklist.md)
+
 ## Reading order
 
 **New here?** → [Product vision](product/vision.md) → [Strategy](product/strategy.md) →
@@ -62,6 +70,11 @@ SDK, guide, and research documentation.
 **Want the "why" behind a decision?** → [Decision records](architecture/decisions/README.md).
 
 **Planning the public OSS release?** → [Formal release plan](architecture/formal-release-plan.md).
+
+**Installing or operating the proxy?** → [Deployment guide](guides/deployment.md) →
+[Claude Code guide](guides/claude-code.md) or [Codex CLI guide](guides/codex.md).
+
+**Preparing a release cut?** → [Release checklist](guides/release-checklist.md).
 
 ## Conventions
 

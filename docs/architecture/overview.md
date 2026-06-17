@@ -52,7 +52,7 @@ dev tool ◀──response(real)── [RESTORE inbound] ◀──response(token
 | **Tokenizer** | Map value ↔ token, deterministically | `CLK_<TYPE>_<id>`. [Spec](../concepts/token-spec.md) |
 | **Masker** | Apply token strategy to resolved findings | Offset-safe replacement and token→value mapping writes |
 | **State** | Hold token→value reverse mappings for restore | Explicit request/stream handle with scoped in-memory namespaces. [ADR-0009](decisions/0009-state-lifecycle-and-scope.md) |
-| **Wire adapters** | Walk each provider's request/response JSON | OpenCloak-maintained internal adapters at first: Anthropic Messages in Phase 0, OpenAI Responses/Chat and Gemini later. Native shapes, no unified IR; buffered/SSE restore is provider-aware. |
+| **Wire adapters** | Walk each provider's request/response JSON | OpenCloak-maintained internal adapters at first: Anthropic Messages live-accepted; OpenAI Responses offline-verified for Codex with live acceptance pending. OpenAI Chat and Gemini are later. Native shapes, no unified IR; buffered/SSE restore is provider-aware. |
 | **Stream restorer** | Restore tokens in raw streaming responses | Provider-agnostic byte holdback for chunks split across token boundaries |
 | **Transports** | Expose the engine | Standalone proxy, embeddable library, HTTP/gRPC service, local web console |
 | **Seams** | Extension points the commercial control plane attaches to | `PolicyProvider` (config/rules), `AuditSink` (minimized audit) — local defaults in the OSS engine |
@@ -75,8 +75,8 @@ pattern detector and L2 remains the optional local NER layer.
 ## Attach mechanism (standalone proxy)
 
 In-process CLI hooks **cannot** rewrite the prompt sent to the LLM, so the standalone
-transport is a base-URL local proxy: `ANTHROPIC_BASE_URL` for Claude Code in Phase 0, and
-a custom `model_providers` entry for Codex when the OpenAI Responses adapter lands.
+transport is a base-URL local proxy: `ANTHROPIC_BASE_URL` for Claude Code and a custom
+`model_providers` entry for Codex/OpenAI Responses.
 Credentials pass through unchanged; only the JSON body is rewritten; the proxy binds to
 `127.0.0.1` only. Rationale and evidence:
 [ADR-0001](decisions/0001-base-url-proxy-over-hooks.md) and
@@ -86,5 +86,7 @@ Credentials pass through unchanged; only the JSON body is rewritten; the proxy b
 
 - **Engine + L1:** Go. The L1 layer reuses the proven pattern/entropy approach of the
   `privacy-filter` project, with explicit finding conflict resolution before masking.
+- **Local policy:** strict JSON file loading for `token`, `ignore`, and `block`; reserved
+  operators and non-empty rule sets fail closed.
 - **L2 (Phase 1):** a local NER model served via ONNX or a sidecar — pluggable and
   optional, so the L1-only deployment stays small and fast.

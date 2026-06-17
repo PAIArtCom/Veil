@@ -67,9 +67,11 @@ Latest accepted run: 2026-06-17, recorded in the
 To harden the regression suite with a *real* Anthropic request/response/SSE (including a
 `tool_use` turn and its `tool_result` follow-up), capture traffic while running the task —
 e.g. point `--upstream` at a small logging pass-through, or tee the proxy's upstream
-request/response during a session — and add the recording as a fixture under
-`internal/wire/anthropic`. This replaces the synthetic fixtures (built from the documented
-wire shapes) with ground truth and pins the exact SSE event types Claude Code emits.
+request/response during a session. Commit only sanitized fixtures or sanitized summaries:
+strip credentials and headers, use throwaway values, remove local paths or customer data,
+and never commit raw provider captures. A sanitized fixture under `internal/wire/anthropic`
+can replace synthetic fixtures (built from documented wire shapes) with ground truth and
+pin the exact SSE event types Claude Code emits.
 
 ## Known Phase 0 limits
 

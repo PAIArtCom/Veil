@@ -1,20 +1,22 @@
 # Contributing to OpenCloak
 
 Thanks for your interest. OpenCloak is the open-source privacy engine for AI coding
-tools; it is **documentation-first** while the design stabilizes, then code-first once
-the Phase 0 engine lands. Please read this before opening an issue or PR.
+tools. The Phase 0 Claude Code proxy path is accepted, and the repository is now in
+v0.1.0 release-candidate hardening. Please read this before opening an issue or PR.
 
 ## Project status
 
-Pre-implementation. The repository currently contains product and architecture docs (see
-[`docs/`](docs/README.md)). The most useful early contributions are: sharpening the
-architecture, validating the [SDK contract](docs/sdk/contract.md) against more real
-gateways, and refining the [detection](docs/concepts/detection-layers.md) and
-[token](docs/concepts/token-spec.md) specs.
+Implemented release scope includes the core engine, Claude Code proxy path, maintained
+SDK embed reference integration, OpenAI Responses adapter with offline Codex verification,
+and local policy file support. Codex live acceptance, OpenAI Chat, Gemini, remote MCP,
+HTTP/gRPC service, local console, L2 default-on behavior, `redact`, and
+`format_preserving` remain out of the shipped v0.1.0 claim unless the formal release plan
+is updated.
 
 ## Ground rules
 
-- **Language:** English for all code, comments, and documentation.
+- **Language:** English for all code, comments, and documentation. `README.zh-CN.md` is
+  the only maintained localized top-level document.
 - **Decisions go through ADRs.** Significant architectural changes are proposed as a new
   record in [`docs/architecture/decisions/`](docs/architecture/decisions/README.md). ADRs
   are immutable once accepted — supersede, don't rewrite.
@@ -29,14 +31,16 @@ gateways, and refining the [detection](docs/concepts/detection-layers.md) and
 
 1. Open an issue describing the problem or proposal before large work.
 2. Branch from `main`. Keep changes focused.
-3. For code (once it exists): format with `gofmt`, pass `golangci-lint`, include tests.
+3. For code: format with `gofmt`, pass `go test -count=1 ./...`, `go test -race -count=1 ./...`,
+   `go vet ./...`, `go build ./...`, and include focused tests.
 4. Reference the relevant ADR / spec doc in your PR description.
 5. Be explicit about what you verified and what you didn't.
 
 ## Reporting security issues
 
 Do **not** open a public issue for vulnerabilities. A private disclosure channel will be
-listed here once the project publishes releases.
+listed in [SECURITY.md](SECURITY.md). Until a dedicated security mailbox is published,
+report suspected vulnerabilities privately to the repository maintainers.
 
 ## License
 
