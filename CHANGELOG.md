@@ -18,7 +18,8 @@ No changes beyond the pending v0.1.0 release notes.
 - Standalone loopback proxy for Anthropic Messages / Claude Code, live-accepted on
   2026-06-17 against real Claude Code traffic.
 - OpenAI Responses provider path for Codex CLI with offline verification, sanitized
-  fixtures, and live acceptance still pending before release-candidate readiness.
+  fixtures, and local Codex CLI Responses live acceptance; direct `api.openai.com`
+  upstream evidence remains unclaimed until a valid OpenAI API key is available.
 - Maintained `examples/embed` SDK reference integration outside the standalone proxy.
 - Local JSON policy file support for `token`, `ignore`, and `block`, with strict
   fail-closed validation for unknown keys, reserved operators, and non-empty `rule_sets`.
@@ -27,10 +28,15 @@ No changes beyond the pending v0.1.0 release notes.
 - Release hardening: unsupported proxy endpoints fail closed before upstream egress, and
   Anthropic request-shape drift fails closed instead of silently forwarding unchecked
   plaintext-bearing blocks.
+- Codex live acceptance: Codex CLI 0.140.0 passed a controlled Responses-wire run through
+  OpenCloak with a Responses-compatible upstream; direct `api.openai.com` upstream evidence
+  remains unclaimed until a valid OpenAI API key is available.
+- CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
+  built-in default policy instead of passing a typed nil local provider into the engine.
 
 ### Reserved / planned
 - OpenAI Chat, Gemini, remote MCP egress classification, L2 default-on semantic PII,
   HTTP/gRPC service, local web console, `redact`, `format_preserving`, and configurable
   rule packs remain planned or reserved.
-- Codex/OpenAI Responses remains offline-verified until a live controlled Codex acceptance
-  run passes.
+- Direct `api.openai.com` upstream acceptance remains unclaimed until a valid OpenAI API
+  key is available.

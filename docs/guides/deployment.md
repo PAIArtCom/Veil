@@ -1,8 +1,8 @@
 # Guide: Deployment & Operations
 
 **Status: Baseline for v0.1.0 release hardening.** The standalone proxy ships from
-source for Claude Code and offline-verified Codex Responses paths; package-manager
-distribution and service manager units remain planned.
+source for Claude Code and local Codex CLI Responses paths; package-manager distribution
+and service manager units remain planned.
 
 ## Run model
 

@@ -5,9 +5,10 @@ nothing is stored ad hoc.
 
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
 > R2/R3 release hardening has added the maintained SDK embed reference integration and
-> offline-verified OpenAI Responses support for Codex. R4 added the local policy file.
-> The live Codex acceptance run is still required before v0.1.0 can be declared
-> release-candidate ready. Documents that describe interfaces or setup which do **not exist yet** are explicitly marked
+> OpenAI Responses support for Codex. R4 added the local policy file. The local Codex CLI
+> Responses path is live-accepted with sanitized evidence; direct `api.openai.com`
+> upstream acceptance is not claimed until a valid OpenAI API key is available. Documents
+> that describe interfaces or setup which do **not exist yet** are explicitly marked
 > **Planned / Draft**.
 
 ## Purpose
@@ -34,7 +35,7 @@ SDK, guide, and research documentation.
 - **Secret-bearing evidence**: Raw provider captures, credentials, local keys, and real secrets must not be committed as documentation evidence. Verified by: architecture/formal-release-plan.md.
 - **ADR history drift**: Accepted decisions are superseded by new ADRs rather than rewritten. Verified by: architecture/decisions/README.md.
 - **Guide routing drift**: Setup instructions must name the exact supported base-URL path and known limits. Verified by: guides/claude-code.md.
-- **Live-acceptance overclaim**: Codex/OpenAI Responses support must remain marked live-pending until a controlled real-provider run passes. Verified by: guides/codex.md.
+- **Live-acceptance overclaim**: Codex/OpenAI Responses support must distinguish local Codex CLI live acceptance from unclaimed direct `api.openai.com` upstream acceptance. Verified by: architecture/codex-live-acceptance.md.
 
 ## Open Questions
 
@@ -58,6 +59,7 @@ Top-level release metadata:
 - [Security policy](../SECURITY.md)
 - [Contribution guide](../CONTRIBUTING.md)
 - [Release checklist](guides/release-checklist.md)
+- [Codex CLI live acceptance](architecture/codex-live-acceptance.md)
 - [v0.1.0 release report](architecture/v0.1.0-release-report.md)
 
 ## Reading order

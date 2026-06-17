@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	opencloak "github.com/cloakia/opencloak"
 )
 
 func TestVersionStringDefaultsAreStable(t *testing.T) {
@@ -68,6 +70,13 @@ func TestRunProxyRejectsBadUpstream(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "init proxy") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEnginePolicyProviderNilUsesBuiltInDefaults(t *testing.T) {
+	var provider opencloak.PolicyProvider = enginePolicyProvider(nil)
+	if provider != nil {
+		t.Fatal("nil local provider became a non-nil PolicyProvider interface")
 	}
 }
 

@@ -1,10 +1,12 @@
 # Guide: Codex CLI
 
-**Status: Implemented with offline verification; live acceptance pending.** The
+**Status: Implemented and live-accepted for the local Codex CLI Responses path.** The
 OpenAI Responses/Codex provider path is implemented in the standalone proxy and covered by
-sanitized fixtures, proxy tests, and a loopback Codex CLI 0.140.0 capture. The final
-v0.1.0 release gate still requires a live controlled Codex acceptance run with real
-provider credentials before OpenCloak can claim Codex release readiness.
+sanitized fixtures, proxy tests, a loopback Codex CLI 0.140.0 capture, and a controlled
+Codex CLI 0.140.0 live run through a Responses-compatible upstream
+([acceptance report](../architecture/codex-live-acceptance.md)). Direct
+`https://api.openai.com` upstream acceptance is not claimed until a valid OpenAI API key is
+available for a separate run.
 
 Grounded in verified Codex behavior
 ([survey](../research/gateway-integration-survey.md),
@@ -62,8 +64,9 @@ provider's WebSocket capability, which can bypass an HTTP proxy. (Verified;
 - Static `tools` definitions are not masked; they are provider instructions, not local
   tool output.
 - Unsupported Responses input item shapes fail closed before upstream egress.
-- The live Codex acceptance task is still required for the v0.1.0 release candidate. Until
-  that run passes, treat Codex support as offline-verified, not release-accepted.
+- The local Codex CLI Responses path is live-accepted. Direct `https://api.openai.com`
+  upstream acceptance remains unclaimed in the 2026-06-17 evidence because the local
+  OpenAI API key was rejected by the API.
 - **AWS Bedrock** (SigV4 signs body+host) cannot be served by a rewrite proxy — out of
   scope for the MVP.
 - Avoid `CODEX_SANDBOX=seatbelt` interactions with OS-level proxies; the explicit

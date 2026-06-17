@@ -13,9 +13,9 @@ calls all run with the real values.
 > **Status: v0.1.0 release-candidate hardening.** The text engine, Anthropic Messages
 > wire masking/restore, streaming restore, loopback Claude Code proxy, maintained SDK
 > embed reference integration, OpenAI Responses wire adapter, and local policy file are
-> implemented and test-verified. Claude Code is live-accepted; Codex/OpenAI Responses is
-> offline-verified and still requires a live controlled Codex acceptance run before
-> release-candidate readiness.
+> implemented and test-verified. Claude Code is live-accepted; the local Codex CLI
+> Responses path is live-accepted with sanitized evidence; direct `api.openai.com`
+> upstream acceptance is not claimed until a valid OpenAI API key is available.
 
 ---
 

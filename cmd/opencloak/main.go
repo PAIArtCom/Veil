@@ -107,7 +107,7 @@ func runProxy(args []string, stderr io.Writer) error {
 		return fmt.Errorf("load policy: %w", err)
 	}
 
-	engine, err := opencloak.New(opencloak.Config{Policy: policyProvider})
+	engine, err := opencloak.New(opencloak.Config{Policy: enginePolicyProvider(policyProvider)})
 	if err != nil {
 		return fmt.Errorf("init engine: %w", err)
 	}
@@ -160,6 +160,13 @@ func runProxy(args []string, stderr io.Writer) error {
 		}
 		return nil
 	}
+}
+
+func enginePolicyProvider(provider *localconfig.Provider) opencloak.PolicyProvider {
+	if provider == nil {
+		return nil
+	}
+	return provider
 }
 
 // isLoopbackAddr reports whether addr (a "host:port" listen address) binds a

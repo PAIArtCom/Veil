@@ -23,7 +23,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   ├── mapstore/         [implemented] token<->value reverse map (State), scoped in-mem
 │   ├── wire/             [implemented] internal provider-native JSON adapters
 │   │   ├── anthropic/    [implemented] /v1/messages  (Phase 0)
-│   │   ├── openairesponses/   [implemented] /v1/responses (Codex Responses; live acceptance pending)
+│   │   ├── openairesponses/   [implemented] /v1/responses (Codex Responses; local CLI live-accepted)
 │   │   ├── openaichat/        [planned]  /v1/chat/completions (Phase 1)
 │   │   └── gemini/            [planned]  generateContent (Phase 1)
 │   ├── stream/           [implemented] chunk-level (byte-split tolerant) + SSE-event
@@ -139,7 +139,8 @@ pass, the binary help path runs, and the live Claude Code acceptance report is r
 [phase-0-acceptance.md](phase-0-acceptance.md). Implemented scope covers the text engine,
 Anthropic Messages buffered wire, streaming restore, and loopback proxy. R2 release
 hardening adds the maintained `examples/embed` SDK reference integration outside the
-standalone proxy. R3 adds offline-verified OpenAI Responses provider support for Codex;
-the live Codex acceptance run remains a release gate. R4 adds strict local policy-file
-loading for `token`, `ignore`, and `block`. OpenAI Chat, Gemini, service, configurable
-rule packs, `redact`, `format_preserving`, and console remain Phase 1+.
+standalone proxy. R3 adds offline-verified OpenAI Responses provider support for Codex,
+now with local Codex CLI live acceptance evidence; direct `api.openai.com` upstream
+acceptance is not claimed until a valid OpenAI API key is available. R4 adds strict local
+policy-file loading for `token`, `ignore`, and `block`. OpenAI Chat, Gemini, service,
+configurable rule packs, `redact`, `format_preserving`, and console remain Phase 1+.
