@@ -35,7 +35,7 @@ SDK, guide, and research documentation.
 | Directory | Audience | Contents |
 |---|---|---|
 | [`product/`](product/) | Decision-makers, community | Vision, strategy, open-core boundary, roadmap |
-| [`architecture/`](architecture/) | Engineers | System overview, threat model, decision records (ADRs), Phase 0 implementation plan |
+| [`architecture/`](architecture/) | Engineers | System overview, threat model, decision records (ADRs), Phase 0 implementation plan, formal release plan |
 | [`concepts/`](concepts/) | Engineers, integrators | Normative specs: redaction model, token spec, detection layers |
 | [`sdk/`](sdk/) | Integrators | The general integration contract, API reference, integration guide |
 | [`guides/`](guides/) | End users, operators | Setup & deployment for specific tools |
@@ -50,6 +50,8 @@ SDK, guide, and research documentation.
 [Integration guide](sdk/integration-guide.md) → [Gateway survey](research/gateway-integration-survey.md).
 
 **Want the "why" behind a decision?** → [Decision records](architecture/decisions/README.md).
+
+**Planning the public OSS release?** → [Formal release plan](architecture/formal-release-plan.md).
 
 ## Conventions
 

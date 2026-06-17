@@ -1,6 +1,7 @@
 # System Design
 
-**Status:** Accepted (layout & responsibilities). Implementation is Phase 0.
+**Status:** Accepted (layout & responsibilities). Phase 0 is accepted; Phase 1+ surfaces
+remain planned until implemented and verified.
 
 This is the concrete software design that realizes the [architecture overview](overview.md)
 in Go. The layout decision and its rationale are [ADR-0007](decisions/0007-code-and-module-layout.md).

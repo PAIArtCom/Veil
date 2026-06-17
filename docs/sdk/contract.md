@@ -1,7 +1,8 @@
 # SDK Integration Contract
 
-**Status:** Accepted (contract); the Phase 0 API surface is implemented and
-simulation-verified, while non-Anthropic providers and Phase 1 operators remain reserved.
+**Status:** Accepted (contract); the Phase 0 API surface is implemented and the standalone
+Claude Code proxy path is live-accepted, while non-Anthropic providers and Phase 1
+operators remain reserved.
 
 OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the

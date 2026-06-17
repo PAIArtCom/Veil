@@ -43,6 +43,11 @@ splits, and a second turn hits the prompt cache.
 
 **Goal:** breadth and hardening.
 
+The release-oriented execution plan is tracked in
+[formal-release-plan.md](../architecture/formal-release-plan.md). That plan defines the
+first formal OSS developer release (`v0.1.0`) as a narrower release cut than all possible
+Phase 1 ecosystem breadth.
+
 - Codex support (OpenAI Responses API), maintained provider adapters for OpenAI
   Chat/Responses and Gemini, and only then a decision on whether a public third-party
   adapter registration API is worth freezing.

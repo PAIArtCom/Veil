@@ -1,8 +1,9 @@
 # Phase 0 Implementation Plan — The Engine Loop
 
-**Status:** Draft (plan for review). Scope source: [roadmap Phase 0](../product/roadmap.md) +
-[system-design Phase 0 cut](system-design.md). No code is written against this plan until it
-is confirmed.
+**Status:** Accepted as executed. Scope source: [roadmap Phase 0](../product/roadmap.md) +
+[system-design Phase 0 cut](system-design.md). Phase 0 is closed for the standalone Claude
+Code proxy path; remaining ecosystem hardening moves to the
+[formal release plan](formal-release-plan.md).
 
 ## Goal
 
