@@ -8,6 +8,7 @@
 // Commands:
 //
 //	proxy     run the base-URL local proxy (Claude Code; Codex planned)
+//	version   print build version metadata
 //	serve     run the HTTP/gRPC service (Phase 1)
 //	console   run the local web console (localhost-only)
 //	mask      one-shot mask/restore utility for testing
@@ -17,6 +18,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -32,6 +34,12 @@ import (
 	"github.com/cloakia/opencloak/internal/proxy"
 )
 
+var (
+	version   = "v0.1.0-dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -43,6 +51,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "opencloak proxy: %v\n", err)
 			os.Exit(1)
 		}
+	case "version", "-v", "--version":
+		printVersion(os.Stdout)
 	case "serve", "console", "mask":
 		fmt.Fprintf(os.Stderr, "opencloak %s: not implemented yet\n", os.Args[1])
 		os.Exit(1)
@@ -53,6 +63,14 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+}
+
+func printVersion(w io.Writer) {
+	fmt.Fprintln(w, versionString())
+}
+
+func versionString() string {
+	return fmt.Sprintf("opencloak %s (commit %s, built %s)", version, commit, buildDate)
 }
 
 // runProxy parses the proxy subcommand flags, enforces the loopback-only bind
@@ -66,6 +84,9 @@ func runProxy(args []string, stderr io.Writer) error {
 	addr := fs.String("addr", "127.0.0.1:8787", "loopback address to listen on (host must be a loopback address)")
 	upstream := fs.String("upstream", "https://api.anthropic.com", "upstream provider base URL")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
 		return err
 	}
 
@@ -159,6 +180,7 @@ usage: opencloak <command> [flags]
 
 commands:
   proxy     run the base-URL local proxy (Claude Code; Codex planned)
+  version   print build version metadata
   serve     run the HTTP/gRPC service (Phase 1)
   console   run the local web console (localhost-only)
   mask      one-shot mask/restore utility for testing

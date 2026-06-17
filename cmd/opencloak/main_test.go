@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func TestVersionStringDefaultsAreStable(t *testing.T) {
+	got := versionString()
+	want := "opencloak v0.1.0-dev (commit unknown, built unknown)"
+	if got != want {
+		t.Fatalf("versionString() = %q, want %q", got, want)
+	}
+}
+
 // TestIsLoopbackAddr covers the loopback-only bind guard that satisfies the
 // "binds 127.0.0.1 only" invariant.
 func TestIsLoopbackAddr(t *testing.T) {
@@ -67,5 +75,15 @@ func TestRunProxyBadFlag(t *testing.T) {
 	var buf bytes.Buffer
 	if err := runProxy([]string{"--nope"}, &buf); err == nil {
 		t.Fatal("runProxy with unknown flag returned nil error")
+	}
+}
+
+func TestRunProxyHelpReturnsSuccess(t *testing.T) {
+	var buf bytes.Buffer
+	if err := runProxy([]string{"--help"}, &buf); err != nil {
+		t.Fatalf("runProxy --help returned error: %v", err)
+	}
+	if got := buf.String(); !strings.Contains(got, "Usage of proxy") || !strings.Contains(got, "-addr") {
+		t.Fatalf("help output missing expected flags: %q", got)
 	}
 }

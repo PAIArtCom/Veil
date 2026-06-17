@@ -22,6 +22,8 @@ regenerates split across streaming events ([ADR-0011](../architecture/decisions/
 ```sh
 # 1. build the proxy
 go build -o opencloak ./cmd/opencloak
+./opencloak version
+./opencloak proxy --help
 
 # 2. start it (binds 127.0.0.1 only; refuses non-loopback addresses)
 ./opencloak proxy --addr 127.0.0.1:8788

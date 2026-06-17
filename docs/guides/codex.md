@@ -1,7 +1,9 @@
 # Guide: Codex CLI
 
-**Status: Planned.** The standalone proxy does not exist yet. This documents the intended
-setup, grounded in verified Codex behavior
+**Status: Planned.** The OpenAI Responses/Codex provider path is not shipped yet. The
+standalone proxy exists for the Claude Code/Anthropic path, but it does not yet mask or
+restore Codex Responses traffic. This document records the intended setup, grounded in
+verified Codex behavior
 ([survey](../research/gateway-integration-survey.md),
 [ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md)).
 
@@ -15,7 +17,7 @@ the SSE response.
 ## Intended setup (subject to change)
 
 ```sh
-opencloak proxy --listen 127.0.0.1:8788
+opencloak proxy --addr 127.0.0.1:8788
 ```
 
 ```toml

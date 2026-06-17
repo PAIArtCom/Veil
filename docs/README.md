@@ -26,6 +26,13 @@ SDK, guide, and research documentation.
 - Does NOT handle: Treating historical research as the active implementation contract (see: research/)
 - Does NOT handle: Presenting Phase 1+ documents as implemented before code and verification exist (see: product/roadmap.md)
 
+## Adversarial Surfaces
+
+- **Unsupported release claims**: Shipped/planned status must match code and verification evidence. Verified by: specability reconcile docs --json.
+- **Secret-bearing evidence**: Raw provider captures, credentials, local keys, and real secrets must not be committed as documentation evidence. Verified by: architecture/formal-release-plan.md.
+- **ADR history drift**: Accepted decisions are superseded by new ADRs rather than rewritten. Verified by: architecture/decisions/README.md.
+- **Guide routing drift**: Setup instructions must name the exact supported base-URL path and known limits. Verified by: guides/claude-code.md.
+
 ## Open Questions
 
 - [ ] Which embedded gateway will be the first Phase 1 validation target? (open since: 2026-06)

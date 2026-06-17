@@ -36,6 +36,13 @@ tokens on the trusted local side.
 - Does NOT handle: L2 semantic PII, the HTTP/gRPC service, or the web console in Phase 0 (see: docs/product/roadmap.md)
 - Does NOT handle: Protection against a compromised local machine or malicious local process (see: docs/architecture/threat-model.md)
 
+## Adversarial Surfaces
+
+- **Provider egress**: Any unmasked sensitive value crossing to a provider is a release blocker. Verified by: docs/architecture/phase-0-acceptance.md.
+- **Credential pass-through**: Local proxy credentials must never be logged, stored, or interpreted by the engine. Verified by: internal/proxy/proxy_test.go.
+- **Scoped restore state**: Cross-scope restore must fail visibly or leave residual tokens rather than restoring another namespace's value. Verified by: internal/mapstore/mapstore_test.go.
+- **Release claim scope**: README claims must stay tied to verified providers and documented release evidence. Verified by: docs/architecture/formal-release-plan.md.
+
 ## Open Questions
 
 - [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)

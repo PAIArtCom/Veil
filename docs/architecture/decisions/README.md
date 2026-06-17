@@ -22,6 +22,13 @@ security, API, and implementation choices.
 - Does NOT handle: Editing accepted ADRs to hide drift instead of adding a new ADR or explicit status change (see: README.md)
 - Does NOT handle: Tracking whether every downstream implementation task is done (see: ../system-design.md)
 
+## Adversarial Surfaces
+
+- **Accepted decision rewriting**: Changed decisions require a superseding ADR rather than edits that erase security or API tradeoffs. Verified by: ../../README.md.
+- **Trust-boundary expansion**: Provider, policy, state, and release-claim changes must name boundary effects before implementation relies on them. Verified by: ../formal-release-plan.md.
+- **Secret-bearing examples**: ADR examples must not include real credentials, raw provider captures, local keys, or customer data. Verified by: git diff --check.
+- **ADR index drift**: Superseded status must remain visible when a decision is no longer active. Verified by: README.md.
+
 ## Open Questions
 
 - [ ] Does future Phase 1 provider expansion require a new ADR for public adapter boundaries? (open since: 2026-06)
