@@ -11,7 +11,9 @@
 // not here, so the handler stays unit-testable over httptest's ephemeral
 // loopback server.
 //
-// Phase 0 masks only POST /v1/messages. Every other method/path is forwarded
-// transparently. Masking count_tokens and other Anthropic endpoints is Phase 1
-// scope (the Phase 0 exit criteria are all expressed against /v1/messages).
+// v0.1.0 masks only release-supported provider paths: Anthropic POST
+// /v1/messages and OpenAI Responses POST /v1/responses or /responses. Every
+// other method/path fails closed rather than acting as a transparent proxy,
+// because unsupported provider endpoints can carry plaintext body shapes that
+// OpenCloak has not verified how to mask.
 package proxy

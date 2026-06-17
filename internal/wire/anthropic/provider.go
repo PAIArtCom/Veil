@@ -66,15 +66,30 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 	// --- system field ---
 	sys := gjson.GetBytes(body, "system")
 	switch sys.Type {
+	case gjson.Null:
+		// Optional field absent or null.
 	case gjson.String:
 		if sys.Str != "" {
 			spans = append(spans, wire.TextSpan{Path: "system", Text: sys.Str, Role: "system"})
 		}
 	case gjson.JSON:
+		if !sys.IsArray() {
+			return nil, fmt.Errorf("anthropic: unsupported system shape")
+		}
 		// array of content blocks
+		var walkErr error
 		sys.ForEach(func(key, val gjson.Result) bool {
 			idx := key.Int()
-			if val.Get("type").Str == "text" {
+			if err := validateSystemBlock(val, "system", idx); err != nil {
+				walkErr = err
+				return false
+			}
+			switch val.Get("type").Str {
+			case "text":
+				if val.Get("text").Type != gjson.String {
+					walkErr = fmt.Errorf("anthropic: system.%d text block has non-string text", idx)
+					return false
+				}
 				text := val.Get("text").Str
 				if text != "" {
 					spans = append(spans, wire.TextSpan{
@@ -83,19 +98,37 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 						Role: "system",
 					})
 				}
+			case "image", "document", "thinking":
+				// Known non-text block families are provider data or local trace data,
+				// not maskable request text in the v0.1.0 contract.
 			}
 			return true
 		})
+		if walkErr != nil {
+			return nil, walkErr
+		}
+	default:
+		return nil, fmt.Errorf("anthropic: unsupported system shape")
 	}
 
 	// --- messages[] ---
 	msgs := gjson.GetBytes(body, "messages")
+	if !msgs.Exists() {
+		return nil, fmt.Errorf("anthropic: messages must be an array")
+	}
+	if msgs.Exists() && !msgs.IsArray() {
+		return nil, fmt.Errorf("anthropic: messages must be an array")
+	}
+	var walkErr error
 	msgs.ForEach(func(msgKey, msg gjson.Result) bool {
 		mi := msgKey.Int()
 		role := msg.Get("role").Str
 		content := msg.Get("content")
 
 		switch content.Type {
+		case gjson.Null:
+			walkErr = fmt.Errorf("anthropic: messages.%d missing content", mi)
+			return false
 		case gjson.String:
 			if content.Str != "" {
 				spans = append(spans, wire.TextSpan{
@@ -105,10 +138,23 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 				})
 			}
 		case gjson.JSON:
-			extractContentBlocks(content, mi, role, &spans)
+			if !content.IsArray() {
+				walkErr = fmt.Errorf("anthropic: messages.%d content must be a string or array", mi)
+				return false
+			}
+			if err := extractContentBlocks(content, mi, role, &spans); err != nil {
+				walkErr = err
+				return false
+			}
+		default:
+			walkErr = fmt.Errorf("anthropic: messages.%d content must be a string or array", mi)
+			return false
 		}
 		return true
 	})
+	if walkErr != nil {
+		return nil, walkErr
+	}
 
 	return spans, nil
 }
@@ -116,13 +162,22 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 // extractContentBlocks walks a messages[N].content array and appends spans for
 // text, tool_use, and tool_result blocks. image/document/thinking blocks are
 // skipped.
-func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]wire.TextSpan) {
+func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]wire.TextSpan) error {
+	var walkErr error
 	content.ForEach(func(blkKey, blk gjson.Result) bool {
 		bi := blkKey.Int()
+		if err := validateKnownBlock(blk, fmt.Sprintf("messages.%d.content", mi), bi); err != nil {
+			walkErr = err
+			return false
+		}
 		blkType := blk.Get("type").Str
 
 		switch blkType {
 		case "text":
+			if blk.Get("text").Type != gjson.String {
+				walkErr = fmt.Errorf("anthropic: messages.%d.content.%d text block has non-string text", mi, bi)
+				return false
+			}
 			text := blk.Get("text").Str
 			if text != "" {
 				*spans = append(*spans, wire.TextSpan{
@@ -140,19 +195,25 @@ func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]
 		case "tool_result":
 			innerContent := blk.Get("content")
 			basePath := fmt.Sprintf("messages.%d.content.%d.content", mi, bi)
-			extractToolResultContent(innerContent, basePath, role, spans)
+			if err := extractToolResultContent(innerContent, basePath, role, spans); err != nil {
+				walkErr = err
+				return false
+			}
 
-		default:
-			// image, document, thinking: skip.
+		case "image", "document", "thinking":
+			// Known non-text block families are skipped by the v0.1.0 contract.
 		}
 		return true
 	})
+	return walkErr
 }
 
 // extractToolResultContent handles the content field of a tool_result block:
 // either a string or an array of text blocks.
-func extractToolResultContent(innerContent gjson.Result, basePath, role string, spans *[]wire.TextSpan) {
+func extractToolResultContent(innerContent gjson.Result, basePath, role string, spans *[]wire.TextSpan) error {
 	switch innerContent.Type {
+	case gjson.Null:
+		return fmt.Errorf("anthropic: %s missing content", basePath)
 	case gjson.String:
 		if innerContent.Str != "" {
 			*spans = append(*spans, wire.TextSpan{
@@ -162,9 +223,22 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 			})
 		}
 	case gjson.JSON:
+		if !innerContent.IsArray() {
+			return fmt.Errorf("anthropic: %s must be a string or array", basePath)
+		}
+		var walkErr error
 		innerContent.ForEach(func(ik, ib gjson.Result) bool {
 			ii := ik.Int()
-			if ib.Get("type").Str == "text" {
+			if err := validateToolResultBlock(ib, basePath, ii); err != nil {
+				walkErr = err
+				return false
+			}
+			switch ib.Get("type").Str {
+			case "text":
+				if ib.Get("text").Type != gjson.String {
+					walkErr = fmt.Errorf("anthropic: %s.%d text block has non-string text", basePath, ii)
+					return false
+				}
 				text := ib.Get("text").Str
 				if text != "" {
 					*spans = append(*spans, wire.TextSpan{
@@ -173,9 +247,65 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 						Role: role,
 					})
 				}
+			case "image", "document":
+				// Known non-text tool result block families are skipped.
 			}
 			return true
 		})
+		if walkErr != nil {
+			return walkErr
+		}
+	default:
+		return fmt.Errorf("anthropic: %s must be a string or array", basePath)
+	}
+	return nil
+}
+
+func validateKnownBlock(block gjson.Result, parent string, index int64) error {
+	if !block.IsObject() {
+		return fmt.Errorf("anthropic: %s.%d must be an object block", parent, index)
+	}
+	typeVal := block.Get("type")
+	if typeVal.Type != gjson.String || typeVal.Str == "" {
+		return fmt.Errorf("anthropic: %s.%d missing string type", parent, index)
+	}
+	switch typeVal.Str {
+	case "text", "tool_use", "tool_result", "image", "document", "thinking":
+		return nil
+	default:
+		return fmt.Errorf("anthropic: unsupported block type %q at %s.%d", typeVal.Str, parent, index)
+	}
+}
+
+func validateSystemBlock(block gjson.Result, parent string, index int64) error {
+	if !block.IsObject() {
+		return fmt.Errorf("anthropic: %s.%d must be an object block", parent, index)
+	}
+	typeVal := block.Get("type")
+	if typeVal.Type != gjson.String || typeVal.Str == "" {
+		return fmt.Errorf("anthropic: %s.%d missing string type", parent, index)
+	}
+	switch typeVal.Str {
+	case "text", "image", "document", "thinking":
+		return nil
+	default:
+		return fmt.Errorf("anthropic: unsupported system block type %q at %s.%d", typeVal.Str, parent, index)
+	}
+}
+
+func validateToolResultBlock(block gjson.Result, parent string, index int64) error {
+	if !block.IsObject() {
+		return fmt.Errorf("anthropic: %s.%d must be an object block", parent, index)
+	}
+	typeVal := block.Get("type")
+	if typeVal.Type != gjson.String || typeVal.Str == "" {
+		return fmt.Errorf("anthropic: %s.%d missing string type", parent, index)
+	}
+	switch typeVal.Str {
+	case "text", "image", "document":
+		return nil
+	default:
+		return fmt.Errorf("anthropic: unsupported tool_result block type %q at %s.%d", typeVal.Str, parent, index)
 	}
 }
 

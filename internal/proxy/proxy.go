@@ -143,8 +143,9 @@ func isHopByHop(canonKey string) bool {
 }
 
 // ServeHTTP routes the request. Provider-native release paths are masked and
-// restored; everything else is forwarded transparently with body and headers
-// untouched.
+// restored; everything else fails closed. v0.1.0 does not provide a transparent
+// provider proxy because unsupported endpoints can carry plaintext request
+// bodies that OpenCloak has not verified how to mask.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
 		p.serveProvider(w, r, providerRoute{
@@ -162,7 +163,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	p.serveTransparent(w, r)
+	writeAnthropicError(w, http.StatusNotFound, "unsupported_endpoint", "unsupported OpenCloak proxy endpoint")
 }
 
 type providerRoute struct {
@@ -272,38 +273,6 @@ func (p *Proxy) relayBuffered(w http.ResponseWriter, r *http.Request, resp *http
 	w.WriteHeader(resp.StatusCode)
 	if _, err := w.Write(out); err != nil {
 		p.log.Error("proxy: write buffered response to client", "err", err)
-	}
-}
-
-// serveTransparent forwards a non-/v1/messages request verbatim: the body and
-// headers are untouched outbound, and the upstream response (status, headers,
-// body) is relayed unchanged. No masking or restore occurs on this path.
-func (p *Proxy) serveTransparent(w http.ResponseWriter, r *http.Request) {
-	target := *p.upstream
-	target.Path = singleJoiningSlash(p.upstream.Path, r.URL.Path)
-	target.RawQuery = r.URL.RawQuery
-
-	upReq, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), r.Body)
-	if err != nil {
-		p.log.Error("proxy: build transparent request", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
-		return
-	}
-	copyHeaders(upReq.Header, r.Header)
-	upReq.ContentLength = r.ContentLength
-
-	resp, err := p.client.Do(upReq)
-	if err != nil {
-		p.log.Error("proxy: transparent upstream transport error", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "upstream request failed")
-		return
-	}
-	defer resp.Body.Close()
-
-	copyHeaders(w.Header(), resp.Header)
-	w.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(w, resp.Body); err != nil {
-		p.log.Error("proxy: relay transparent response body", "err", err)
 	}
 }
 

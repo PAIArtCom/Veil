@@ -275,6 +275,68 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 	}
 }
 
+func TestOpenAIResponsesStreamingRoundTrip(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		if r.URL.Path != "/v1/responses" {
+			t.Errorf("upstream path = %q, want /v1/responses", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		tok := tokenRe.FindString(string(body))
+		if tok == "" {
+			t.Errorf("upstream: masked request had no CLK_ token: %s", body)
+		}
+		cut := len(tok) / 2
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl := w.(http.Flusher)
+		events := []string{
+			`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"key ` + tok[:cut] + `"}`,
+			`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"` + tok[cut:] + ` done"}`,
+			`{"type":"response.output_text.done","item_id":"msg_1","output_index":0,"content_index":0,"text":"key ` + tok + ` done"}`,
+			`{"type":"response.function_call_arguments.delta","item_id":"fc_1","output_index":1,"delta":"{\"key\":\"` + tok[:cut] + `"}`,
+			`{"type":"response.function_call_arguments.delta","item_id":"fc_1","output_index":1,"delta":"` + tok[cut:] + `\"}"}`,
+			`{"type":"response.function_call_arguments.done","item_id":"fc_1","output_index":1,"arguments":"{\"key\":\"` + tok + `\"}"}`,
+		}
+		for _, event := range events {
+			_, _ = io.WriteString(w, "data: "+event+"\n\n")
+		}
+		fl.Flush()
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"gpt-5.4","stream":true,"input":"use ` + awsKey + `"}`
+	resp, err := http.Post(front.URL+"/v1/responses", "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientStream, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 1 {
+		t.Fatalf("upstream received %d requests, want 1", received.Load())
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", resp.StatusCode, clientStream)
+	}
+	if bytes.Contains(clientStream, []byte("CLK_")) {
+		t.Fatalf("residual CLK_ token in client stream: %s", clientStream)
+	}
+	if !bytes.Contains(clientStream, []byte(awsKey)) {
+		t.Fatalf("original secret not restored in client stream: %s", clientStream)
+	}
+	if !bytes.Contains(clientStream, []byte("response.function_call_arguments.delta")) {
+		t.Fatalf("restored function-call argument delta missing: %s", clientStream)
+	}
+}
+
 func TestOpenAIResponsesUnsupportedShapeFailsClosed(t *testing.T) {
 	engine := newTestEngine(t)
 	var received atomic.Int64
@@ -768,28 +830,18 @@ func TestPromptCachePrefixStability(t *testing.T) {
 	}
 }
 
-// ---- Test 7: transparent pass-through ----------------------------------------
+// ---- Test 7: unsupported endpoints fail closed -------------------------------
 
-// A non-/v1/messages request is forwarded unchanged and its response relayed
-// verbatim, with no masking or restore.
-func TestTransparentPassThrough(t *testing.T) {
+// Unsupported methods and paths are not transparent in the release proxy. They
+// can carry plaintext request bodies that OpenCloak has not verified how to mask,
+// so they must fail before upstream egress.
+func TestUnsupportedEndpointFailsClosed(t *testing.T) {
 	engine := newTestEngine(t)
 
-	const upstreamBody = `{"data":[{"id":"claude-opus-4-5"}]}`
-	type req struct {
-		method, path, query string
-		body                []byte
-	}
-	var mu sync.Mutex
-	var seen []req
+	var received atomic.Int64
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		mu.Lock()
-		seen = append(seen, req{r.Method, r.URL.Path, r.URL.RawQuery, body})
-		mu.Unlock()
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("X-Custom", "verbatim")
-		_, _ = io.WriteString(w, upstreamBody)
+		received.Add(1)
+		t.Fatal("upstream must not receive unsupported proxy endpoint")
 	}))
 	defer upstream.Close()
 
@@ -797,42 +849,37 @@ func TestTransparentPassThrough(t *testing.T) {
 	front := httptest.NewServer(px)
 	defer front.Close()
 
-	// A GET with a query, and (separately) a POST to a non-messages path to prove
-	// the body is not masked on the transparent path.
-	resp, err := http.Get(front.URL + "/v1/models?limit=5")
-	if err != nil {
-		t.Fatalf("client GET: %v", err)
+	for _, tc := range []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "get-models", method: http.MethodGet, path: "/v1/models?limit=5"},
+		{name: "unsupported-post", method: http.MethodPost, path: "/v1/complete", body: `{"raw":"` + awsKey + `"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(tc.method, front.URL+tc.path, strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatalf("new request: %v", err)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("client request: %v", err)
+			}
+			defer resp.Body.Close()
+			clientBody, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusNotFound {
+				t.Fatalf("status = %d, want 404; body=%s", resp.StatusCode, clientBody)
+			}
+			if !bytes.Contains(clientBody, []byte(`unsupported_endpoint`)) || bytes.Contains(clientBody, []byte(awsKey)) {
+				t.Fatalf("unsupported endpoint error missing or leaked sensitive value: %s", clientBody)
+			}
+		})
 	}
-	clientBody, _ := io.ReadAll(resp.Body)
-	resp.Body.Close()
 
-	if string(clientBody) != upstreamBody {
-		t.Fatalf("transparent body altered: got %s want %s", clientBody, upstreamBody)
-	}
-	if resp.Header.Get("X-Custom") != "verbatim" {
-		t.Fatalf("custom upstream header not relayed: %v", resp.Header)
-	}
-
-	// POST to a non-messages path with a secret-looking body: must NOT be masked.
-	secretBody := `{"raw":"` + awsKey + `"}`
-	presp, err := http.Post(front.URL+"/v1/complete", "application/json", strings.NewReader(secretBody))
-	if err != nil {
-		t.Fatalf("client POST: %v", err)
-	}
-	presp.Body.Close()
-
-	mu.Lock()
-	defer mu.Unlock()
-	if len(seen) != 2 {
-		t.Fatalf("upstream received %d requests, want 2", len(seen))
-	}
-	get := seen[0]
-	if get.method != http.MethodGet || get.path != "/v1/models" || get.query != "limit=5" {
-		t.Fatalf("upstream saw method=%q path=%q query=%q", get.method, get.path, get.query)
-	}
-	post := seen[1]
-	if !bytes.Contains(post.body, []byte(awsKey)) {
-		t.Fatalf("transparent POST body was modified; upstream saw: %s", post.body)
+	if received.Load() != 0 {
+		t.Fatalf("upstream received %d requests, want 0", received.Load())
 	}
 }
 

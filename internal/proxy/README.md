@@ -7,9 +7,9 @@ tools.
 
 This module implements the standalone HTTP proxy handler that masks provider-bound
 requests, forwards the masked request to the configured upstream, and restores
-tokens on the trusted local response path. For the accepted Phase 0 baseline it
-handles Anthropic Messages `POST /v1/messages` and OpenAI Responses
-`POST /v1/responses` / `POST /responses`; other paths are relayed transparently.
+tokens on the trusted local response path. For v0.1.0 it handles Anthropic
+Messages `POST /v1/messages` and OpenAI Responses `POST /v1/responses` /
+`POST /responses`; other paths fail closed before upstream egress.
 
 ## Principles
 
@@ -31,11 +31,11 @@ handles Anthropic Messages `POST /v1/messages` and OpenAI Responses
 - **Plaintext provider egress**: Client request bodies can contain secrets and PII, so read, mask, or upstream request construction failures must stop before provider egress. Verified by: proxy_test.go.
 - **Credential header disclosure**: Authorization and provider API-key headers cross the handler as pass-through data and must not appear in logs or errors. Verified by: proxy_test.go.
 - **Compressed stream restore bypass**: Upstream compressed streams can hide tokens from restore, so the proxy strips client `Accept-Encoding` before upstream egress. Verified by: proxy_test.go.
-- **Transparent endpoint limits**: Unsupported paths are transparent by design in Phase 0, so docs must state which endpoints are masked and which are not. Verified by: ../../docs/guides/claude-code.md.
+- **Unsupported endpoint egress**: Unsupported paths can carry plaintext body shapes OpenCloak has not verified, so they must fail closed and not contact upstream. Verified by: proxy_test.go.
 - **Provider route confusion**: Anthropic and OpenAI Responses paths select different provider walkers and error envelopes; routing drift can leak plaintext or break local tools. Verified by: proxy_test.go.
 - **Streaming restore error visibility**: Streaming restore errors after headers are committed must be logged without raw event payload disclosure. Verified by: proxy_test.go.
 - **Capture hygiene**: Tests and live acceptance captures must use throwaway values and commit only sanitized summaries or fixtures. Verified by: ../../docs/architecture/phase-0-acceptance.md.
 
 ## Open Questions
 
-- [ ] Should transparent non-release provider endpoints become fail-closed or wire-aware in a later release? (open since: 2026-06)
+- [ ] Which non-release provider endpoints should become wire-aware in a later release? (open since: 2026-06)

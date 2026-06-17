@@ -76,7 +76,7 @@ pin the exact SSE event types Claude Code emits.
 ## Known Phase 0 limits
 
 - **Anthropic `/v1/messages` only for Claude Code.** Other Anthropic endpoints (e.g.
-  `count_tokens`) are forwarded transparently **without** masking in Phase 0; OpenAI
+  `count_tokens`) fail closed in the v0.1.0 proxy until they are wire-aware; OpenAI
   Responses is documented separately for Codex, while OpenAI Chat/Gemini are Phase 1+.
 - **Thinking is not restored** in Phase 0 — a regenerated token can surface in the
   (local-only) thinking trace; it is still a masked token if echoed back to the API, and the

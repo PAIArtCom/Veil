@@ -357,6 +357,66 @@ func TestMaskRequestUnsupportedOperationFailsClosed(t *testing.T) {
 	}
 }
 
+func TestMaskRequestUnsupportedRequestShapesFailClosed(t *testing.T) {
+	e := newTestEngine(t)
+	cases := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "system-object",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"system":{"text":"` + "AKIAIOSFODNN7EXAMPLE" + `"},"messages":[]}`,
+		},
+		{
+			name: "system-tool-use-block",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"system":[{"type":"tool_use","input":{"key":"` + "AKIAIOSFODNN7EXAMPLE" + `"}}],"messages":[]}`,
+		},
+		{
+			name: "system-tool-result-block",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"system":[{"type":"tool_result","content":"` + "AKIAIOSFODNN7EXAMPLE" + `"}],"messages":[]}`,
+		},
+		{
+			name: "missing-messages",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"system":"` + "AKIAIOSFODNN7EXAMPLE" + `"}`,
+		},
+		{
+			name: "messages-not-array",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":{"role":"user","content":"` + "AKIAIOSFODNN7EXAMPLE" + `"}}`,
+		},
+		{
+			name: "message-content-object",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":{"text":"` + "AKIAIOSFODNN7EXAMPLE" + `"}}]}`,
+		},
+		{
+			name: "unknown-message-block",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":[{"type":"future_secret","payload":"` + "AKIAIOSFODNN7EXAMPLE" + `"}]}]}`,
+		},
+		{
+			name: "text-block-non-string-text",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":[{"type":"text","text":{"raw":"` + "AKIAIOSFODNN7EXAMPLE" + `"}}]}]}`,
+		},
+		{
+			name: "tool-result-object-content",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_1","content":{"raw":"` + "AKIAIOSFODNN7EXAMPLE" + `"}}]}]}`,
+		},
+		{
+			name: "tool-result-unknown-content-block",
+			body: `{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_1","content":[{"type":"future_secret","payload":"` + "AKIAIOSFODNN7EXAMPLE" + `"}]}]}]}`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", []byte(tc.body))
+			if err == nil {
+				t.Fatalf("MaskRequest returned nil error for unsupported shape; masked=%s st=%v", masked, st)
+			}
+			if masked != nil || st != nil {
+				t.Fatalf("unsupported shape must fail closed with nil output/state; masked=%s st=%v", masked, st)
+			}
+		})
+	}
+}
+
 // ---- Determinism / cache-stability -------------------------------------------
 
 // TestMaskRequestDeterminism verifies that masking the same body twice
