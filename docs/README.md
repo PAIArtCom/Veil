@@ -4,9 +4,11 @@ This is the map of OpenCloak's documentation. Docs are organized by audience and
 nothing is stored ad hoc.
 
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
-> Docs describe the implemented text engine, Anthropic wire path, streaming restore,
-> and loopback proxy, plus planned Phase 1+ surfaces. Documents that describe interfaces
-> or setup which do **not exist yet** are explicitly marked **Planned / Draft**.
+> R2/R3 release hardening has added the maintained SDK embed reference integration and
+> offline-verified OpenAI Responses support for Codex. The live Codex acceptance run is
+> still required before v0.1.0 can be declared release-candidate ready. Documents that
+> describe interfaces or setup which do **not exist yet** are explicitly marked
+> **Planned / Draft**.
 
 ## Purpose
 
@@ -32,6 +34,7 @@ SDK, guide, and research documentation.
 - **Secret-bearing evidence**: Raw provider captures, credentials, local keys, and real secrets must not be committed as documentation evidence. Verified by: architecture/formal-release-plan.md.
 - **ADR history drift**: Accepted decisions are superseded by new ADRs rather than rewritten. Verified by: architecture/decisions/README.md.
 - **Guide routing drift**: Setup instructions must name the exact supported base-URL path and known limits. Verified by: guides/claude-code.md.
+- **Live-acceptance overclaim**: Codex/OpenAI Responses support must remain marked live-pending until a controlled real-provider run passes. Verified by: guides/codex.md.
 
 ## Open Questions
 

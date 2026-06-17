@@ -23,7 +23,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   ├── mapstore/         [implemented] token<->value reverse map (State), scoped in-mem
 │   ├── wire/             [implemented] internal provider-native JSON adapters
 │   │   ├── anthropic/    [implemented] /v1/messages  (Phase 0)
-│   │   ├── openairesponses/   [planned]  /v1/responses (Codex, Phase 1)
+│   │   ├── openairesponses/   [implemented] /v1/responses (Codex Responses; live acceptance pending)
 │   │   ├── openaichat/        [planned]  /v1/chat/completions (Phase 1)
 │   │   └── gemini/            [planned]  generateContent (Phase 1)
 │   ├── stream/           [implemented] chunk-level (byte-split tolerant) + SSE-event
@@ -110,13 +110,12 @@ not be conflated.
 
 ## Provider adapter boundary
 
-`internal/wire` is not a public plugin API in Phase 0. It is an internal boundary that
+`internal/wire` is not a public plugin API in v0.1.0. It is an internal boundary that
 keeps provider-native JSON walking out of the root package while OpenCloak proves the loop
-with one maintained Anthropic adapter. Phase 1 adds maintained adapters for OpenAI
-Responses, OpenAI Chat, and Gemini. A public third-party adapter registration API should
-be added only when there is a real external adapter use case; until then, the stable
-public contract is `MaskRequest(ctx, scope, provider, op, body)` plus the documented
-provider tags.
+with maintained Anthropic Messages and OpenAI Responses adapters. Phase 1+ may add
+OpenAI Chat and Gemini. A public third-party adapter registration API should be added only
+when there is a real external adapter use case; until then, the stable public contract is
+`MaskRequest(ctx, scope, provider, op, body)` plus the documented provider tags.
 
 ## Phase 0 cut
 
@@ -138,4 +137,6 @@ pass, the binary help path runs, and the live Claude Code acceptance report is r
 [phase-0-acceptance.md](phase-0-acceptance.md). Implemented scope covers the text engine,
 Anthropic Messages buffered wire, streaming restore, and loopback proxy. R2 release
 hardening adds the maintained `examples/embed` SDK reference integration outside the
-standalone proxy. Non-Anthropic providers, service, and console remain Phase 1+.
+standalone proxy. R3 adds offline-verified OpenAI Responses provider support for Codex;
+the live Codex acceptance run remains a release gate. OpenAI Chat, Gemini, service, and
+console remain Phase 1+.

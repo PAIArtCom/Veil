@@ -18,6 +18,8 @@ import (
 	// Side-effect import: registers the "anthropic" provider in the wire
 	// registry when the engine package is imported.
 	_ "github.com/cloakia/opencloak/internal/wire/anthropic"
+	// Side-effect import: registers the "openai-responses" provider.
+	_ "github.com/cloakia/opencloak/internal/wire/openairesponses"
 )
 
 // Engine is the OpenCloak de-identification engine. Construct it with New and use it

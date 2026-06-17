@@ -22,7 +22,7 @@ parsed SSE event relay.
 
 - Does NOT handle: A production gateway, network listener, auth, retry scheduler, or provider client (see: ../../docs/sdk/integration-guide.md).
 - Does NOT handle: External clipal repository integration; this is a maintained in-repo reference path (see: ../../docs/architecture/formal-release-plan.md).
-- Does NOT handle: Non-Anthropic providers until their provider adapters ship (see: ../../docs/architecture/system-design.md).
+- Does NOT handle: OpenAI Chat, Gemini, or other unimplemented providers (see: ../../docs/architecture/system-design.md).
 - Does NOT handle: Policy file parsing or local configuration behavior (see: ../../docs/architecture/formal-release-plan.md).
 
 ## Adversarial Surfaces

@@ -32,7 +32,7 @@ tokens on the trusted local side.
 
 ## Boundaries
 
-- Does NOT handle: Non-Anthropic provider implementations in Phase 0 (see: docs/architecture/overview.md)
+- Does NOT handle: OpenAI Chat, Gemini, remote MCP, or unverified provider paths (see: docs/architecture/overview.md)
 - Does NOT handle: L2 semantic PII, the HTTP/gRPC service, or the web console in Phase 0 (see: docs/product/roadmap.md)
 - Does NOT handle: Protection against a compromised local machine or malicious local process (see: docs/architecture/threat-model.md)
 
@@ -99,8 +99,8 @@ OpenCloak is **one engine with different shells** (see
 [architecture overview](docs/architecture/overview.md)):
 
 1. **Standalone local proxy** — point your CLI's base URL at it
-   (`ANTHROPIC_BASE_URL` for Claude Code; Codex support is planned via a custom
-   `model_providers` entry).
+   (`ANTHROPIC_BASE_URL` for Claude Code; a custom `model_providers` entry for Codex
+   Responses).
    Credentials pass straight through; only the request body is rewritten.
 2. **Embeddable Go library** — drop the engine into your own gateway and call it at your
    request/response seams. The SDK is **general-purpose**, validated against several real
@@ -126,6 +126,7 @@ Start at the **[documentation map](docs/README.md)**. Highlights:
   [Decision records](docs/architecture/decisions/README.md)
 - [SDK contract](docs/sdk/contract.md) ·
   [Gateway integration survey](docs/research/gateway-integration-survey.md)
+- [Claude Code guide](docs/guides/claude-code.md) · [Codex CLI guide](docs/guides/codex.md)
 
 ## License
 

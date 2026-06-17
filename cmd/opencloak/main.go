@@ -7,7 +7,7 @@
 //
 // Commands:
 //
-//	proxy     run the base-URL local proxy (Claude Code; Codex planned)
+//	proxy     run the base-URL local proxy (Claude Code and Codex Responses)
 //	version   print build version metadata
 //	serve     run the HTTP/gRPC service (Phase 1)
 //	console   run the local web console (localhost-only)
@@ -121,7 +121,8 @@ func runProxy(args []string, stderr io.Writer) error {
 
 	fmt.Fprintf(stderr, "opencloak proxy listening on http://%s\n", *addr)
 	fmt.Fprintf(stderr, "  upstream: %s\n", *upstream)
-	fmt.Fprintf(stderr, "  point your tool at it:  set ANTHROPIC_BASE_URL=http://%s\n", *addr)
+	fmt.Fprintf(stderr, "  Claude Code: set ANTHROPIC_BASE_URL=http://%s\n", *addr)
+	fmt.Fprintf(stderr, "  Codex CLI: set model_providers.<name>.base_url=\"http://%s/v1\"\n", *addr)
 
 	// Graceful shutdown on SIGINT/SIGTERM: stop accepting, drain in-flight.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -179,7 +180,7 @@ func usage() {
 usage: opencloak <command> [flags]
 
 commands:
-  proxy     run the base-URL local proxy (Claude Code; Codex planned)
+  proxy     run the base-URL local proxy (Claude Code and Codex Responses)
   version   print build version metadata
   serve     run the HTTP/gRPC service (Phase 1)
   console   run the local web console (localhost-only)

@@ -58,3 +58,4 @@ security, API, and implementation choices.
 | [0010](0010-restore-dispatch-and-errors.md) | Restore dispatch and error surface | Accepted |
 | [0011](0011-streaming-restore-cross-event-holdback.md) | Streaming restore across SSE event boundaries | Accepted |
 | [0012](0012-phase-0-l1-rule-sourcing.md) | Phase 0 L1 rule sourcing and RuleSets behavior | Accepted |
+| [0013](0013-openai-responses-provider.md) | OpenAI Responses provider for Codex CLI | Accepted |

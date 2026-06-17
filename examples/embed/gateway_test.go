@@ -156,7 +156,7 @@ func TestGatewayCrossScopeRestoreLeavesResidualToken(t *testing.T) {
 
 func TestGatewayOutboundUnsupportedProviderFailsClosed(t *testing.T) {
 	gw := newTestGateway(t)
-	bad, err := NewGatewayForProvider(gw.engine, "openai-responses", "responses")
+	bad, err := NewGatewayForProvider(gw.engine, "gemini", "generateContent")
 	if err != nil {
 		t.Fatalf("NewGatewayForProvider: %v", err)
 	}

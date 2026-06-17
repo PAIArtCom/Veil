@@ -6,8 +6,9 @@ engine and local transports.
 ## Purpose
 
 This module wires the public OpenCloak SDK and internal transports into the
-`opencloak` binary. For v0.1.0 it exposes the standalone loopback proxy, stable
-help output, and build version metadata for release verification.
+`opencloak` binary. For v0.1.0 it exposes the standalone loopback proxy for
+Anthropic Messages and OpenAI Responses, stable help output, and build version
+metadata for release verification.
 
 ## Principles
 

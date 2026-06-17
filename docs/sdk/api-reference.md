@@ -1,9 +1,9 @@
 # SDK API Reference
 
-**Status: Phase 0 implemented / pre-release API.** The text surface, Anthropic Messages
-wire surface, streaming restore, loopback proxy, and maintained `examples/embed`
-reference integration are implemented. Non-Anthropic providers and Phase 1 transform
-operators are reserved.
+**Status: v0.1.0 pre-release API.** The text surface, Anthropic Messages wire surface,
+OpenAI Responses wire surface, streaming restore, loopback proxy, and maintained
+`examples/embed` reference integration are implemented. OpenAI Chat, Gemini, and Phase 1
+transform operators are reserved.
 
 ## Package
 
@@ -109,9 +109,13 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 The SDK surface names avoid `L0/L1/L2` because detection uses `L1` for pattern rules and
 `L2` for the optional NER layer.
 
-Phase 0 implements `"anthropic"`. `"openai-responses"`, `"openai-chat"`, and `"gemini"`
-are reserved planned provider tags.
-`op` is the endpoint/operation (e.g. `"messages"`, `"responses"`).
+Implemented provider/op pairs:
+
+- `"anthropic"` / `"messages"` for Anthropic Messages `POST /v1/messages`.
+- `"openai-responses"` / `"responses"` for OpenAI Responses `POST /v1/responses`.
+
+`"openai-chat"` and `"gemini"` are reserved planned provider tags.
+`op` is the endpoint/operation (for example `"messages"` or `"responses"`).
 Unsupported provider/op pairs fail closed.
 
 ## State

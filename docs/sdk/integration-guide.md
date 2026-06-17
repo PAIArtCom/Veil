@@ -1,8 +1,9 @@
 # Integration Guide
 
-**Status:** Phase 0 implemented for Anthropic Messages; the maintained
-`examples/embed` reference integration validates the SDK seams outside the standalone
-proxy. Non-Anthropic providers remain planned.
+**Status:** v0.1.0 pre-release. The maintained `examples/embed` reference integration
+validates the SDK seams outside the standalone proxy. Anthropic Messages is
+live-accepted through Claude Code; OpenAI Responses is implemented with offline fixtures
+and still requires live Codex acceptance before release-candidate readiness.
 
 How to embed the OpenCloak engine into a gateway. The patterns below are the
 lowest-common-denominator wiring confirmed against three real gateways — see the
@@ -97,9 +98,11 @@ The reference proxy applies the same patterns, plus transport rules from the ADR
 - Bind `127.0.0.1` only ([threat model](../architecture/threat-model.md)).
 - Pass the client's auth header through unchanged
   ([ADR-0004](../architecture/decisions/0004-auth-pass-through.md)).
-- Codex support is planned. When it lands, use a custom `model_providers` entry (not
-  `openai_base_url`) to force the HTTP+SSE transport
-  ([ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md)).
+- Codex/OpenAI Responses support is implemented with offline verification and still needs
+  live acceptance before release-candidate readiness. Use a custom `model_providers` entry
+  (not `openai_base_url`) to force the HTTP+SSE transport
+  ([ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md),
+  [ADR-0013](../architecture/decisions/0013-openai-responses-provider.md)).
 
 ## Checklist
 

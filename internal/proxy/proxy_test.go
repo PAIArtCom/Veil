@@ -200,6 +200,114 @@ func TestBufferedRoundTrip(t *testing.T) {
 	}
 }
 
+func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	var rec recorder
+
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		if r.URL.Path != "/v1/responses" {
+			t.Errorf("upstream path = %q, want /v1/responses", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		rec.record(body, r.Header)
+		tok := tokenRe.FindString(string(body))
+		if tok == "" {
+			t.Errorf("upstream: masked request had no CLK_ token: %s", body)
+		}
+		resp := `{"id":"resp_1","output":[` +
+			`{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Using ` + tok + `"}]},` +
+			`{"type":"function_call","call_id":"call_1","name":"run","arguments":"{\"dsn\":\"` + tok + `\"}"}` +
+			`]}`
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, resp)
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"gpt-5.4","instructions":"mask ` + awsKey + `","input":[` +
+		`{"type":"message","role":"user","content":[{"type":"input_text","text":"email ` + email + `"}]},` +
+		`{"type":"function_call_output","call_id":"call_1","output":"local tool ` + awsKey + `"}` +
+		`],"tools":[{"type":"function","name":"static","description":"keep ` + awsKey + `"}],"stream":false}`
+
+	req, err := http.NewRequest(http.MethodPost, front.URL+"/v1/responses", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", authHdr)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 1 {
+		t.Fatalf("upstream received %d requests, want 1", received.Load())
+	}
+	receivedBody := rec.lastBody()
+	if !tokenRe.Match(receivedBody) {
+		t.Fatalf("upstream body missing CLK_ token: %s", receivedBody)
+	}
+	if bytes.Contains(receivedBody, []byte(email)) {
+		t.Fatalf("plaintext email leaked to upstream: %s", receivedBody)
+	}
+	if !bytes.Contains(receivedBody, []byte("keep "+awsKey)) {
+		t.Fatalf("static tools definition should remain unchanged: %s", receivedBody)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("client status = %d, want 200; body=%s", resp.StatusCode, clientBody)
+	}
+	if bytes.Contains(clientBody, []byte("CLK_")) {
+		t.Fatalf("residual CLK_ token in client response: %s", clientBody)
+	}
+	if !bytes.Contains(clientBody, []byte(awsKey)) {
+		t.Fatalf("original secret not restored in client response: %s", clientBody)
+	}
+	if rec.headers().Get("Authorization") != authHdr {
+		t.Fatalf("Authorization header = %q, want pass-through", rec.headers().Get("Authorization"))
+	}
+}
+
+func TestOpenAIResponsesUnsupportedShapeFailsClosed(t *testing.T) {
+	engine := newTestEngine(t)
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		t.Fatal("upstream must not receive unsupported plaintext-bearing Responses request")
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Post(front.URL+"/v1/responses", "application/json", strings.NewReader(`{
+		"input":[{"type":"future_tool_result","payload":"`+awsKey+`"}]
+	}`))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 0 {
+		t.Fatalf("upstream received %d requests, want 0", received.Load())
+	}
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502; body=%s", resp.StatusCode, body)
+	}
+	if !bytes.Contains(body, []byte(`"error"`)) || bytes.Contains(body, []byte(awsKey)) {
+		t.Fatalf("OpenAI error envelope missing or leaked sensitive value: %s", body)
+	}
+}
+
 // splitTokenStream builds an Anthropic-shaped SSE byte stream that echoes tok
 // SPLIT ACROSS multiple content_block_delta events — the failure mode that
 // shipped in M4 because the old fake upstream emitted whole tokens. A text block

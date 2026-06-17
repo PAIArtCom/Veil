@@ -3,5 +3,5 @@
 // to a Provider implementation. Subpackages implement maintained providers. See
 // docs/sdk/contract.md and docs/research/gateway-integration-survey.md.
 //
-// Status: Phase 0 implemented for the Anthropic Messages provider.
+// Status: implemented for Anthropic Messages and OpenAI Responses.
 package wire

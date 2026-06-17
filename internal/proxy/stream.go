@@ -46,7 +46,7 @@ const (
 // The restorer is obtained BEFORE the response status/headers are committed: if
 // it cannot be built (unsupported provider, invalid state) the stream is failed
 // closed with a 502 rather than relayed with tokens unrestored.
-func (p *Proxy) relayStream(w http.ResponseWriter, r *http.Request, resp *http.Response, state *opencloak.State) {
+func (p *Proxy) relayStream(w http.ResponseWriter, r *http.Request, resp *http.Response, state *opencloak.State, writeErr func(http.ResponseWriter, int, string, string)) {
 	// Fail-closed: obtain the restorer before any byte of the response is
 	// written. Once headers are sent a stream cannot be turned into an error
 	// response, so a restorer failure must abort here. Relaying raw would leak
@@ -54,7 +54,7 @@ func (p *Proxy) relayStream(w http.ResponseWriter, r *http.Request, resp *http.R
 	sse, err := p.engine.NewSSEStreamRestorer(state)
 	if err != nil {
 		p.log.Error("proxy: build SSE stream restorer (fail-closed, not relayed)", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "response could not be processed")
+		writeErr(w, http.StatusBadGateway, "upstream_error", "response could not be processed")
 		return
 	}
 

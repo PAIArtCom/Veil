@@ -142,27 +142,46 @@ func isHopByHop(canonKey string) bool {
 	return strings.HasPrefix(canonKey, "Proxy-")
 }
 
-// ServeHTTP routes the request. Only POST /v1/messages is masked; everything
-// else is forwarded transparently with body and headers untouched.
+// ServeHTTP routes the request. Provider-native release paths are masked and
+// restored; everything else is forwarded transparently with body and headers
+// untouched.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
-		p.serveMessages(w, r)
+		p.serveProvider(w, r, providerRoute{
+			provider: "anthropic",
+			op:       "messages",
+			writeErr: writeAnthropicError,
+		})
+		return
+	}
+	if r.Method == http.MethodPost && (r.URL.Path == "/v1/responses" || r.URL.Path == "/responses") {
+		p.serveProvider(w, r, providerRoute{
+			provider: "openai-responses",
+			op:       "responses",
+			writeErr: writeOpenAIError,
+		})
 		return
 	}
 	p.serveTransparent(w, r)
 }
 
-// serveMessages handles the masked POST /v1/messages path.
-func (p *Proxy) serveMessages(w http.ResponseWriter, r *http.Request) {
+type providerRoute struct {
+	provider string
+	op       string
+	writeErr func(http.ResponseWriter, int, string, string)
+}
+
+// serveProvider handles one masked provider-native path.
+func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, route providerRoute) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		// Could not read the client body; nothing was forwarded.
 		p.log.Error("proxy: read request body", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to read request body")
+		route.writeErr(w, http.StatusBadGateway, "upstream_error", "failed to read request body")
 		return
 	}
 
-	masked, state, err := p.engine.MaskRequest(r.Context(), p.scope, "anthropic", "messages", body)
+	masked, state, err := p.engine.MaskRequest(r.Context(), p.scope, route.provider, route.op, body)
 	if err != nil {
 		// Fail-closed: on ANY masking error the plaintext request is never
 		// forwarded upstream. A policy block maps to 403; any other error maps
@@ -170,12 +189,12 @@ func (p *Proxy) serveMessages(w http.ResponseWriter, r *http.Request) {
 		var blocked *opencloak.BlockedError
 		if errors.As(err, &blocked) {
 			p.log.Warn("proxy: request blocked by policy", "types", typeNames(blocked.Types))
-			writeAnthropicError(w, http.StatusForbidden, "blocked_by_policy",
+			route.writeErr(w, http.StatusForbidden, "blocked_by_policy",
 				"request blocked by local policy: "+strings.Join(typeNames(blocked.Types), ", "))
 			return
 		}
 		p.log.Error("proxy: mask request failed (fail-closed, not forwarded)", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "request could not be processed")
+		route.writeErr(w, http.StatusBadGateway, "upstream_error", "request could not be processed")
 		return
 	}
 
@@ -184,7 +203,7 @@ func (p *Proxy) serveMessages(w http.ResponseWriter, r *http.Request) {
 	upReq, err := p.newUpstreamRequest(r, masked)
 	if err != nil {
 		p.log.Error("proxy: build upstream request", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
+		route.writeErr(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
 		return
 	}
 
@@ -192,13 +211,13 @@ func (p *Proxy) serveMessages(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Transport error reaching upstream: fail-closed (nothing to relay).
 		p.log.Error("proxy: upstream transport error", "err", err)
-		writeAnthropicError(w, http.StatusBadGateway, "upstream_error", "upstream request failed")
+		route.writeErr(w, http.StatusBadGateway, "upstream_error", "upstream request failed")
 		return
 	}
 	defer resp.Body.Close()
 
 	if isEventStream(resp.Header.Get("Content-Type")) {
-		p.relayStream(w, r, resp, state)
+		p.relayStream(w, r, resp, state, route.writeErr)
 		return
 	}
 	p.relayBuffered(w, r, resp, state)
@@ -343,6 +362,16 @@ func writeAnthropicError(w http.ResponseWriter, status int, errType, message str
 	// Hand-built to keep the exact Anthropic error envelope and avoid pulling
 	// json marshaling onto this small fixed shape; message is JSON-escaped.
 	body := `{"type":"error","error":{"type":"` + errType + `","message":` + jsonString(message) + `}}`
+	_, _ = io.WriteString(w, body)
+}
+
+// writeOpenAIError writes an OpenAI-shaped fixed JSON error. The body is
+// sanitized and never includes provider payloads or sensitive values.
+func writeOpenAIError(w http.ResponseWriter, status int, errType, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Del("Content-Length")
+	w.WriteHeader(status)
+	body := `{"error":{"message":` + jsonString(message) + `,"type":"` + errType + `"}}`
 	_, _ = io.WriteString(w, body)
 }
 
