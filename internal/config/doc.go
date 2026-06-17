@@ -1,5 +1,3 @@
-// Package config provides the open-source default opencloak.PolicyProvider: local
-// file-based policy, rule-set selection, and per-type transform operators.
-//
-// Status: scaffold only; no behavior yet.
+// Package config provides the open-source local policy file loader used by the
+// standalone OpenCloak binary.
 package config

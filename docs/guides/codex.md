@@ -23,6 +23,7 @@ tokens in buffered and SSE responses, including streamed tool-call arguments.
 ```sh
 go build -o opencloak ./cmd/opencloak
 ./opencloak proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+# Optional: add --policy /path/to/policy.json for local per-type token/ignore/block policy.
 ```
 
 ```toml

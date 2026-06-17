@@ -31,6 +31,7 @@ import (
 	"time"
 
 	opencloak "github.com/cloakia/opencloak"
+	localconfig "github.com/cloakia/opencloak/internal/config"
 	"github.com/cloakia/opencloak/internal/proxy"
 )
 
@@ -83,6 +84,7 @@ func runProxy(args []string, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 	addr := fs.String("addr", "127.0.0.1:8787", "loopback address to listen on (host must be a loopback address)")
 	upstream := fs.String("upstream", "https://api.anthropic.com", "upstream provider base URL")
+	policyPath := fs.String("policy", "", "local policy JSON path (default: OPENCLOAK_POLICY or ~/.opencloak/policy.json if present)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -100,7 +102,12 @@ func runProxy(args []string, stderr io.Writer) error {
 
 	logger := slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	engine, err := opencloak.New(opencloak.Config{})
+	policyProvider, policySource, err := localconfig.LoadProvider(localconfig.LoadOptions{Path: *policyPath})
+	if err != nil {
+		return fmt.Errorf("load policy: %w", err)
+	}
+
+	engine, err := opencloak.New(opencloak.Config{Policy: policyProvider})
 	if err != nil {
 		return fmt.Errorf("init engine: %w", err)
 	}
@@ -121,6 +128,11 @@ func runProxy(args []string, stderr io.Writer) error {
 
 	fmt.Fprintf(stderr, "opencloak proxy listening on http://%s\n", *addr)
 	fmt.Fprintf(stderr, "  upstream: %s\n", *upstream)
+	if policySource.Loaded {
+		fmt.Fprintf(stderr, "  policy: loaded from %s\n", policySource.From)
+	} else {
+		fmt.Fprintln(stderr, "  policy: built-in defaults")
+	}
 	fmt.Fprintf(stderr, "  Claude Code: set ANTHROPIC_BASE_URL=http://%s\n", *addr)
 	fmt.Fprintf(stderr, "  Codex CLI: set model_providers.<name>.base_url=\"http://%s/v1\"\n", *addr)
 
@@ -189,5 +201,6 @@ commands:
 proxy flags:
   --addr      loopback listen address (default 127.0.0.1:8787)
   --upstream  upstream provider base URL (default https://api.anthropic.com)
+  --policy    local policy JSON path (default OPENCLOAK_POLICY or ~/.opencloak/policy.json)
 `)
 }

@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -69,6 +71,33 @@ func TestRunProxyRejectsBadUpstream(t *testing.T) {
 	}
 }
 
+func TestRunProxyRejectsMissingPolicyPathBeforeBinding(t *testing.T) {
+	var buf bytes.Buffer
+	err := runProxy([]string{"--addr", "127.0.0.1:0", "--policy", filepath.Join(t.TempDir(), "missing.json")}, &buf)
+	if err == nil {
+		t.Fatal("runProxy with missing policy returned nil error")
+	}
+	if !strings.Contains(err.Error(), "load policy") || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunProxyRejectsInvalidPolicyBeforeBinding(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "policy.json")
+	if err := os.WriteFile(path, []byte(`{"types":{"SECRET":{"operator":"redact"}}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	err := runProxy([]string{"--addr", "127.0.0.1:0", "--policy", path}, &buf)
+	if err == nil {
+		t.Fatal("runProxy with invalid policy returned nil error")
+	}
+	if !strings.Contains(err.Error(), "load policy") || !strings.Contains(err.Error(), "reserved") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 // TestRunProxyBadFlag ensures unknown flags surface a parse error rather than
 // panicking or binding.
 func TestRunProxyBadFlag(t *testing.T) {
@@ -83,7 +112,7 @@ func TestRunProxyHelpReturnsSuccess(t *testing.T) {
 	if err := runProxy([]string{"--help"}, &buf); err != nil {
 		t.Fatalf("runProxy --help returned error: %v", err)
 	}
-	if got := buf.String(); !strings.Contains(got, "Usage of proxy") || !strings.Contains(got, "-addr") {
+	if got := buf.String(); !strings.Contains(got, "Usage of proxy") || !strings.Contains(got, "-addr") || !strings.Contains(got, "-policy") {
 		t.Fatalf("help output missing expected flags: %q", got)
 	}
 }

@@ -28,6 +28,7 @@ go build -o opencloak ./cmd/opencloak
 # 2. start it (binds 127.0.0.1 only; refuses non-loopback addresses)
 ./opencloak proxy --addr 127.0.0.1:8788
 #   --upstream defaults to https://api.anthropic.com
+#   --policy may point to a strict local policy JSON file
 #   on first run it generates a local HMAC key at ~/.opencloak/key (0600)
 
 # 3. point Claude Code at it, in the same or another shell

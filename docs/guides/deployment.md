@@ -1,8 +1,8 @@
 # Guide: Deployment & Operations
 
-**Status: Baseline for v0.1.0 release hardening.** The standalone Claude Code proxy path
-ships from source in the Phase 0 baseline; package-manager distribution and service
-manager units remain planned.
+**Status: Baseline for v0.1.0 release hardening.** The standalone proxy ships from
+source for Claude Code and offline-verified Codex Responses paths; package-manager
+distribution and service manager units remain planned.
 
 ## Run model
 
@@ -48,6 +48,34 @@ The proxy defaults to `https://api.anthropic.com` upstream. Use `--upstream` onl
 controlled local capture proxy or a compatible provider endpoint; do not commit raw
 captures.
 
+## Local policy
+
+OpenCloak can load a local policy JSON file for single-user per-type behavior. Precedence:
+
+1. `opencloak proxy --policy /path/to/policy.json`
+2. `OPENCLOAK_POLICY=/path/to/policy.json`
+3. `~/.opencloak/policy.json` if the file exists
+4. Built-in defaults if no configured/default policy file exists
+
+Minimal safe config:
+
+```json
+{
+  "default_operator": "token",
+  "types": {
+    "EMAIL": {"operator": "ignore"},
+    "SECRET": {"operator": "block"}
+  }
+}
+```
+
+Supported v0.1.0 operators are `token`, `ignore`, and `block`. `redact`,
+`format_preserving`, and non-empty `rule_sets` are reserved and fail closed. Unknown keys
+also fail closed, including `comment`, `label`, `metadata`, provider labels, analytics
+labels, customer labels, raw payload references, dotenv paths, or secret-looking values.
+If `--policy` or `OPENCLOAK_POLICY` points to a missing or invalid file, the proxy refuses
+to start. If the default file is absent, the proxy uses the built-in policy.
+
 ## Security invariants (non-negotiable)
 
 - **Bind `127.0.0.1` only.** Never expose the proxy off-host without authentication — it
@@ -84,10 +112,12 @@ specability reconcile docs/architecture/decisions --json
 regression gate for the shipped proxy path; use the runbook in
 [Guide: Claude Code](claude-code.md) and record only sanitized summaries.
 
-## Configuration (planned surface)
+## Configuration
 
 - Listen address (implemented flag: `--addr`, default `127.0.0.1:8787`).
-- Per-type transform operators; rule set selection.
+- Upstream provider base URL (implemented flag: `--upstream`, default `https://api.anthropic.com`).
+- Local policy file (implemented flag: `--policy`; env `OPENCLOAK_POLICY`; default path `~/.opencloak/policy.json` if present).
+- Per-type `token`, `ignore`, and `block` operators (implemented); `redact`, `format_preserving`, and rule-set selection are planned and fail closed.
 - Optional local map cache (off by default; in-memory is the default).
 - Key path (default `~/.opencloak/key`, generated on first run).
 

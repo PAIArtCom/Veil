@@ -63,6 +63,11 @@ const (
 
 ## Policy
 
+The zero-value SDK config uses the built-in local policy: `token` by default, with
+`PERSON`, `ADDR`, and `DATE` ignored. The standalone CLI can also load a local JSON
+policy from `--policy`, `OPENCLOAK_POLICY`, or `~/.opencloak/policy.json` if present.
+Embedders can provide any `PolicyProvider` that returns the public `Policy` shape below.
+
 ```go
 type TransformOperator string
 
@@ -88,6 +93,22 @@ type PolicyProvider interface {
     Policy(ctx context.Context, scope Scope) (Policy, error)
 }
 ```
+
+Local policy-file shape:
+
+```json
+{
+  "default_operator": "token",
+  "types": {
+    "EMAIL": {"operator": "ignore"},
+    "SECRET": {"operator": "block"}
+  }
+}
+```
+
+File parsing is strict. Unknown keys fail closed rather than being treated as comments or
+metadata. v0.1.0 supports only `token`, `ignore`, and `block`; `redact`,
+`format_preserving`, and non-empty `rule_sets` are reserved and rejected.
 
 ## Core operations
 
