@@ -24,6 +24,9 @@ No changes beyond the pending v0.1.0 release notes.
   fail-closed validation for unknown keys, reserved operators, and non-empty `rule_sets`.
 - Release documentation: deployment guide, Claude Code guide, Codex guide, SDK API
   reference, security policy, and contribution guide.
+- Release hardening: unsupported proxy endpoints fail closed before upstream egress, and
+  Anthropic request-shape drift fails closed instead of silently forwarding unchecked
+  plaintext-bearing blocks.
 
 ### Reserved / planned
 - OpenAI Chat, Gemini, remote MCP egress classification, L2 default-on semantic PII,

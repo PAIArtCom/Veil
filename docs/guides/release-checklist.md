@@ -70,7 +70,8 @@ Expected binary paths:
 
 Only after all gates pass and maintainers approve:
 
-1. Record the final release report.
+1. Record the final release report
+   ([v0.1.0 release report](../architecture/v0.1.0-release-report.md)).
 2. Create the release commit or tag instructions.
 3. Prepare release notes from CHANGELOG.md.
 4. Do not push tags or publish a GitHub release from this checklist alone.

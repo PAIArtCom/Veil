@@ -58,6 +58,7 @@ Top-level release metadata:
 - [Security policy](../SECURITY.md)
 - [Contribution guide](../CONTRIBUTING.md)
 - [Release checklist](guides/release-checklist.md)
+- [v0.1.0 release report](architecture/v0.1.0-release-report.md)
 
 ## Reading order
 
@@ -74,7 +75,8 @@ Top-level release metadata:
 **Installing or operating the proxy?** → [Deployment guide](guides/deployment.md) →
 [Claude Code guide](guides/claude-code.md) or [Codex CLI guide](guides/codex.md).
 
-**Preparing a release cut?** → [Release checklist](guides/release-checklist.md).
+**Preparing a release cut?** → [Release checklist](guides/release-checklist.md) →
+[v0.1.0 release report](architecture/v0.1.0-release-report.md).
 
 ## Conventions
 
