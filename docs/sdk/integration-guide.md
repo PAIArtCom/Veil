@@ -1,6 +1,8 @@
 # Integration Guide
 
-**Status:** Phase 0 implemented for Anthropic Messages; non-Anthropic providers remain planned.
+**Status:** Phase 0 implemented for Anthropic Messages; the maintained
+`examples/embed` reference integration validates the SDK seams outside the standalone
+proxy. Non-Anthropic providers remain planned.
 
 How to embed the OpenCloak engine into a gateway. The patterns below are the
 lowest-common-denominator wiring confirmed against three real gateways — see the
@@ -13,6 +15,10 @@ A gateway needs to call the engine at exactly two places:
 1. **Outbound** — where the full request body is buffered and still mutable, *after*
    upstream/credential selection and *before* the upstream HTTP request is built.
 2. **Inbound** — where the response (streaming or buffered) is relayed back to the client.
+
+The in-repo [`examples/embed`](../../examples/embed/) package is the maintained reference
+for these seams. It is not a production gateway and does not claim external clipal
+integration; it exists to prove the SDK contract with tests.
 
 ## Pattern A — outbound mask
 

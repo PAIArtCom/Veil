@@ -33,7 +33,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   └── service/          [phase1 scaffold] HTTP/gRPC service (Phase 1)
 │
 ├── cmd/opencloak/        [partial] proxy implemented; serve | console | mask are placeholders
-└── examples/embed/       [planned]          minimal "embed the engine" example
+└── examples/embed/       [implemented]      maintained SDK reference integration
 ```
 
 `implemented` means behavior exists with automated fixtures; `partial` means only the named
@@ -136,5 +136,6 @@ Phase 0 is accepted for the standalone Claude Code proxy path: `gofmt` clean,
 `go vet ./...` clean, `go build ./...` ok, `go test ./...` and `go test -race ./...`
 pass, the binary help path runs, and the live Claude Code acceptance report is recorded in
 [phase-0-acceptance.md](phase-0-acceptance.md). Implemented scope covers the text engine,
-Anthropic Messages buffered wire, streaming restore, and loopback proxy. Non-Anthropic
-providers, service, and console remain Phase 1+.
+Anthropic Messages buffered wire, streaming restore, and loopback proxy. R2 release
+hardening adds the maintained `examples/embed` SDK reference integration outside the
+standalone proxy. Non-Anthropic providers, service, and console remain Phase 1+.

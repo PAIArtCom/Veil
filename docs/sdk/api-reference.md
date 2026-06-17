@@ -1,8 +1,9 @@
 # SDK API Reference
 
 **Status: Phase 0 implemented / pre-release API.** The text surface, Anthropic Messages
-wire surface, streaming restore, and loopback proxy are implemented. Non-Anthropic
-providers and Phase 1 transform operators are reserved.
+wire surface, streaming restore, loopback proxy, and maintained `examples/embed`
+reference integration are implemented. Non-Anthropic providers and Phase 1 transform
+operators are reserved.
 
 ## Package
 

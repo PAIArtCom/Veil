@@ -1,8 +1,9 @@
 # SDK Integration Contract
 
-**Status:** Accepted (contract); the Phase 0 API surface is implemented and the standalone
-Claude Code proxy path is live-accepted, while non-Anthropic providers and Phase 1
-operators remain reserved.
+**Status:** Accepted (contract); the Phase 0 API surface is implemented, the standalone
+Claude Code proxy path is live-accepted, and the SDK is validated by the maintained
+reference integration in `examples/embed`. Non-Anthropic providers and Phase 1 operators
+remain reserved.
 
 OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the
@@ -86,4 +87,6 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   ([ADR-0010](../architecture/decisions/0010-restore-dispatch-and-errors.md)).
 
 See the [integration guide](integration-guide.md) for wiring patterns and the
-[API reference](api-reference.md) for the full proposed surface.
+[API reference](api-reference.md) for the full proposed surface. The maintained
+[`examples/embed`](../../examples/embed/) reference integration proves these calls outside
+the standalone proxy without claiming an external gateway integration.
