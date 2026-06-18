@@ -96,6 +96,71 @@ func TestMaskRestoreMixed(t *testing.T) {
 	}
 }
 
+func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
+	e := newTestEngine(t)
+	cases := []struct {
+		name      string
+		text      string
+		plaintext string
+		wantKeep  string
+	}{
+		{
+			name:      "connection string masks only password",
+			text:      "dsn postgres://admin:hunter2@db.example.com/prod",
+			plaintext: "hunter2",
+			wantKeep:  "postgres://admin:",
+		},
+		{
+			name:      "openai key beats generic assignment",
+			text:      "OPENAI_API_KEY=sk-abcdefghijklmnopqrstuvwxyz12345",
+			plaintext: "sk-abcdefghijklmnopqrstuvwxyz12345",
+		},
+		{
+			name:      "anthropic v3 overlaps generic anthropic key",
+			text:      "ANTHROPIC_API_KEY=sk-ant-api03-" + strings.Repeat("A", 80) + "AA",
+			plaintext: "sk-ant-api03-" + strings.Repeat("A", 80) + "AA",
+		},
+		{
+			name:      "jwt overlaps bearer token",
+			text:      "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+			plaintext: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+		},
+		{
+			name:      "uppercase underscore assignment value",
+			text:      "password=PROD_DB_BACKUP_TOKEN_ABC123XYZ789",
+			plaintext: "PROD_DB_BACKUP_TOKEN_ABC123XYZ789",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			masked, st, err := e.Mask(ctx, opencloak.Scope{}, tc.text)
+			if err != nil {
+				t.Fatalf("Mask: %v", err)
+			}
+			if strings.Contains(masked, tc.plaintext) {
+				t.Fatalf("plaintext secret was not masked: %q", masked)
+			}
+			if got := strings.Count(masked, "CLK_SECRET_"); got != 1 {
+				t.Fatalf("CLK_SECRET_ count = %d, want 1 in %q", got, masked)
+			}
+			if strings.Contains(masked, "CLK_URL_") {
+				t.Fatalf("URL overlap won over secret span: %q", masked)
+			}
+			if tc.wantKeep != "" && !strings.Contains(masked, tc.wantKeep) {
+				t.Fatalf("expected non-secret context %q to remain in %q", tc.wantKeep, masked)
+			}
+			restored, err := e.Restore(ctx, st, masked)
+			if err != nil {
+				t.Fatalf("Restore: %v", err)
+			}
+			if restored != tc.text {
+				t.Fatalf("round-trip failed:\n  original: %q\n  restored: %q", tc.text, restored)
+			}
+		})
+	}
+}
+
 func TestMaskRestoreIPv4(t *testing.T) {
 	e := newTestEngine(t)
 	text := "server at 10.0.0.1 is down"

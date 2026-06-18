@@ -12,7 +12,7 @@ Fast, deterministic, no model. Catches data with **structure**.
 
 | Technique | Catches |
 |---|---|
-| Built-in regex rules (gitleaks-style) | API keys, provider tokens, private keys |
+| Built-in starter regex rules | API keys, provider tokens, private keys |
 | Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key` |
 | Checksums (e.g. Luhn) | Credit-card numbers, validated identifiers |
 | Structured patterns | Emails, phones, IPv4/IPv6, connection strings, URLs |
@@ -33,6 +33,9 @@ high-entropy strings are not flagged; strict bare high-entropy fallback is Phase
   forms are left untouched. Context-aware IPv6 is Phase 1.
 - **ACCT** covers checksum-validated **IBAN** (ISO 13616 mod-97) only; other account-number
   formats are Phase 1.
+- **PHONE** covers common NANP/US-style numbers in Phase 0. Country-aware international
+  parsing is Phase 1 because it needs locale policy and a richer numbering library rather
+  than one broad regex.
 - **DATE** is detected but **ignored by the default policy** — most dates are not sensitive and
   masking them all hurts model utility. A caller/Cloakia policy can opt in per type (the same
   way `PERSON`/`ADDR` are off by default).
