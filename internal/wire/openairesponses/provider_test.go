@@ -3,6 +3,7 @@ package openairesponses_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -47,6 +48,7 @@ func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {
 	body := []byte(`{
 		"model":"gpt-5.4",
 		"instructions":"Use key ` + awsKey + ` only locally.",
+		"prompt":{"id":"pmpt_123","variables":{"contact":"` + email + `"}},
 		"input":[
 			{"type":"message","role":"user","content":[{"type":"input_text","text":"email ` + email + `"}]},
 			{"type":"function_call_output","call_id":"call_1","output":"database ` + dsn + `"},
@@ -73,6 +75,49 @@ func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {
 	}
 	if !bytes.Contains(masked, []byte(`static `+awsKey+` must stay`)) {
 		t.Fatalf("static tools definition was altered: %s", masked)
+	}
+	if !bytes.Contains(masked, []byte(`"id":"pmpt_123"`)) {
+		t.Fatalf("prompt id should stay unchanged: %s", masked)
+	}
+}
+
+func TestPromptVariableBackslashKeyMasksInPlace(t *testing.T) {
+	e := newTestEngine(t)
+	const key = `a\b`
+	body, err := json.Marshal(map[string]any{
+		"prompt": map[string]any{
+			"id": "pmpt_123",
+			"variables": map[string]string{
+				key: email,
+			},
+		},
+		"input": "hello",
+	})
+	if err != nil {
+		t.Fatalf("json marshal: %v", err)
+	}
+
+	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", body)
+	if err != nil {
+		t.Fatalf("MaskRequest: %v", err)
+	}
+	if bytes.Contains(masked, []byte(email)) {
+		t.Fatalf("prompt variable plaintext leaked: %s", masked)
+	}
+	var decoded struct {
+		Prompt struct {
+			Variables map[string]string `json:"variables"`
+		} `json:"prompt"`
+	}
+	if err := json.Unmarshal(masked, &decoded); err != nil {
+		t.Fatalf("masked JSON invalid: %v; body=%s", err, masked)
+	}
+	if len(decoded.Prompt.Variables) != 1 {
+		t.Fatalf("expected one prompt variable, got %#v in %s", decoded.Prompt.Variables, masked)
+	}
+	got := decoded.Prompt.Variables[key]
+	if !tokenRe.MatchString(got) {
+		t.Fatalf("prompt variable %q not masked in place: %#v", key, decoded.Prompt.Variables)
 	}
 }
 
@@ -144,6 +189,22 @@ func TestUnsupportedResponsesPlaintextFieldShapesFailClosed(t *testing.T) {
 		{
 			name: "array custom tool input",
 			body: `{"input":[{"type":"custom_tool_call","call_id":"call_1","input":["` + dsn + `"]}]}`,
+		},
+		{
+			name: "object prompt variable",
+			body: `{"prompt":{"id":"pmpt_123","variables":{"image":{"type":"input_image","image_url":"https://example.com/?token=` + awsKey + `"}}},"input":"hello"}`,
+		},
+		{
+			name: "array prompt variables",
+			body: `{"prompt":{"id":"pmpt_123","variables":["` + email + `"]},"input":"hello"}`,
+		},
+		{
+			name: "input image block",
+			body: `{"input":[{"type":"message","role":"user","content":[{"type":"input_image","image_url":"https://example.com/private.png?token=` + awsKey + `"}]}]}`,
+		},
+		{
+			name: "input file block",
+			body: `{"input":[{"type":"message","role":"user","content":[{"type":"input_file","file_id":"file_secret_reference"}]}]}`,
 		},
 	}
 

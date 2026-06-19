@@ -452,6 +452,16 @@ func TestProviderSecretRulesPositive(t *testing.T) {
 			source: "l1:gitlab-pat",
 		},
 		{
+			name:   "gitlab pat in trace id field",
+			text:   "trace_id=glpat-1234567890abcdef1234",
+			source: "l1:gitlab-pat",
+		},
+		{
+			name:   "github pat in request id field",
+			text:   "request_id=ghp_" + strings.Repeat("A", 36),
+			source: "l1:github-pat",
+		},
+		{
 			name:   "gitlab runner token",
 			text:   "GITLAB_RUNNER_TOKEN=glrt-" + strings.Repeat("A", 20),
 			source: "l1:gitlab-token",
@@ -522,6 +532,11 @@ func TestProviderSecretRulesPositive(t *testing.T) {
 			source: "l1:aws-secret-access-key",
 		},
 		{
+			name:   "dash aws secret access key",
+			text:   "Secret-Access-Key: wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
+			source: "l1:aws-secret-access-key",
+		},
+		{
 			name:   "aws session token",
 			text:   "AWS_SESSION_TOKEN=FwoGZXIvYXdzEJr//////////wEaDEaK1ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyzABCD",
 			source: "l1:aws-session-token",
@@ -556,6 +571,24 @@ func TestProviderSecretRulesPositive(t *testing.T) {
 			}
 			if !hasSource(findings, tc.source) {
 				t.Fatalf("expected %s finding in %q; got %+v", tc.source, tc.text, findings)
+			}
+		})
+	}
+}
+
+func TestSecretReviewRegressionDetections(t *testing.T) {
+	cases := []string{
+		"webhook_secret=4f3c2b1a9e8d7c6b5a4f3c2b1a9e8d7c",
+	}
+
+	for _, text := range cases {
+		t.Run(text, func(t *testing.T) {
+			findings, err := det.Detect(ctx, text)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !hasType(findings, types.TypeSecret) {
+				t.Fatalf("expected SECRET finding in %q; got %+v", text, findings)
 			}
 		})
 	}
@@ -629,6 +662,10 @@ func TestSecretSuppressorsNegative(t *testing.T) {
 		{
 			name: "cloudflare broad context hex not migrated",
 			text: "cloudflare_api_key=" + strings.Repeat("a", 40),
+		},
+		{
+			name: "process env secret reference",
+			text: "const keyRef = process.env.API_KEY",
 		},
 		{
 			name: "digitalocean invalid hex",
@@ -770,6 +807,45 @@ func TestLuhnValid(t *testing.T) {
 	for _, c := range cases {
 		if got := luhnValid(c.digits); got != c.valid {
 			t.Errorf("luhnValid(%q) = %v, want %v", c.digits, got, c.valid)
+		}
+	}
+}
+
+// TestGenericSecretRuleDoesNotMaskCodeReferences locks the fix for over-masking
+// code identifiers on the generic-assignment path: a dotted property path
+// (process.env.API_KEY) or a value immediately followed by '(' (a function call
+// like parseToken()) is source code, not a credential, and masking it would
+// corrupt the code a coding agent sends to the model. The companion leak cases
+// (a real secret in the same assignment shape) must still be detected.
+func TestGenericSecretRuleDoesNotMaskCodeReferences(t *testing.T) {
+	codeRefs := []string{
+		"const token = parseToken(req.headers.authorization)",
+		"api_key: process.env.API_KEY",
+		"secret = config.get('db')",
+		"password = os.environ.SECRET",
+	}
+	for _, src := range codeRefs {
+		findings, err := det.Detect(ctx, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, f := range findings {
+			if f.Type == types.TypeSecret {
+				t.Errorf("over-mask: %q masked code reference %q as SECRET", src, src[f.Start:f.End])
+			}
+		}
+	}
+	// Real secrets in the same assignment shape must still be masked (no FN regression).
+	for _, src := range []string{
+		"api_key = ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+		"webhook_secret = 4f3c2b1a9e8d7c6b5a4f3e2d1c0b9a8f",
+	} {
+		findings, err := det.Detect(ctx, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !hasType(findings, types.TypeSecret) {
+			t.Errorf("regression: real secret in %q not detected", src)
 		}
 	}
 }

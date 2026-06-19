@@ -66,6 +66,62 @@ func TestLoadProviderRejectsEmptyDefaultOperator(t *testing.T) {
 	assertInvalidPolicy(t, `{"default_operator":""}`, "default_operator must be one of")
 }
 
+func TestLoadProviderRejectsAllIgnorePolicy(t *testing.T) {
+	assertInvalidPolicy(t, `{"default_operator":"ignore"}`, "ignores every supported sensitive type")
+}
+
+func TestLoadProviderRejectsAllEffectiveTypesIgnored(t *testing.T) {
+	assertInvalidPolicy(t, `{
+		"default_operator": "ignore",
+		"types": {
+			"SECRET": {"operator": "ignore"},
+			"EMAIL": {"operator": "ignore"}
+		}
+	}`, "ignores every supported sensitive type")
+}
+
+func TestLoadProviderRejectsAllSupportedTypesIgnoredUnderTokenDefault(t *testing.T) {
+	assertInvalidPolicy(t, `{
+		"default_operator": "token",
+		"types": {
+			"SECRET": {"operator": "ignore"},
+			"EMAIL": {"operator": "ignore"},
+			"PHONE": {"operator": "ignore"},
+			"IPV4": {"operator": "ignore"},
+			"IPV6": {"operator": "ignore"},
+			"CARD": {"operator": "ignore"},
+			"ACCT": {"operator": "ignore"},
+			"URL": {"operator": "ignore"},
+			"DATE": {"operator": "ignore"},
+			"PERSON": {"operator": "ignore"},
+			"ADDR": {"operator": "ignore"}
+		}
+	}`, "ignores every supported sensitive type")
+}
+
+func TestLoadProviderAllowsDefaultIgnoreWithExplicitMaskingCoverage(t *testing.T) {
+	path := writePolicy(t, `{
+		"default_operator": "ignore",
+		"types": {
+			"SECRET": {"operator": "block"}
+		}
+	}`)
+	provider, _, err := LoadProvider(LoadOptions{Path: path})
+	if err != nil {
+		t.Fatalf("LoadProvider returned error: %v", err)
+	}
+	policy, err := provider.Policy(context.Background(), types.Scope{})
+	if err != nil {
+		t.Fatalf("Policy returned error: %v", err)
+	}
+	if policy.DefaultOperator != types.OperatorIgnore {
+		t.Fatalf("DefaultOperator = %q", policy.DefaultOperator)
+	}
+	if got := policy.Types[types.TypeSecret].Operator; got != types.OperatorBlock {
+		t.Fatalf("SECRET operator = %q", got)
+	}
+}
+
 func TestLoadProviderPathPrecedence(t *testing.T) {
 	flagPath := writePolicy(t, `{"types":{"EMAIL":{"operator":"ignore"}}}`)
 	envPath := writePolicy(t, `{"types":{"EMAIL":{"operator":"block"}}}`)

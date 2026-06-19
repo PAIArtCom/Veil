@@ -3,6 +3,7 @@ package anthropic_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -179,6 +180,57 @@ func TestExtractMessageBlockContent(t *testing.T) {
 	// tool_use id and name must be preserved (not user content)
 	if !bytes.Contains(masked, []byte(`"id":"tu_1"`)) {
 		t.Fatalf("tool_use id altered: %s", masked)
+	}
+}
+
+func TestToolUseInputBackslashKeyMasksInPlace(t *testing.T) {
+	e := newTestEngine(t)
+	const key = `a\b`
+	body, err := json.Marshal(map[string]any{
+		"model":      "claude-opus-4-5",
+		"max_tokens": 1024,
+		"messages": []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type":  "tool_use",
+						"id":    "tu_1",
+						"name":  "connect",
+						"input": map[string]string{key: "AKIAIOSFODNN7EXAMPLE"},
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("json marshal: %v", err)
+	}
+
+	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	if err != nil {
+		t.Fatalf("MaskRequest: %v", err)
+	}
+	if bytes.Contains(masked, []byte("AKIAIOSFODNN7EXAMPLE")) {
+		t.Fatalf("tool_use input plaintext leaked: %s", masked)
+	}
+	var decoded struct {
+		Messages []struct {
+			Content []struct {
+				Input map[string]string `json:"input"`
+			} `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(masked, &decoded); err != nil {
+		t.Fatalf("masked JSON invalid: %v; body=%s", err, masked)
+	}
+	input := decoded.Messages[0].Content[0].Input
+	if len(input) != 1 {
+		t.Fatalf("expected one tool input field, got %#v in %s", input, masked)
+	}
+	got := input[key]
+	if !tokenRe.MatchString(got) {
+		t.Fatalf("tool input %q not masked in place: %#v", key, input)
 	}
 }
 

@@ -25,6 +25,7 @@ operation only.
 The provider masks:
 
 - top-level `instructions`;
+- string values in `prompt.variables`;
 - message `input_text` / text content;
 - `function_call_output.output` tool results;
 - agentic call argument/input/code fields when they appear in provider-bound input.
@@ -37,9 +38,11 @@ The provider restores:
 - streaming tool argument/input/code deltas by buffering complete argument text and
   emitting a restored synthetic delta before the corresponding done event.
 
-Static `tools` definitions, model fields, cache keys, `client_metadata`, and provider
-control fields are not masked in v0.1.0. Unknown plaintext-bearing request item shapes
-fail closed instead of forwarding the request unchanged.
+Static `tools` definitions, prompt ids, model fields, cache keys, `client_metadata`, and
+provider control fields are not masked in v0.1.0. Unknown plaintext-bearing request item
+shapes fail closed instead of forwarding the request unchanged. `input_image`,
+`input_file`, and non-string prompt variables fail closed until v0.1.0 has explicit
+file/image payload handling.
 
 The standalone proxy routes `POST /v1/responses` and `POST /responses` to this provider
 while preserving `POST /v1/messages` for Anthropic Messages. This ADR does not add OpenAI

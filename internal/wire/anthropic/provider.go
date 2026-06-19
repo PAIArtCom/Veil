@@ -336,9 +336,11 @@ func extractStringLeaves(val gjson.Result, path string, role string, spans *[]wi
 
 // sjsonEscapeKey escapes special characters in an object key so sjson treats
 // it as a literal path component rather than a nested path.
-// sjson uses '.' as a separator and ':' as array modifier. We escape them with
-// a backslash. See https://github.com/tidwall/sjson#path-syntax.
+// sjson uses '\' as an escape marker, '.' as a separator, and ':' as array
+// modifier. We escape them with a backslash. See
+// https://github.com/tidwall/sjson#path-syntax.
 func sjsonEscapeKey(key string) string {
+	key = strings.ReplaceAll(key, `\`, `\\`)
 	key = strings.ReplaceAll(key, ".", `\.`)
 	key = strings.ReplaceAll(key, "|", `\|`)
 	key = strings.ReplaceAll(key, ":", `\:`)

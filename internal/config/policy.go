@@ -173,6 +173,9 @@ func parsePolicy(data []byte) (types.Policy, error) {
 	if len(policy.Types) == 0 {
 		policy.Types = nil
 	}
+	if !hasMaskingCoverage(policy) {
+		return types.Policy{}, errors.New("policy ignores every supported sensitive type")
+	}
 	return policy, nil
 }
 
@@ -193,13 +196,40 @@ func parseOperator(field, raw string) (types.TransformOperator, error) {
 
 func parseType(raw string) (types.Type, error) {
 	typ := types.Type(raw)
-	switch typ {
-	case types.TypeSecret, types.TypeEmail, types.TypePhone, types.TypeIPv4, types.TypeIPv6,
-		types.TypeCard, types.TypeAcct, types.TypeURL, types.TypeDate, types.TypePerson, types.TypeAddr:
-		return typ, nil
-	default:
-		return "", fmt.Errorf("unsupported sensitive type %q", raw)
+	for _, supported := range supportedTypes {
+		if typ == supported {
+			return typ, nil
+		}
 	}
+	return "", fmt.Errorf("unsupported sensitive type %q", raw)
+}
+
+var supportedTypes = []types.Type{
+	types.TypeSecret,
+	types.TypeEmail,
+	types.TypePhone,
+	types.TypeIPv4,
+	types.TypeIPv6,
+	types.TypeCard,
+	types.TypeAcct,
+	types.TypeURL,
+	types.TypeDate,
+	types.TypePerson,
+	types.TypeAddr,
+}
+
+func hasMaskingCoverage(policy types.Policy) bool {
+	for _, typ := range supportedTypes {
+		op := policy.DefaultOperator
+		if tp, ok := policy.Types[typ]; ok && tp.Operator != "" {
+			op = tp.Operator
+		}
+		switch op {
+		case "", types.OperatorToken, types.OperatorBlock:
+			return true
+		}
+	}
+	return false
 }
 
 func clonePolicy(policy types.Policy) types.Policy {

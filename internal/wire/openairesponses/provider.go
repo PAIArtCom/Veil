@@ -52,6 +52,9 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 	if err := appendOptionalStringSpan(gjson.GetBytes(body, "instructions"), "instructions", "system", &spans); err != nil {
 		return nil, err
 	}
+	if err := extractPromptVariables(gjson.GetBytes(body, "prompt"), &spans); err != nil {
+		return nil, err
+	}
 
 	input := gjson.GetBytes(body, "input")
 	switch input.Type {
@@ -77,6 +80,35 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 		return nil, fmt.Errorf("openai-responses: unsupported input shape %q", input.Type.String())
 	}
 	return spans, nil
+}
+
+func extractPromptVariables(prompt gjson.Result, spans *[]wire.TextSpan) error {
+	if !prompt.Exists() || prompt.Type == gjson.Null {
+		return nil
+	}
+	if prompt.Type != gjson.JSON || !isJSONObject(prompt) {
+		return fmt.Errorf("openai-responses: unsupported prompt shape")
+	}
+	variables := prompt.Get("variables")
+	if !variables.Exists() || variables.Type == gjson.Null {
+		return nil
+	}
+	if variables.Type != gjson.JSON || !isJSONObject(variables) {
+		return fmt.Errorf("openai-responses: unsupported prompt.variables shape")
+	}
+	var walkErr error
+	variables.ForEach(func(k, val gjson.Result) bool {
+		path := "prompt.variables." + sjsonEscapeKey(k.Str)
+		switch val.Type {
+		case gjson.String:
+			walkErr = appendOptionalStringSpan(val, path, "user", spans)
+		case gjson.Null:
+		default:
+			walkErr = fmt.Errorf("openai-responses: unsupported prompt variable value at %s", path)
+		}
+		return walkErr == nil
+	})
+	return walkErr
 }
 
 func extractInputItem(item gjson.Result, path string, spans *[]wire.TextSpan) error {
@@ -123,7 +155,8 @@ func extractMessageContent(content gjson.Result, path, role string, spans *[]wir
 			case "refusal":
 				walkErr = appendOptionalStringSpan(block.Get("refusal"), blockPath+".refusal", role, spans)
 			case "input_image", "input_file":
-				// Binary/file references are not text payloads for v0.1.0.
+				walkErr = fmt.Errorf("openai-responses: unsupported message content block type %q at %s", block.Get("type").Str, blockPath)
+				return false
 			default:
 				walkErr = fmt.Errorf("openai-responses: unsupported message content block type %q at %s", block.Get("type").Str, blockPath)
 				return false
@@ -149,6 +182,11 @@ func appendOptionalStringSpan(val gjson.Result, path, role string, spans *[]wire
 		*spans = append(*spans, wire.TextSpan{Path: path, Text: val.Str, Role: role})
 	}
 	return nil
+}
+
+func isJSONObject(val gjson.Result) bool {
+	raw := strings.TrimSpace(val.Raw)
+	return strings.HasPrefix(raw, "{")
 }
 
 // ApplyRequest sets masked spans back into the request JSON.
@@ -297,6 +335,7 @@ func restoreStringAt(body []byte, path string, restore wire.RestoreFunc) ([]byte
 }
 
 func sjsonEscapeKey(key string) string {
+	key = strings.ReplaceAll(key, `\`, `\\`)
 	key = strings.ReplaceAll(key, ".", `\.`)
 	key = strings.ReplaceAll(key, "|", `\|`)
 	key = strings.ReplaceAll(key, ":", `\:`)

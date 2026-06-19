@@ -13,10 +13,11 @@ agentic tool-call arguments before the trusted local Codex side consumes them.
 ## Principles
 
 - MUST: Support only the Responses operation; OpenAI Chat Completions is out of scope.
-- MUST: Mask `instructions`, message text content, function-call arguments, and function-call/tool output fields that can carry local values.
+- MUST: Mask `instructions`, prompt string variables, message text content, function-call arguments, and function-call/tool output fields that can carry local values.
 - MUST: Skip static `tools` definitions, `client_metadata`, cache keys, model names, and provider control fields.
 - MUST: Restore buffered and streaming output text, function-call arguments, MCP/custom tool arguments, and code-interpreter code fields.
 - MUST: Fail closed on malformed JSON and unsupported plaintext-bearing input item shapes.
+- MUST: Fail closed on `input_image`, `input_file`, and non-string prompt variables until v0.1.0 has explicit file/image payload handling.
 - SHOULD: Base fixtures on sanitized Codex CLI/OpenAI Responses shapes, not raw provider captures.
 
 ## Boundaries
@@ -28,6 +29,8 @@ agentic tool-call arguments before the trusted local Codex side consumes them.
 ## Adversarial Surfaces
 
 - **Codex request drift**: Codex can add new Responses input item types; unknown plaintext-bearing request items must fail before provider egress. Verified by: provider_test.go.
+- **Prompt variable leakage**: Stored-prompt variables can carry local user or tool data even when the prompt id itself is provider control metadata. String variables are masked and non-string variables fail closed. Verified by: provider_test.go.
+- **File/image payload references**: `input_image` and `input_file` blocks can carry signed URLs, file ids, or inline payloads that v0.1.0 does not parse. These blocks fail closed before provider egress. Verified by: provider_test.go.
 - **Tool-result leakage**: `function_call_output.output` can contain local file or shell data and must be masked on the next provider-bound request. Verified by: provider_test.go.
 - **Streaming tool arguments**: `response.function_call_arguments.delta` and related delta streams can split `CLK_` tokens across events; arguments are buffered and restored before local tool execution sees them. Verified by: stream_test.go.
 - **Static tool schema integrity**: `tools` entries may contain example-looking strings but are static provider instructions and must not be masked. Verified by: provider_test.go.

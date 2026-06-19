@@ -622,7 +622,7 @@ func buildRules() []rule {
 			source:       "l1:aws-secret-access-key",
 			score:        0.95,
 			re:           regexp.MustCompile(`(?i)\b(?:aws_)?secret[_\s-]?access[_\s-]?key\b\s*(?:[:=]|=>)\s*['"]?([A-Za-z0-9/+=]{40})`),
-			keywords:     []string{"secret_access_key", "secret access key", "aws_secret", "aws-secret"},
+			keywords:     []string{"secret_access_key", "secret access key", "secret-access-key", "aws_secret", "aws-secret"},
 			group:        1,
 			validateSpan: validSecretSpan,
 		},
@@ -634,7 +634,7 @@ func buildRules() []rule {
 			source:       "l1:aws-session-token",
 			score:        0.95,
 			re:           regexp.MustCompile(`(?i)\b(?:aws_)?session[_\s-]?token\b\s*(?:[:=]|=>)\s*['"]?([A-Za-z0-9/+=]{80,})`),
-			keywords:     []string{"session_token", "session token", "aws_session", "aws-session"},
+			keywords:     []string{"session_token", "session token", "session-token", "aws_session", "aws-session"},
 			group:        1,
 			validateSpan: validSecretSpan,
 		},
@@ -658,7 +658,7 @@ func buildRules() []rule {
 			typ: types.TypeSecret, source: "l1:secret-assignment", score: 0.80,
 			re: regexp.MustCompile(`(?i)\b(?:api[_\s-]?key|secret|token|password|passwd|pwd|credential|authorization)\b\s*(?:[:=]|=>)\s*['"]?([A-Za-z0-9][A-Za-z0-9._~+/=\-]{7,})`),
 			keywords: []string{
-				"api_key", "api-key", "apikey", "secret", "token", "password",
+				"api_key", "api-key", "api key", "apikey", "secret", "token", "password",
 				"passwd", "pwd", "credential", "authorization",
 			},
 			group: 1,
@@ -668,7 +668,7 @@ func buildRules() []rule {
 				}
 				return true
 			},
-			validateSpan: validSecretSpan,
+			validateSpan: validGenericSecretSpan,
 		},
 
 		// PEM private key header
@@ -698,6 +698,7 @@ var (
 	hexOnlyRe     = regexp.MustCompile(`^[0-9a-fA-F]+$`)
 	hostPrefixRe  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z0-9-]+:`)
 	constIdentRe  = regexp.MustCompile(`^[A-Z][A-Z0-9_]{2,}$`)
+	codeRefRe     = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$`)
 )
 
 var placeholderFragments = []string{
@@ -719,17 +720,44 @@ func validSecretSpan(text string, start, end int) bool {
 		return false
 	}
 	if isLikelyPlaceholder(cand) || isTemplateVar(cand) || isPublicToken(cand) ||
-		isUUID(cand) || isHexHash(cand) || hasJSONNoise(cand) {
+		isUUID(cand) || hasJSONNoise(cand) {
 		return false
 	}
-	if looksLikeURLMatch(cand) || isBusinessIDContext(text, start) {
+	if looksLikeURLMatch(cand) {
+		return false
+	}
+	return true
+}
+
+func validGenericSecretSpan(text string, start, end int) bool {
+	if !validSecretSpan(text, start, end) {
+		return false
+	}
+	cand := strings.TrimSpace(text[start:end])
+	if isHexHash(cand) && !isStrongSecretAssignmentContext(text, start) {
+		return false
+	}
+	if isBusinessIDContext(text, start) {
+		return false
+	}
+	// Code references are not literal credentials; masking them corrupts the
+	// source code coding agents send (the model then sees a CLK_ token in place
+	// of an identifier). A dotted identifier path (process.env.API_KEY) or a value
+	// immediately followed by '(' (a function call such as parseToken()) is code,
+	// not a secret. This mirrors the suppression already applied on the entropy
+	// path (validEntropySecretSpan). Hex/base64 secrets never match either shape,
+	// so the leak fixes above are unaffected.
+	if isCodeReference(cand) {
+		return false
+	}
+	if end < len(text) && text[end] == '(' {
 		return false
 	}
 	return true
 }
 
 func validEntropySecretSpan(text string, start, end int) bool {
-	if !validSecretSpan(text, start, end) {
+	if !validGenericSecretSpan(text, start, end) {
 		return false
 	}
 	if isURLOrPathBoundary(text, start, end) {
@@ -739,6 +767,9 @@ func validEntropySecretSpan(text string, start, end int) bool {
 		return false
 	}
 	if isConstantIdentifier(text[start:end]) {
+		return false
+	}
+	if isCodeReference(text[start:end]) {
 		return false
 	}
 	return true
@@ -788,6 +819,10 @@ func isPublicToken(s string) bool {
 
 func isConstantIdentifier(s string) bool {
 	return strings.Contains(s, "_") && constIdentRe.MatchString(s)
+}
+
+func isCodeReference(s string) bool {
+	return codeRefRe.MatchString(s)
 }
 
 func isTemplateVar(s string) bool {
@@ -923,16 +958,7 @@ func isURLOrPathBoundary(text string, start, end int) bool {
 }
 
 func isBusinessIDContext(text string, valueStart int) bool {
-	lo := valueStart - 80
-	if lo < 0 {
-		lo = 0
-	}
-	prefix := text[lo:valueStart]
-	eq := strings.LastIndexAny(prefix, "=:")
-	if eq < 0 {
-		return false
-	}
-	name := strings.ToLower(strings.Trim(prefix[:eq], " \t\r\n\"'`{}[],"))
+	name := assignmentNameBeforeValue(text, valueStart)
 	if name == "" {
 		return false
 	}
@@ -947,4 +973,31 @@ func isBusinessIDContext(text string, valueStart int) bool {
 		}
 	}
 	return false
+}
+
+func isStrongSecretAssignmentContext(text string, valueStart int) bool {
+	name := assignmentNameBeforeValue(text, valueStart)
+	if name == "" {
+		return false
+	}
+	for _, sensitive := range []string{"secret", "password", "passwd", "pwd", "credential", "authorization"} {
+		if strings.Contains(name, sensitive) {
+			return true
+		}
+	}
+	return false
+}
+
+func assignmentNameBeforeValue(text string, valueStart int) string {
+	lo := valueStart - 80
+	if lo < 0 {
+		lo = 0
+	}
+	prefix := text[lo:valueStart]
+	eq := strings.LastIndexAny(prefix, "=:")
+	if eq < 0 {
+		return ""
+	}
+	name := strings.ToLower(strings.Trim(prefix[:eq], " \t\r\n\"'`{}[],"))
+	return name
 }
