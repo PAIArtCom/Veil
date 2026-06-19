@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -33,6 +34,17 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 }
 
 var ctx = context.Background()
+
+var engineTokenRe = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+
+func extractEngineToken(t *testing.T, text string) string {
+	t.Helper()
+	tok := engineTokenRe.FindString(text)
+	if tok == "" {
+		t.Fatalf("no OpenCloak token found in %q", text)
+	}
+	return tok
+}
 
 // ---- Round-trip tests ----
 
@@ -216,6 +228,196 @@ func TestTokenDeterministicAcrossCalls(t *testing.T) {
 	}
 	if masked1 != masked2 {
 		t.Fatalf("Mask not deterministic:\n  call1: %q\n  call2: %q", masked1, masked2)
+	}
+}
+
+func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
+	e := newTestEngine(t)
+	scope := opencloak.Scope{Session: "second-turn"}
+
+	firstMasked, firstState, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
+	if err != nil {
+		t.Fatalf("initial Mask: %v", err)
+	}
+	existing := extractEngineToken(t, firstMasked)
+
+	cases := []string{
+		"plain residual " + existing,
+		"token=" + existing,
+		"secret=" + existing,
+		"Authorization: Bearer " + existing,
+		"token=CLK_SECRET_001122334455",
+	}
+	for _, text := range cases {
+		t.Run(text, func(t *testing.T) {
+			masked, _, err := e.Mask(ctx, scope, text)
+			if err != nil {
+				t.Fatalf("Mask: %v", err)
+			}
+			if masked != text {
+				t.Fatalf("existing OpenCloak token must not be remasked:\n input: %q\n   got: %q", text, masked)
+			}
+		})
+	}
+
+	restored, err := e.Restore(ctx, firstState, "tool arg "+existing)
+	if err != nil {
+		t.Fatalf("Restore known token: %v", err)
+	}
+	if strings.Contains(restored, existing) || !strings.Contains(restored, "AKIAIOSFODNN7EXAMPLE") {
+		t.Fatalf("known token should remain restorable after idempotent remask guard: %q", restored)
+	}
+}
+
+func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
+	e := newTestEngine(t)
+	scope := opencloak.Scope{Session: "mixed-second-turn"}
+
+	firstMasked, _, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
+	if err != nil {
+		t.Fatalf("initial Mask: %v", err)
+	}
+	existing := extractEngineToken(t, firstMasked)
+
+	const newSecret = "sk-abcdefghijklmnopqrstuvwxyz12345"
+	cases := []struct {
+		name string
+		text string
+	}{
+		{
+			name: "separate",
+			text: "old " + existing + " new OPENAI_API_KEY=" + newSecret,
+		},
+		{
+			name: "new secret immediately after token",
+			text: existing + newSecret,
+		},
+		{
+			name: "new secret immediately before token",
+			text: newSecret + existing,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			masked, st, err := e.Mask(ctx, scope, tc.text)
+			if err != nil {
+				t.Fatalf("Mask: %v", err)
+			}
+			if !strings.Contains(masked, existing) {
+				t.Fatalf("existing OpenCloak token should survive unchanged: %q", masked)
+			}
+			if strings.Contains(masked, newSecret) {
+				t.Fatalf("new real secret was not masked: %q", masked)
+			}
+			if got := strings.Count(masked, "CLK_SECRET_"); got < 2 {
+				t.Fatalf("want existing token plus new secret token, got %d in %q", got, masked)
+			}
+
+			restored, err := e.Restore(ctx, st, masked)
+			if err != nil {
+				t.Fatalf("Restore: %v", err)
+			}
+			if !strings.Contains(restored, "AKIAIOSFODNN7EXAMPLE") || !strings.Contains(restored, newSecret) {
+				t.Fatalf("both existing and new tokens should restore in scope: %q", restored)
+			}
+		})
+	}
+}
+
+func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
+	const existing = "CLK_SECRET_001122334455"
+	text := "token=" + existing
+	start := strings.Index(text, existing)
+	if start < 0 {
+		t.Fatal("test fixture missing token")
+	}
+	syn := &syntheticDetector{findings: []opencloak.Finding{
+		{Start: start, End: start + len(existing), Type: opencloak.TypeSecret, Score: 1.0, Source: "test:external"},
+	}}
+
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i + 1)
+	}
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "key")
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		t.Fatalf("write test key: %v", err)
+	}
+
+	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath, Detector: syn})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if masked != text {
+		t.Fatalf("external detector must not remask OpenCloak token:\n input: %q\n   got: %q", text, masked)
+	}
+}
+
+func TestExternalDetectorBroadSpanPreservesOpenCloakTokenAndMasksRemainder(t *testing.T) {
+	const existing = "CLK_SECRET_001122334455"
+	const newSecret = "NEW_SECRET_VALUE_123456789"
+	text := "prefix " + existing + " suffix " + newSecret
+	syn := &syntheticDetector{findings: []opencloak.Finding{
+		{Start: 0, End: len(text), Type: opencloak.TypeSecret, Score: 1.0, Source: "test:external:broad"},
+	}}
+
+	key := make([]byte, 32)
+	for i := range key {
+		key[i] = byte(i + 1)
+	}
+	dir := t.TempDir()
+	keyPath := filepath.Join(dir, "key")
+	if err := os.WriteFile(keyPath, key, 0600); err != nil {
+		t.Fatalf("write test key: %v", err)
+	}
+
+	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath, Detector: syn})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if !strings.Contains(masked, existing) {
+		t.Fatalf("existing OpenCloak token must be preserved inside broad external finding: %q", masked)
+	}
+	if strings.Contains(masked, newSecret) {
+		t.Fatalf("non-token part of broad external finding should still be masked: %q", masked)
+	}
+}
+
+func TestMaskRequestExistingOpenCloakTokensIdempotent(t *testing.T) {
+	e := newTestEngine(t)
+	scope := opencloak.Scope{Session: "wire-second-turn"}
+
+	firstBody := []byte(`{"model":"m","max_tokens":8,"messages":[{"role":"user","content":"api_key: AKIAIOSFODNN7EXAMPLE"}]}`)
+	firstMasked, _, err := e.MaskRequest(ctx, scope, "anthropic", "messages", firstBody)
+	if err != nil {
+		t.Fatalf("initial MaskRequest: %v", err)
+	}
+	existing := extractEngineToken(t, string(firstMasked))
+
+	const newSecret = "sk-abcdefghijklmnopqrstuvwxyz12345"
+	body := []byte(`{"model":"m","max_tokens":8,"messages":[{"role":"user","content":"token=` + existing + ` Authorization: Bearer ` + existing + ` new OPENAI_API_KEY=` + newSecret + `"}]}`)
+	masked, _, err := e.MaskRequest(ctx, scope, "anthropic", "messages", body)
+	if err != nil {
+		t.Fatalf("MaskRequest: %v", err)
+	}
+	got := string(masked)
+	if strings.Count(got, existing) != 2 {
+		t.Fatalf("existing OpenCloak token should survive both wire occurrences unchanged: %s", masked)
+	}
+	if strings.Contains(got, newSecret) {
+		t.Fatalf("new real secret was not masked in provider field: %s", masked)
+	}
+	if gotCount := strings.Count(got, "CLK_SECRET_"); gotCount < 3 {
+		t.Fatalf("want two existing token occurrences plus one new token, got %d in %s", gotCount, masked)
 	}
 }
 

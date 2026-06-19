@@ -156,6 +156,93 @@ func ignoredByPolicy(policy types.Policy) func(types.Finding) bool {
 	}
 }
 
+type byteSpan struct {
+	start int
+	end   int
+}
+
+func existingTokenSpans(text string) []byteSpan {
+	locs := tokenRe.FindAllStringIndex(text, -1)
+	if len(locs) == 0 {
+		return nil
+	}
+	spans := make([]byteSpan, 0, len(locs))
+	for _, loc := range locs {
+		if len(loc) != 2 {
+			continue
+		}
+		spans = append(spans, byteSpan{start: loc[0], end: loc[1]})
+	}
+	return spans
+}
+
+func hideSpansForDetection(text string, spans []byteSpan) string {
+	if len(spans) == 0 {
+		return text
+	}
+	buf := []byte(text)
+	for _, span := range spans {
+		for i := span.start; i < span.end; i++ {
+			buf[i] = ' '
+		}
+	}
+	return string(buf)
+}
+
+func splitFindingAroundTokenSpans(f types.Finding, spans []byteSpan) []types.Finding {
+	if len(spans) == 0 {
+		return []types.Finding{f}
+	}
+	var out []types.Finding
+	cursor := f.Start
+	for _, span := range spans {
+		if span.end <= cursor {
+			continue
+		}
+		if span.start >= f.End {
+			break
+		}
+		if span.start > cursor {
+			part := f
+			part.Start = cursor
+			part.End = minInt(span.start, f.End)
+			if part.Start < part.End {
+				out = append(out, part)
+			}
+		}
+		if span.end > cursor {
+			cursor = span.end
+		}
+		if cursor >= f.End {
+			break
+		}
+	}
+	if cursor < f.End {
+		part := f
+		part.Start = cursor
+		out = append(out, part)
+	}
+	return out
+}
+
+func preserveExistingTokenSpans(findings []types.Finding, spans []byteSpan) []types.Finding {
+	if len(spans) == 0 || len(findings) == 0 {
+		return findings
+	}
+	out := make([]types.Finding, 0, len(findings))
+	for _, f := range findings {
+		out = append(out, splitFindingAroundTokenSpans(f, spans)...)
+	}
+	return out
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // maskText is the shared masking core used by both Mask and MaskRequest.
 // It detects sensitive values in text, masks them using the resolved policy,
 // accumulates token→value entries in the store under scope, and returns the
@@ -163,12 +250,15 @@ func ignoredByPolicy(policy types.Policy) func(types.Finding) bool {
 // (text will equal the original). Detection errors are returned as-is
 // (fail-closed).
 func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope, text string) (masked string, blocked []Type, err error) {
+	tokenSpans := existingTokenSpans(text)
+	detectionText := hideSpansForDetection(text, tokenSpans)
 	preFilter := ignoredByPolicy(policy)
 
-	findings, err := e.detector.Detect(ctx, text, preFilter)
+	findings, err := e.detector.Detect(ctx, detectionText, preFilter)
 	if err != nil {
 		return "", nil, err
 	}
+	findings = preserveExistingTokenSpans(findings, tokenSpans)
 
 	e.collisionMu.Lock()
 	result, err := mask.Apply(text, findings, scope, policy, e.store, e.keyer, e.collisions)

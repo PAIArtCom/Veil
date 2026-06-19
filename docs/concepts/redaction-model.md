@@ -70,3 +70,9 @@ If the model mangles a token (splits it, re-encodes it) restore may miss it, lea
 `CLK_…` literal in output. Two mitigations: the [token form](token-spec.md) is
 identifier-safe (it does not break code syntax if it lands), and residual-token scans flag
 missed restores so the failure is visible, not silent.
+
+Outbound masking is idempotent for valid OpenCloak token spans: if a `CLK_…` literal from
+an earlier turn is fed back into a later protected text/tool-I/O field, the masker preserves
+that token instead of wrapping it in a second token. If the token is still known in the
+current scope, restore can resolve it to the original value; if it is unknown or
+cross-scope, it remains a residual token rather than becoming a nested mapping.

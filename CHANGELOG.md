@@ -39,6 +39,8 @@ No changes yet.
 - Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,
   dash-spelled AWS `Secret-Access-Key` headers, and secret-looking hex values in strong
   secret contexts are not dropped by generic false-positive suppressors.
+- Made outbound masking idempotent for existing `CLK_` tokens so residual or orphan tokens
+  from earlier turns are not wrapped into nested tokens on a later provider-bound request.
 - Suppressed code-reference false positives such as `process.env.API_KEY`,
   `config.get(...)`, and `parseToken(...)` without regressing real secret detection.
 - Rejected local policy files whose effective operator coverage ignores every supported
