@@ -5,10 +5,11 @@ English | [简体中文](README.zh-CN.md)
 > The de-identification layer for the LLM era — use AI coding agents without leaking secrets or PII to model providers.
 
 OpenCloak sits between your dev tool (Claude Code, Codex, Copilot, Cursor, …) and the
-LLM. Before a request leaves your machine it **deterministically replaces sensitive
-values with reversible tokens**; when the response comes back it **restores them**. The
-model never sees the real data — but your terminal, your files, and the agent's tool
-calls all run with the real values.
+LLM. Before a protected text or tool-I/O payload leaves your machine it
+**deterministically replaces sensitive values with reversible tokens**; when the response
+comes back it **restores them**. The model never sees the real values in the supported
+text/tool surfaces — but your terminal, your files, and the agent's tool calls all run
+with the real values.
 
 > **Status: v0.1.0 release-candidate hardening.** The text engine, Anthropic Messages
 > wire masking/restore, streaming restore, loopback Claude Code proxy, maintained SDK
@@ -22,12 +23,12 @@ calls all run with the real values.
 ## Purpose
 
 OpenCloak provides a local de-identification engine and reference proxy for AI coding
-tools. It masks secrets and structured PII before LLM egress and restores reversible
-tokens on the trusted local side.
+tools. It masks secrets and structured PII in protected text/tool surfaces before LLM
+egress and restores reversible tokens on the trusted local side.
 
 ## Principles
 
-- MUST: Mask before provider egress and restore only on local ingress.
+- MUST: Mask protected text/tool-I/O before provider egress and restore only on local ingress.
 - MUST: Keep tokens deterministic, reversible, type-aware, and scoped.
 - MUST: Fail closed on detection, policy, parsing, provider, or masking uncertainty.
 - SHOULD: Keep the root Go package as the public SDK and implementation details under `internal/`.
@@ -35,12 +36,14 @@ tokens on the trusted local side.
 ## Boundaries
 
 - Does NOT handle: OpenAI Chat, Gemini, remote MCP, or unverified provider paths (see: docs/architecture/overview.md)
+- Does NOT handle: OCR, document parsing, attachment rewriting, or regeneration of opaque provider media/document payloads (see: docs/sdk/contract.md)
+- Does NOT handle: Provider thinking/control traces as user text; those traces preserve provider-native semantics and are outside the de-identification surface (see: docs/concepts/redaction-model.md)
 - Does NOT handle: L2 semantic PII, the HTTP/gRPC service, or the web console in Phase 0 (see: docs/product/roadmap.md)
 - Does NOT handle: Protection against a compromised local machine or malicious local process (see: docs/architecture/threat-model.md)
 
 ## Adversarial Surfaces
 
-- **Provider egress**: Any unmasked sensitive value crossing to a provider is a release blocker. Verified by: docs/architecture/phase-0-acceptance.md.
+- **Protected text/tool egress**: Any unmasked sensitive value in a shipped text or tool-I/O field crossing to a provider is a release blocker. Opaque media/document payloads and provider thinking/control traces are explicit non-goals for v0.1.0 de-identification. Verified by: docs/architecture/phase-0-acceptance.md.
 - **Credential pass-through**: Local proxy credentials must never be logged, stored, or interpreted by the engine. Verified by: internal/proxy/proxy_test.go.
 - **Scoped restore state**: Cross-scope restore must fail visibly or leave residual tokens rather than restoring another namespace's value. Verified by: internal/mapstore/mapstore_test.go.
 - **Release claim scope**: README claims must stay tied to verified providers and documented release evidence. Verified by: docs/architecture/formal-release-plan.md.
@@ -97,14 +100,14 @@ with no perceptible latency, and without breaking the agent.
 
 ```
   your dev tool  (Claude Code / Codex / …)
-       │  request with real secrets & PII
+       │  protected text/tool fields with real secrets & PII
        ▼
   ┌──────────────────────────────────────────────┐
   │  OpenCloak   (local proxy OR embedded library) │
   │  ① detect  → ② mask → reversible token         │
   │     e.g.  sk-live-abc…  →  CLK_SECRET_7f3a…    │
   └──────────────────────────────────────────────┘
-       │  masked request — provider never sees real data
+       │  protected fields contain tokens — opaque payloads keep native shape
        ▼
   LLM provider  (Anthropic / OpenAI / …)
        │  response & tool-calls reference CLK_SECRET_7f3a…
@@ -119,8 +122,9 @@ with no perceptible latency, and without breaking the agent.
 
 Three properties make this safe and seamless:
 
-- **Two transformation points only** — mask on the way *to* the LLM, restore on the way
-  *back*. Everything local (tool execution, file writes, terminal display) is untouched.
+- **Two transformation points only** — mask protected text/tool fields on the way *to* the
+  LLM, restore on the way *back*. Everything local (tool execution, file writes, terminal
+  display) is untouched.
   See [redaction model](docs/concepts/redaction-model.md).
 - **Deterministic, reversible, type-aware tokens** (`CLK_<TYPE>_<id>`) — the same value
   always maps to the same token, so prompt caches stay warm and multi-turn context stays

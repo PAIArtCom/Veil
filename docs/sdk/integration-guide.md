@@ -44,6 +44,9 @@ body = masked
 Notes:
 
 - The engine takes native provider JSON; pass it your unmodified body bytes.
+- v0.1.0 masks the provider fields documented as protected text/tool I/O. It does not OCR
+  or parse attachments, rewrite media/document payloads, regenerate files, or mask
+  provider thinking/control traces.
 - Run mask **once** on the buffered body before same-provider/same-operation retries, so
   a single mapping serves all retries. If failover changes provider or operation, remask
   and use the new `State`; provider-aware restore dispatches by `st.Provider()`/`st.Op()`.

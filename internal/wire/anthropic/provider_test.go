@@ -69,7 +69,7 @@ func TestExtractSystemString(t *testing.T) {
 }
 
 // TestExtractSystemArray verifies system-as-array masking; cache_control must
-// not be touched and non-text blocks must be skipped.
+// not be touched and opaque non-text blocks must preserve provider-native shape.
 func TestExtractSystemArray(t *testing.T) {
 	e := newTestEngine(t)
 	// Two system blocks: a text block with a secret and a non-text block.
@@ -97,7 +97,7 @@ func TestExtractSystemArray(t *testing.T) {
 	if !bytes.Contains(masked, []byte(`"cache_control":{"type":"ephemeral"}`)) {
 		t.Fatalf("cache_control altered or missing: %s", masked)
 	}
-	// The image block (type="image") is not touched and must still be there.
+	// The image block is outside the text replacement surface and must still be there.
 	if !bytes.Contains(masked, []byte(`"type":"image"`)) {
 		t.Fatalf("image block removed from system array: %s", masked)
 	}
@@ -264,7 +264,7 @@ func TestToolResultArrayContent(t *testing.T) {
 	if bytes.Contains(masked, []byte("AKIAIOSFODNN7EXAMPLE")) {
 		t.Fatalf("AWS key not masked in tool_result array content: %s", masked)
 	}
-	// image block inside tool_result content must be preserved
+	// image block inside tool_result content is outside the text replacement surface.
 	if !bytes.Contains(masked, []byte(`"type":"image"`)) {
 		t.Fatalf("image block in tool_result content removed: %s", masked)
 	}
@@ -306,8 +306,8 @@ func TestToolsArrayUnchanged(t *testing.T) {
 	}
 }
 
-// TestImageThinkingBlocksSkipped verifies image and thinking blocks in messages
-// are not touched.
+// TestImageThinkingBlocksSkipped verifies image and thinking blocks in messages preserve
+// provider-native semantics and are not treated as user prompt text.
 func TestImageThinkingBlocksSkipped(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{

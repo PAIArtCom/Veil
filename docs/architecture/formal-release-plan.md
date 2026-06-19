@@ -54,7 +54,7 @@ This is not a v1.0 API-freeze release and not the Cloakia commercial control pla
 | Local policy | A documented local policy source supports safe per-type behavior for the operators that v0.1.0 claims. Unsupported policy features fail closed and are documented. |
 | CLI and packaging | `opencloak proxy`, help/version output, install path, and release artifact instructions are reproducible from a clean checkout. |
 | Documentation | README, docs map, guides, API reference, and known limits distinguish shipped behavior from planned behavior. |
-| Security evidence | No credential capture, no plaintext provider egress, localhost-only proxy, scoped state, residual-token audit, and minimized logs are verified. |
+| Security evidence | No credential capture, no plaintext protected text/tool-I/O egress, localhost-only proxy, scoped state, residual-token audit, and minimized logs are verified. |
 
 ## Deferred after v0.1.0
 

@@ -144,8 +144,8 @@ func (s *streamRestorer) handleDelta(eventData []byte, restore wire.RestoreFunc)
 		return [][]byte{}, nil
 
 	case "thinking_delta", "signature_delta":
-		// Phase 0 defers thinking restore (rewriting thinking would invalidate
-		// the Anthropic signature that covers it); pass through unchanged.
+		// Thinking/control deltas preserve provider-native semantics. Rewriting
+		// them would reinterpret non-user text and can invalidate signatures.
 		return [][]byte{eventData}, nil
 
 	default:

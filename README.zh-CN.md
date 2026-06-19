@@ -4,9 +4,10 @@
 
 > LLM 时代的去标识化层 —— 在不向模型厂商泄露密钥与隐私的前提下，放心使用 AI 编码工具。
 
-OpenCloak 位于你的开发工具（Claude Code、Codex、Copilot、Cursor……）与 LLM 之间。请求
-离开本机前，它把敏感值**确定性地替换为可逆 token**；响应回来时再**还原**。模型永远看
-不到真实数据 —— 但你的终端、文件、以及 agent 的工具调用，全部使用真实值运行。
+OpenCloak 位于你的开发工具（Claude Code、Codex、Copilot、Cursor……）与 LLM 之间。受保护
+的文本和工具 I/O payload 离开本机前，它把敏感值**确定性地替换为可逆 token**；响应回来
+时再**还原**。在已声明支持的文本/工具面上，模型看不到真实值 —— 但你的终端、文件、以及
+agent 的工具调用，全部使用真实值运行。
 
 > **状态：v0.1.0 release candidate 强化中。** 文本引擎、Anthropic Messages wire
 > 掩码/还原、流式还原、本地 Claude Code 代理、SDK 内嵌参考集成、OpenAI Responses
@@ -47,14 +48,14 @@ claude
 
 ```
   你的开发工具  (Claude Code / Codex / …)
-       │  含真实密钥与 PII 的请求
+       │  含真实密钥与 PII 的受保护文本/工具字段
        ▼
   ┌──────────────────────────────────────────────┐
   │  OpenCloak   (独立代理 或 内嵌库)               │
   │  ① 检测  → ② 掩码 → 可逆 token                  │
   │     例如  sk-live-abc…  →  CLK_SECRET_7f3a…    │
   └──────────────────────────────────────────────┘
-       │  脱敏后的请求 —— 厂商看不到真实数据
+       │  受保护字段已脱敏 —— 厂商在这些字段里只看到 token
        ▼
   LLM 厂商  (Anthropic / OpenAI / …)
        │  响应与工具调用引用 CLK_SECRET_7f3a…
@@ -66,6 +67,10 @@ claude
        ▼
   你的开发工具
 ```
+
+v0.1.0 的保护面是文本 prompt、provider-native 文本字段、工具调用参数、工具结果和流式文本/
+工具参数还原。它不做 OCR、文档解析、附件重生成，也不改写 provider 的 thinking/control
+trace；这些 opaque payload 或协议轨迹保持 provider 原生语义。
 
 三个性质让它既安全又无感：
 

@@ -1,7 +1,7 @@
 # Security Policy
 
 OpenCloak is security-sensitive software: its purpose is to keep secrets and PII out of
-LLM provider egress while preserving local tool behavior.
+supported text and tool-I/O provider egress while preserving local tool behavior.
 
 ## Supported Versions
 
@@ -30,7 +30,7 @@ private source code as evidence.
 
 ## Security Invariants
 
-- Provider-bound protected payloads must be masked before egress.
+- Provider-bound protected text and tool-I/O payloads must be masked before egress.
 - Detection, masking, policy, provider parsing, and state errors fail closed.
 - The standalone proxy binds loopback only.
 - Provider credentials pass through unchanged and are not logged or stored.
@@ -46,3 +46,8 @@ private source code as evidence.
 - OpenAI Chat, Gemini, remote MCP egress classification, HTTP/gRPC service, local web
   console, L2 default-on detection, `redact`, `format_preserving`, and configurable rule
   packs are not shipped v0.1.0 behavior.
+- v0.1.0 does not OCR, parse, rewrite, or regenerate opaque media/document attachments.
+  Anthropic image/document blocks preserve provider-native payload semantics and are not
+  part of the text/tool-I/O de-identification surface.
+- Provider thinking/control traces are not user text. They preserve provider-native
+  semantics and are outside the masking contract.

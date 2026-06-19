@@ -5,15 +5,16 @@
 ## Purpose
 
 This module defines the provider registry and the `Provider` contract used by the
-public engine wire surface. Each provider package extracts maskable text from its
-own native request shape, applies masked text back into that shape, and restores
-tokens from buffered and streaming provider responses.
+public engine wire surface. Each provider package extracts protected text and tool-I/O
+fields from its own native request shape, applies masked text back into that shape, and
+restores tokens from buffered and streaming provider responses.
 
 ## Principles
 
 - MUST: Preserve provider-native JSON shape; do not normalize into a shared intermediate schema.
-- MUST: Fail closed on malformed JSON, unsupported operations, or unsupported plaintext-bearing shapes.
+- MUST: Fail closed on malformed JSON, unsupported operations, or unsupported plaintext-bearing text/tool-I/O shapes.
 - MUST: Keep static tool schemas and provider metadata out of masking unless a provider contract identifies them as user data.
+- MUST: Keep opaque media/document payloads and provider thinking/control traces out of text replacement unless a future provider contract explicitly supports parsing and regeneration.
 - MUST: Restore provider streams with provider-aware event semantics before local tool execution consumes arguments.
 - SHOULD: Keep provider packages small, fixture-driven, and isolated behind the registry.
 
@@ -25,7 +26,7 @@ tokens from buffered and streaming provider responses.
 
 ## Adversarial Surfaces
 
-- **Provider shape drift**: New provider fields can carry plaintext if walkers silently skip unsupported shapes. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
+- **Provider shape drift**: New provider fields can carry protected text/tool I/O if walkers silently skip unsupported shapes. Opaque media/document payloads and provider thinking/control traces are a declared non-goal, not a skipped text surface. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
 - **Tool I/O egress**: Tool-call arguments and tool-result outputs can contain restored local values, so provider walkers must cover those request and response fields. Verified by: openairesponses/provider_test.go.
 - **Cross-event token splits**: Streaming deltas can split a `CLK_` token across provider events, so stream restorers must hold partial token tails until safe. Verified by: anthropic/stream_test.go and openairesponses/stream_test.go.
 - **Static schema mutation**: Tool definitions are provider instructions, not user data, and changing them can break agent behavior. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.

@@ -3,28 +3,33 @@
 **Status:** Accepted (normative)
 
 This is the conceptual contract for *what* OpenCloak transforms and *where*. It follows
-directly from the [threat model](../architecture/threat-model.md): only the network egress
-to the LLM matters; everything local is trusted.
+directly from the [threat model](../architecture/threat-model.md): the protected text and
+tool-I/O surface crosses network egress to the LLM, while everything local is trusted.
+Opaque media/document payloads and provider thinking/control traces preserve
+provider-native semantics and are not part of the v0.1.0 replacement surface.
 
 ## Two transformation points
 
 ```
                  ┌──────────── local (trusted) ────────────┐   ┌─ network (untrusted) ─┐
  dev tool ──────▶│                                          │   │                       │
-                 │   request with real secrets & PII        │   │                       │
+                 │   protected text/tool fields             │   │                       │
+                 │   with real secrets & PII                │   │                       │
                  │                  │                       │   │                       │
                  │                  ▼  [MASK]   value→token │   │                       │
                  │                  └──────────────────────────▶│  LLM provider         │
-                 │                                          │   │   (sees only tokens)  │
+                 │                                          │   │   (protected fields   │
+                 │                                          │   │    contain tokens)    │
                  │                  ┌──────────────────────────◀│                       │
                  │                  ▼  [RESTORE] token→value │   │                       │
  dev tool ◀──────│   response & tool-calls with real values │   │                       │
                  └──────────────────────────────────────────┘   └───────────────────────┘
 ```
 
-- **MASK** on every payload going *to* the LLM: the initial prompt, every later turn, and
-  **tool results fed back** (a tool's output may contain a new secret).
-- **RESTORE** on every payload coming *from* the LLM: assistant text and tool-call
+- **MASK** on supported text/tool-I/O payloads going *to* the LLM: initial prompt text,
+  later text turns, and **tool results fed back** (a tool's output may contain a new
+  secret).
+- **RESTORE** on supported payloads coming *from* the LLM: assistant text and tool-call
   arguments.
 - Local actions — tool execution, file writes, terminal display — run with **real**
   values. That is intended: the data is the user's own, on the user's own machine, within

@@ -53,8 +53,8 @@ monetization layer for organizations that need to manage and audit it at scale.
 
 - **Individual developer / in-house power user.** "I want to use the latest agent on my
   company's code, but I can't risk it shipping our AWS keys or private endpoints to a
-  provider." → Runs OpenCloak locally; the agent only ever sees tokens; everything keeps
-  working.
+  provider." → Runs OpenCloak locally; the agent sees tokens in protected text/tool
+  fields; everything keeps working.
 - **Security / compliance lead (Cloakia).** "We can't let a heterogeneous set of AI tools
   exfiltrate source and secrets, but banning them is losing us velocity." → Mandates the
   client fleet-wide, sets policy centrally, and gets an audit trail.

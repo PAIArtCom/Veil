@@ -52,7 +52,9 @@ func New() wire.Provider {
 //     block's .text → "messages.N.content.M.content.K.text"
 //
 // tools[] definitions are intentionally skipped (static schemas, not user data).
-// Blocks of type image/document/thinking are skipped.
+// Anthropic image/document payloads are opaque provider payloads and are not parsed,
+// rewritten, or regenerated in v0.1.0. Thinking/control blocks preserve provider-native
+// semantics and are not treated as user prompt text.
 func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, error) {
 	if err := validateMessagesOp(op); err != nil {
 		return nil, err
@@ -99,8 +101,8 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 					})
 				}
 			case "image", "document", "thinking":
-				// Known non-text block families are provider data or local trace data,
-				// not maskable request text in the v0.1.0 contract.
+				// Opaque media/document payloads and provider thinking/control traces
+				// are outside the v0.1.0 text/tool-I/O de-identification surface.
 			}
 			return true
 		})
@@ -160,8 +162,9 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 }
 
 // extractContentBlocks walks a messages[N].content array and appends spans for
-// text, tool_use, and tool_result blocks. image/document/thinking blocks are
-// skipped.
+// text, tool_use, and tool_result blocks. image/document payloads are opaque provider
+// payloads and thinking/control traces are not user prompt text, so both remain outside
+// the v0.1.0 replacement surface.
 func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]wire.TextSpan) error {
 	var walkErr error
 	content.ForEach(func(blkKey, blk gjson.Result) bool {
@@ -201,7 +204,7 @@ func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]
 			}
 
 		case "image", "document", "thinking":
-			// Known non-text block families are skipped by the v0.1.0 contract.
+			// Outside the v0.1.0 text/tool-I/O de-identification surface.
 		}
 		return true
 	})
@@ -248,7 +251,8 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 					})
 				}
 			case "image", "document":
-				// Known non-text tool result block families are skipped.
+				// Opaque media/document payloads are outside the text replacement
+				// surface; OpenCloak does not parse or regenerate them.
 			}
 			return true
 		})

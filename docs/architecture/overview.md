@@ -32,14 +32,15 @@ Two transformation points; everything local is untouched. See the
 [redaction model](../concepts/redaction-model.md) for the full reasoning.
 
 ```
-dev tool ──request(real)──▶ [MASK outbound] ──request(tokens)──▶ LLM
-dev tool ◀──response(real)── [RESTORE inbound] ◀──response(tokens)── LLM
+dev tool ──protected request fields(real)──▶ [MASK outbound] ──protected fields(tokens)──▶ LLM
+dev tool ◀──protected response fields(real)── [RESTORE inbound] ◀──protected fields(tokens)── LLM
 ```
 
-- **Mask** runs on every payload going *to* the LLM (initial prompt, later turns, tool
-  results fed back).
-- **Restore** runs on every payload coming *from* the LLM (assistant text, tool-call
-  arguments).
+- **Mask** runs on supported text and tool-I/O payloads going *to* the LLM (initial
+  prompt text, later text turns, tool results fed back).
+- **Restore** runs on supported payloads coming *from* the LLM (assistant text, tool-call
+  arguments). Opaque media/document attachments and provider thinking/control traces are
+  outside the v0.1.0 de-identification surface.
 - Tool execution, file writes, and terminal display happen locally with **real** values —
   by design, and within the user's existing trust boundary.
 

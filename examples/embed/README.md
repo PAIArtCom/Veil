@@ -13,7 +13,7 @@ parsed SSE event relay.
 ## Principles
 
 - MUST: Use only the public `github.com/cloakia/opencloak` package.
-- MUST: Mask exactly once before provider egress and keep the returned `State` with the matching response lifecycle.
+- MUST: Mask the protected text/tool-I/O surface exactly once before provider egress and keep the returned `State` with the matching response lifecycle.
 - MUST: Fail closed on outbound mask errors; callers must not forward the original request body.
 - MUST: Restore buffered responses, raw stream chunks, and parsed SSE events only with the matching `State`.
 - SHOULD: Keep examples deterministic and credential-free with throwaway fixture values.
@@ -27,7 +27,7 @@ parsed SSE event relay.
 
 ## Adversarial Surfaces
 
-- **Plaintext provider egress**: The outbound seam must return only masked provider bytes and an error must stop forwarding. Verified by: gateway_test.go.
+- **Plaintext protected-field egress**: The outbound seam must return masked provider bytes for the protected text/tool-I/O surface and an error must stop forwarding that original protected payload. Verified by: gateway_test.go.
 - **State lifecycle mismatch**: Buffered, raw-stream, and parsed-SSE restore must use the `State` returned by the matching outbound mask call. Verified by: gateway_test.go.
 - **Cross-scope restore**: A token minted in one scope must not restore through another scope's state. Verified by: gateway_test.go.
 - **Stream split handling**: Raw stream restore must tolerate arbitrary byte chunk boundaries and flush held tails at stream end. Verified by: gateway_test.go.

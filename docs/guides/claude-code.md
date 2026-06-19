@@ -50,7 +50,7 @@ migration"** (use a throwaway value). Then confirm each criterion:
 
 | # | Criterion | How to check |
 |---|---|---|
-| 1 | Model sees only tokens | Watch the proxy stderr / a capture (below): the outbound `/v1/messages` body carries `CLK_…`, never the secret. |
+| 1 | Protected text/tool fields contain only tokens | Watch the proxy stderr / a capture (below): the outbound `/v1/messages` protected text/tool fields carry `CLK_…`, never the throwaway secret. |
 | 2 | Overlapping findings → one token | A value that matches two rules still yields a single consistent `CLK_…`. (Unit-covered by the resolver; visible if you craft an overlapping secret.) |
 | 3 | Tool-call args + results restored | The tool the agent invokes receives the **real** connection string in its arguments, not a `CLK_…`. |
 | 4 | Local command runs with the real value | The migration actually connects/runs (it would fail with a `CLK_…` host). |
@@ -78,9 +78,12 @@ pin the exact SSE event types Claude Code emits.
 - **Anthropic `/v1/messages` only for Claude Code.** Other Anthropic endpoints (e.g.
   `count_tokens`) fail closed in the v0.1.0 proxy until they are wire-aware; OpenAI
   Responses is documented separately for Codex, while OpenAI Chat/Gemini are Phase 1+.
-- **Thinking is not restored** in Phase 0 — a regenerated token can surface in the
-  (local-only) thinking trace; it is still a masked token if echoed back to the API, and the
-  residual-token audit counts it ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)).
+- **Text and tool I/O only.** v0.1.0 does not OCR, parse, rewrite, or regenerate
+  Anthropic image/document payloads. Provider thinking/control traces keep their native
+  semantics and are not treated as user prompt text.
+- **Thinking/control traces are provider-native control data.** v0.1.0 does not reinterpret
+  or restore them as user text; if a provider emits a visible `CLK_` token there, the
+  residual-token audit can still report it ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)).
 - **SSE framing assumes LF** (`\n\n`), which is what Anthropic emits; CRLF is Phase 1.
 - No TLS pinning or response-signature checks block a local HTTP proxy (verified).
 - Bedrock/Vertex egress paths are separate and out of scope for the MVP.

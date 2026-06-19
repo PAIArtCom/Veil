@@ -26,8 +26,9 @@ No changes yet.
 - Release documentation: deployment guide, Claude Code guide, Codex guide, SDK API
   reference, security policy, and contribution guide.
 - Release hardening: unsupported proxy endpoints fail closed before upstream egress, and
-  Anthropic request-shape drift fails closed instead of silently forwarding unchecked
-  plaintext-bearing blocks.
+  Anthropic protected text/tool-I/O request-shape drift fails closed instead of silently
+  forwarding unchecked plaintext-bearing blocks. Opaque media/document payloads and
+  provider thinking/control traces remain outside the v0.1.0 de-identification surface.
 - Codex live acceptance: Codex CLI 0.140.0 passed a controlled Responses-wire run through
   OpenCloak with a Responses-compatible upstream; direct `api.openai.com` upstream evidence
   remains unclaimed until a valid OpenAI API key is available.

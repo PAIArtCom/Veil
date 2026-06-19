@@ -9,7 +9,10 @@ unclaimed.
 
 OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the
-evidence that shaped it.
+evidence that shaped it. For v0.1.0, the wire contract covers provider-native text fields,
+agentic tool inputs/results, and text/tool streaming deltas. It does not claim OCR,
+document parsing, attachment rewriting, regenerated media/document payloads, or masking of
+provider thinking/control traces.
 
 ## Design principle
 
@@ -77,8 +80,10 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   records `provider`/`op` for wire calls so buffered and parsed-event restore can use the
   same provider walker ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 - **Provider tag.** `provider`/`op` select the wire-aware walker (which JSON paths hold
-  text). Every surveyed gateway can supply this tag. Unsupported provider/op pairs and
-  malformed provider JSON return errors and must be treated as fail-closed.
+  protected text/tool I/O). Every surveyed gateway can supply this tag. Unsupported
+  provider/op pairs and malformed provider JSON return errors and must be treated as
+  fail-closed. Opaque media/document payloads and provider thinking/control traces are not
+  converted into text by the SDK.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,
   Orbit default). Use `RestoreSSEEvent` if you already parse SSE events (CLIProxyAPI,
   Orbit's transform path). Both share the same `State`.
