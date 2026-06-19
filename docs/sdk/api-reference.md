@@ -164,7 +164,7 @@ type Finding struct {
     Start, End int     // UTF-8 byte offsets [Start, End)
     Type       Type
     Score      float64 // normalized 0..1 confidence
-    Source     string  // detector or rule id, e.g. "l1:gitleaks:github-pat"
+    Source     string  // detector or rule id, e.g. "l1:github-pat"
 }
 ```
 

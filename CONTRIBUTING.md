@@ -7,11 +7,11 @@ v0.1.0 release-candidate hardening. Please read this before opening an issue or 
 ## Project status
 
 Implemented release scope includes the core engine, Claude Code proxy path, maintained
-SDK embed reference integration, OpenAI Responses adapter with offline Codex verification,
-and local policy file support. Codex live acceptance, OpenAI Chat, Gemini, remote MCP,
-HTTP/gRPC service, local console, L2 default-on behavior, `redact`, and
-`format_preserving` remain out of the shipped v0.1.0 claim unless the formal release plan
-is updated.
+SDK embed reference integration, OpenAI Responses adapter with offline verification and
+local Codex CLI Responses live acceptance, and local policy file support. Direct
+`https://api.openai.com` upstream acceptance, OpenAI Chat, Gemini, remote MCP, HTTP/gRPC
+service, local console, L2 default-on behavior, `redact`, and `format_preserving` remain
+out of the shipped v0.1.0 claim unless the formal release plan is updated.
 
 ## Ground rules
 

@@ -7,7 +7,7 @@ release.
 
 ## [Unreleased]
 
-No changes beyond the pending v0.1.0 release notes.
+No changes yet.
 
 ## [0.1.0] - Pending
 
@@ -33,6 +33,20 @@ No changes beyond the pending v0.1.0 release notes.
   remains unclaimed until a valid OpenAI API key is available.
 - CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
   built-in default policy instead of passing a typed nil local provider into the engine.
+
+### Security
+- Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,
+  dash-spelled AWS `Secret-Access-Key` headers, and secret-looking hex values in strong
+  secret contexts are not dropped by generic false-positive suppressors.
+- Suppressed code-reference false positives such as `process.env.API_KEY`,
+  `config.get(...)`, and `parseToken(...)` without regressing real secret detection.
+- Rejected local policy files whose effective operator coverage ignores every supported
+  sensitive type.
+- Tightened OpenAI Responses request handling: string `prompt.variables` values are masked,
+  while non-string prompt variables, `input_image`, and `input_file` fail closed until
+  explicit file/image payload handling exists.
+- Escaped provider JSON path keys containing backslashes before applying masked values in
+  OpenAI Responses and Anthropic provider walkers.
 
 ### Reserved / planned
 - OpenAI Chat, Gemini, remote MCP egress classification, L2 default-on semantic PII,
