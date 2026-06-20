@@ -1,14 +1,19 @@
 # Codex CLI Live Acceptance
 
 **Status:** Passed for the local Codex CLI Responses path with a Responses-compatible
-upstream. Direct `https://api.openai.com` upstream acceptance remains unclaimed until a
-valid OpenAI API key is available.
+upstream, including the 2026-06-20 `OpenCloak_` prefix refresh. Direct
+`https://api.openai.com` upstream acceptance remains unclaimed until a valid OpenAI API key
+is available.
 
-**Run date:** 2026-06-17
+**Initial run date:** 2026-06-17
+
+**Latest prefix refresh:** 2026-06-20
 
 **Codex CLI:** `codex-cli 0.140.0`
 
-**OpenCloak route:** `http://127.0.0.1:8788/v1/responses`
+**Initial OpenCloak route:** `http://127.0.0.1:8788/v1/responses`
+
+**Latest prefix-refresh route:** `http://127.0.0.1:18888/v1/responses`
 
 **Upstream under test:** local Responses-compatible provider route
 `/clipal/v1/responses`, reached through a sanitized pass-through capture proxy.
@@ -42,6 +47,34 @@ request or response bodies.
 | Local final output contained residual `CLK_` tokens | No |
 | Codex event stream completed | Yes |
 | Codex local command execution completed | Yes |
+
+## Prefix Refresh Run
+
+ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `OpenCloak_`. The
+Codex CLI live run was rerun on 2026-06-20 using Codex CLI `0.140.0`, a temporary
+`model_providers` entry pointing at OpenCloak, and the same bounded Responses-compatible
+`clipal` upstream class. The global `~/.codex/config.toml` was not edited.
+
+The temporary workspace contained a throwaway database URL and throwaway email address.
+Codex was instructed to read the fixture through a local shell command and return exactly
+the two fixture lines. The capture proxy recorded only booleans and byte counts.
+
+| Observation | Result |
+|---|---|
+| Codex reached OpenCloak over `POST /v1/responses` | Passed |
+| Upstream requests observed | 2 |
+| Upstream request path | `/clipal/v1/responses` |
+| Upstream response status/content type | `200`, `text/event-stream` |
+| Upstream request 1 contained `OpenCloak_` tokens | Yes (`10` token-prefix occurrences) |
+| Upstream request 1 contained old `CLK_` tokens | No |
+| Upstream request 1 contained the throwaway plaintext values | No |
+| Upstream request 2 contained `OpenCloak_` tokens | Yes (`12` token-prefix occurrences) |
+| Upstream request 2 contained old `CLK_` tokens | No |
+| Upstream request 2 contained the throwaway plaintext values | No |
+| Codex local command execution completed | Yes |
+| Local final output contained the expected restored throwaway values | Yes |
+| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Codex event stream completed | Yes |
 
 The first attempt found a real release-blocking CLI wiring bug: when no policy file was
 configured, `cmd/opencloak` printed `policy: built-in defaults` but passed a typed nil

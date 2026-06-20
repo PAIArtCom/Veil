@@ -49,6 +49,35 @@ The throwaway DSN was `postgresql://app:s3cr3t@localhost:5432/mydb`.
 | 7 | Streamed tokens survive provider streaming | Captured decoded SSE contained `content_block_delta` and `input_json_delta` events; final Claude output had `claude_result_has_real=yes` and `claude_result_has_CLK=no`. |
 | 8 | Second turn hits prompt cache | Claude Code result reported `num_turns=2` and `cache_read_input_tokens=60809`. |
 
+## Prefix Refresh Run
+
+**Date:** 2026-06-20 (Asia/Shanghai)
+
+**Code under test:** `8ed7144` (`feat(token): use OpenCloak token prefix`)
+
+ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `OpenCloak_`. The
+Claude Code live runbook was rerun after that change using Claude Code `2.1.178`, the
+same throwaway DSN shape, and a sanitized pass-through capture proxy. The capture proxy
+forwarded to `https://api.anthropic.com` and recorded only summary booleans and byte
+counts, not raw provider bodies or credential headers.
+
+| Observation | Result |
+|---|---|
+| Claude reached OpenCloak over `/v1/messages?beta=true` | Passed |
+| Upstream requests observed | 2 |
+| Upstream response status/content type | `200`, `text/event-stream; charset=utf-8` |
+| Upstream request 1 contained `OpenCloak_` tokens | Yes (`5` token-prefix occurrences) |
+| Upstream request 1 contained old `CLK_` tokens | No |
+| Upstream request 1 contained the throwaway plaintext DSN | No |
+| Upstream request 2 contained `OpenCloak_` tokens | Yes (`7` token-prefix occurrences) |
+| Upstream request 2 contained old `CLK_` tokens | No |
+| Upstream request 2 contained the throwaway plaintext DSN | No |
+| Local final output contained the expected restored throwaway DSN | Yes |
+| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local `dsn_arg.txt` contained the restored throwaway DSN | Yes |
+| Local `dsn_arg.txt` contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Claude Code result status | `success`, `num_turns=2` |
+
 ## Issue Found During Acceptance
 
 The first live tool-use run exposed a real proxy bug: Claude Code sent `Accept-Encoding`,

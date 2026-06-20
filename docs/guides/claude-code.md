@@ -59,7 +59,7 @@ migration"** (use a throwaway value). Then confirm each criterion:
 | 7 | Streamed tokens survive splits | Streamed assistant text and tool input render as real values even though the model emits the token across deltas. |
 | 8 | Second turn hits prompt cache | A repeated identical prefix produces a byte-identical masked prefix (deterministic tokens); the provider reports a cache hit. |
 
-Latest accepted run: 2026-06-17, recorded in the
+Latest accepted run: 2026-06-20 prefix refresh, recorded in the
 [Phase 0 acceptance report](../architecture/phase-0-acceptance.md).
 
 ### Capturing a real fixture (recommended, the Spike-A capture)
