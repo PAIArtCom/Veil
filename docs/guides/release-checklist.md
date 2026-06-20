@@ -69,12 +69,27 @@ Compare the result against the reference bands in
 
 ## Artifact Instructions
 
-Release builds should inject version metadata:
+Release builds should write the binary into the versioned platform artifact directory and
+inject version metadata:
 
 ```sh
-go build \
-  -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse --short HEAD) -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o ./dist/opencloak ./cmd/opencloak
+version=v0.1.0
+commit="$(git rev-parse --short HEAD)"
+build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+out_dir="dist/opencloak_${version}_$(go env GOOS)_$(go env GOARCH)"
+bin_name="opencloak"
+if [ "$(go env GOOS)" = "windows" ]; then
+  bin_name="opencloak.exe"
+fi
+bin_path="$out_dir/$bin_name"
+
+mkdir -p "$out_dir"
+go build -trimpath \
+  -ldflags "-X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}" \
+  -o "$bin_path" ./cmd/opencloak
+
+"$bin_path" version
+shasum -a 256 "$bin_path" > "$bin_path.sha256"
 ```
 
 Expected binary paths:
@@ -93,3 +108,13 @@ Only after all gates pass and maintainers approve:
 2. Create the release commit or tag instructions.
 3. Prepare release notes from CHANGELOG.md.
 4. Do not push tags or publish a GitHub release from this checklist alone.
+
+If a local tag is created before approval or points at the wrong commit, delete it locally
+before pushing anything:
+
+```sh
+git tag -d v0.1.0
+```
+
+If an artifact is built from the wrong commit or with the wrong version metadata, delete
+the affected `dist/opencloak_v0.1.0_*` directory and rebuild from a clean, verified tree.

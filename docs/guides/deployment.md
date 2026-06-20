@@ -28,12 +28,27 @@ For release artifacts, the expected binary paths are:
 | macOS/Linux | `dist/opencloak_<version>_<os>_<arch>/opencloak` |
 | Windows | `dist/opencloak_<version>_windows_<arch>/opencloak.exe` |
 
-Release builds should inject version metadata with Go linker flags:
+Release builds should write the binary into the versioned platform artifact directory and
+inject version metadata with Go linker flags:
 
 ```sh
-go build \
-  -ldflags "-X main.version=v0.1.0 -X main.commit=$(git rev-parse --short HEAD) -X main.buildDate=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-  -o ./dist/opencloak ./cmd/opencloak
+version=v0.1.0
+commit="$(git rev-parse --short HEAD)"
+build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+out_dir="dist/opencloak_${version}_$(go env GOOS)_$(go env GOARCH)"
+bin_name="opencloak"
+if [ "$(go env GOOS)" = "windows" ]; then
+  bin_name="opencloak.exe"
+fi
+bin_path="$out_dir/$bin_name"
+
+mkdir -p "$out_dir"
+go build -trimpath \
+  -ldflags "-X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}" \
+  -o "$bin_path" ./cmd/opencloak
+
+"$bin_path" version
+shasum -a 256 "$bin_path" > "$bin_path.sha256"
 ```
 
 ## Run the Claude Code proxy
