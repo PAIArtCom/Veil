@@ -84,7 +84,7 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   provider/op pairs and malformed provider JSON return errors and must be treated as
   fail-closed. Opaque media/document payloads and provider thinking/control traces are not
   converted into text by the SDK.
-- **Existing OpenCloak tokens.** `Mask` and `MaskRequest` preserve valid `CLK_…` token
+- **Existing OpenCloak tokens.** `Mask` and `MaskRequest` preserve valid `OpenCloak_…` token
   spans already present in protected text/tool-I/O fields. This prevents residual tokens
   from earlier turns from being wrapped into nested tokens on a later request.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,

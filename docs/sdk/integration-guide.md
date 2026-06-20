@@ -115,5 +115,5 @@ The reference proxy applies the same patterns, plus transport rules from the ADR
 - [ ] `State` is threaded from the outbound call to the inbound calls.
 - [ ] Buffered/SSE restore errors are surfaced to logs/audit and handled deliberately.
 - [ ] The right streaming method is used for your relay style.
-- [ ] No `CLK_` token can leak to disk (residual-token scan / the identifier-safe token form).
+- [ ] No `OpenCloak_` token can leak to disk (residual-token scan / the identifier-safe token form).
 - [ ] Inbound listener is localhost-only (standalone) or your existing auth (embedded).

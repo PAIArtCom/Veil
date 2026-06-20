@@ -37,7 +37,7 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 
 var ctx = context.Background()
 
-var tokenRe = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+var tokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 // ---- ExtractRequest / ApplyRequest unit tests --------------------------------
 
@@ -60,7 +60,7 @@ func TestExtractSystemString(t *testing.T) {
 		t.Fatalf("AWS key not masked in system string: %s", masked)
 	}
 	if !tokenRe.Match(masked) {
-		t.Fatalf("expected CLK_ token in masked body: %s", masked)
+		t.Fatalf("expected OpenCloak_ token in masked body: %s", masked)
 	}
 	// Non-text fields must be byte-identical.
 	if !bytes.Contains(masked, []byte(`"model":"claude-opus-4-5"`)) {
@@ -346,7 +346,7 @@ func TestImageThinkingBlocksSkipped(t *testing.T) {
 // ---- MaskRequest end-to-end --------------------------------------------------
 
 // TestMaskRequestEndToEnd tests a realistic multi-field request: secrets in
-// system, user message, and tool_use arg. Asserts model sees only CLK_ tokens,
+// system, user message, and tool_use arg. Asserts model sees only OpenCloak_ tokens,
 // State carries provider/op, and non-secret JSON keys/order is preserved.
 func TestMaskRequestEndToEnd(t *testing.T) {
 	e := newTestEngine(t)
@@ -724,8 +724,8 @@ func TestFullRoundTrip(t *testing.T) {
 		t.Fatalf("RestoreResponse: %v", err)
 	}
 	restoredStr := string(restored)
-	if strings.Contains(restoredStr, "CLK_") {
-		t.Fatalf("residual CLK_ token in restored response: %s", restored)
+	if strings.Contains(restoredStr, "OpenCloak_") {
+		t.Fatalf("residual OpenCloak_ token in restored response: %s", restored)
 	}
 	if !strings.Contains(restoredStr, awsKey) {
 		t.Fatalf("AWS key not in restored response: %s", restored)
@@ -737,7 +737,7 @@ func TestFullRoundTrip(t *testing.T) {
 
 // ---- helpers -----------------------------------------------------------------
 
-// extractFirstToken finds the first CLK_… token in s.
+// extractFirstToken finds the first OpenCloak_… token in s.
 func extractFirstToken(s string) string {
 	m := tokenRe.FindString(s)
 	return m

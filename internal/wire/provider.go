@@ -32,7 +32,7 @@ type StreamRestorer interface {
 	// single `data:` JSON value, already frame-reassembled by the caller) and
 	// returns zero or more complete event payloads to emit downstream, in order
 	// (more when a held tail flushes alongside a stop; fewer when a delta is
-	// buffered). restore replaces complete CLK_ tokens (and counts residuals).
+	// buffered). restore replaces complete OpenCloak_ tokens (and counts residuals).
 	Event(eventData []byte, restore RestoreFunc) ([][]byte, error)
 	// Flush returns any events still held at end of stream.
 	Flush(restore RestoreFunc) ([][]byte, error)

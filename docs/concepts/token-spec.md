@@ -1,24 +1,27 @@
 # Token Specification
 
-**Status:** Accepted (normative). Decision rationale: [ADR-0003](../architecture/decisions/0003-deterministic-reversible-token-spec.md).
+**Status:** Accepted (normative). Decision rationale:
+[ADR-0003](../architecture/decisions/0003-deterministic-reversible-token-spec.md),
+with the namespace prefix updated by
+[ADR-0014](../architecture/decisions/0014-opencloak-token-prefix.md).
 
 ## Format
 
 ```
-CLK_<TYPE>_<id>
+OpenCloak_<TYPE>_<id>
 ```
 
 | Part | Meaning |
 |---|---|
-| `CLK_` | Namespace prefix — greppable, collision-resistant, unmistakable. |
+| `OpenCloak_` | Namespace prefix — greppable, collision-resistant, brand-specific, unmistakable. |
 | `<TYPE>` | Uppercase category code (see enum). Lets handling branch and restore classify. |
 | `<id>` | First **12** hex chars of `HMAC-SHA256(normalize(value), local_key)`. |
 
-Restore pattern: `CLK_[A-Z0-9]+_[0-9a-f]{12}`. Implementations should scan for the fixed
-`CLK_` structure and validate type/id segments; do not rely solely on word-boundary regex
-matching, because a token may sit next to identifier characters.
+Restore pattern: `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`. Implementations should scan for the
+fixed `OpenCloak_` structure and validate type/id segments; do not rely solely on
+word-boundary regex matching, because a token may sit next to identifier characters.
 
-Example: `sk-live-9f8a7b6c…` → `CLK_SECRET_7f3a9c2e1b8d`
+Example: `sk-live-9f8a7b6c…` → `OpenCloak_SECRET_7f3a9c2e1b8d`
 
 ## Type enum (initial)
 
@@ -62,9 +65,10 @@ locally (e.g. `~/.opencloak/key`). It is:
 
 For structured types where the model benefits from a realistic shape (e.g. validating a
 phone or email format), a per-type *format-preserving* replacement (a valid-looking but
-fake value, deterministically derived) may be used instead of the opaque `CLK_…` form.
+fake value, deterministically derived) may be used instead of the opaque `OpenCloak_…`
+form.
 This is an opt-in refinement, not the default, because it complicates a single uniform
-restore scanner. The `CLK_` scanner only covers `OperatorToken`; format-preserving
+restore scanner. The `OpenCloak_` scanner only covers `OperatorToken`; format-preserving
 operators need type-specific reverse strategies and fixtures.
 
 `OperatorRedact` is intentionally irreversible and must not write a reversible mapping.

@@ -16,7 +16,7 @@ import (
 
 const throwawayKey = "AKIAIOSFODNN7EXAMPLE"
 
-var tokenRE = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+var tokenRE = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 func newTestGateway(t *testing.T) *Gateway {
 	t.Helper()
@@ -70,7 +70,7 @@ func TestGatewayMasksOutboundAndRestoresBufferedToolIO(t *testing.T) {
 	scope := opencloak.Scope{Tenant: "local", Session: "buffered", Project: "demo"}
 
 	masked, ex, tok := maskOne(t, gw, scope, "run with key "+throwawayKey)
-	if !bytes.Contains(masked, []byte("CLK_SECRET_")) {
+	if !bytes.Contains(masked, []byte("OpenCloak_SECRET_")) {
 		t.Fatalf("masked body missing secret token: %s", masked)
 	}
 
@@ -83,7 +83,7 @@ func TestGatewayMasksOutboundAndRestoresBufferedToolIO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreBuffered: %v", err)
 	}
-	if bytes.Contains(restored, []byte("CLK_")) {
+	if bytes.Contains(restored, []byte("OpenCloak_")) {
 		t.Fatalf("buffered restore left residual token: %s", restored)
 	}
 	if !bytes.Contains(restored, []byte(throwawayKey)) {
@@ -107,7 +107,7 @@ func TestGatewayRawStreamRestoresArbitraryByteSplitsAndFlushesTail(t *testing.T)
 	if got != want {
 		t.Fatalf("raw stream restore mismatch:\n got %q\nwant %q", got, want)
 	}
-	if strings.Contains(got, "CLK_") {
+	if strings.Contains(got, "OpenCloak_") {
 		t.Fatalf("raw stream restore left residual token: %q", got)
 	}
 }
@@ -124,7 +124,7 @@ func TestGatewayParsedSSEEventRestoresProviderPayload(t *testing.T) {
 	if !json.Valid(restored) {
 		t.Fatalf("restored SSE payload is not valid JSON: %s", restored)
 	}
-	if bytes.Contains(restored, []byte("CLK_")) {
+	if bytes.Contains(restored, []byte("OpenCloak_")) {
 		t.Fatalf("SSE restore left residual token: %s", restored)
 	}
 	if !bytes.Contains(restored, []byte(throwawayKey)) {

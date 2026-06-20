@@ -20,7 +20,7 @@ This is not a v1.0 API-freeze release and not the Cloakia commercial control pla
 ## Release principles
 
 - **Prove each egress path live.** A provider adapter is not release-ready until a live
-  controlled task proves that the provider sees only `CLK_` tokens while local tools and
+  controlled task proves that the provider sees only `OpenCloak_` tokens while local tools and
   files receive restored values.
 - **Keep the engine/transport split.** Provider walking, masking, state, and streaming
   restore stay in the SDK path. `cmd/opencloak` and transports only wire them together.
@@ -183,12 +183,12 @@ gateway-style integration.
 **DoD:**
 
 - A controlled Codex CLI task with a throwaway DSN proves:
-  1. provider-bound payloads contain `CLK_` tokens and no real DSN;
+  1. provider-bound payloads contain `OpenCloak_` tokens and no real DSN;
   2. overlapping findings produce one correct token;
   3. tool-call arguments and tool results restore locally;
   4. streamed tokens survive arbitrary byte and event splits;
   5. errors are visible and fail closed;
-  6. files on disk contain no `CLK_`;
+  6. files on disk contain no `OpenCloak_`;
   7. a repeated turn keeps deterministic masked prefixes where provider caching exposes it.
 - Unsupported Responses shapes fail closed rather than being forwarded as plaintext.
 - Claude Code acceptance still passes after proxy routing changes.
@@ -368,7 +368,7 @@ is pulled into the v0.1.0 release scope.
 | 2 | Codex CLI path is safe | Live controlled Codex run with sanitized capture and fixtures. |
 | 3 | SDK contract is embeddable | Real gateway path or maintained reference integration passes outbound, buffered restore, and streaming restore checks. |
 | 4 | Provider never receives real sensitive values | Upstream captures for live runs show tokens only; no real DSN/secret/PII. |
-| 5 | Local tools and files receive restored real values | Controlled tool task writes real values locally and no `CLK_` tokens. |
+| 5 | Local tools and files receive restored real values | Controlled tool task writes real values locally and no `OpenCloak_` tokens. |
 | 6 | Fail-closed behavior is preserved | Tests cover bad key, bad config, malformed JSON, unsupported provider/op, unsupported policy feature, and detector errors. |
 | 7 | Scope isolation holds | Same token/value cannot restore across tenant/session/project scopes. |
 | 8 | Logs and audit are minimized | Logs contain no credential headers, raw secrets, or provider bodies; residual-token audit records token metadata only. |

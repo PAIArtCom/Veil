@@ -50,12 +50,12 @@ migration"** (use a throwaway value). Then confirm each criterion:
 
 | # | Criterion | How to check |
 |---|---|---|
-| 1 | Protected text/tool fields contain only tokens | Watch the proxy stderr / a capture (below): the outbound `/v1/messages` protected text/tool fields carry `CLK_…`, never the throwaway secret. |
-| 2 | Overlapping findings → one token | A value that matches two rules still yields a single consistent `CLK_…`. (Unit-covered by the resolver; visible if you craft an overlapping secret.) |
-| 3 | Tool-call args + results restored | The tool the agent invokes receives the **real** connection string in its arguments, not a `CLK_…`. |
-| 4 | Local command runs with the real value | The migration actually connects/runs (it would fail with a `CLK_…` host). |
+| 1 | Protected text/tool fields contain only tokens | Watch the proxy stderr / a capture (below): the outbound `/v1/messages` protected text/tool fields carry `OpenCloak_…`, never the throwaway secret. |
+| 2 | Overlapping findings → one token | A value that matches two rules still yields a single consistent `OpenCloak_…`. (Unit-covered by the resolver; visible if you craft an overlapping secret.) |
+| 3 | Tool-call args + results restored | The tool the agent invokes receives the **real** connection string in its arguments, not an `OpenCloak_…`. |
+| 4 | Local command runs with the real value | The migration actually connects/runs (it would fail with an `OpenCloak_…` host). |
 | 5 | Restore errors are visible | Proxy logs any restore error at `ERROR`; the stream/response is not silently dropped. |
-| 6 | No tokens on disk | Files the agent writes contain real values, never `CLK_…`. |
+| 6 | No tokens on disk | Files the agent writes contain real values, never `OpenCloak_…`. |
 | 7 | Streamed tokens survive splits | Streamed assistant text and tool input render as real values even though the model emits the token across deltas. |
 | 8 | Second turn hits prompt cache | A repeated identical prefix produces a byte-identical masked prefix (deterministic tokens); the provider reports a cache hit. |
 
@@ -82,7 +82,7 @@ pin the exact SSE event types Claude Code emits.
   Anthropic image/document payloads. Provider thinking/control traces keep their native
   semantics and are not treated as user prompt text.
 - **Thinking/control traces are provider-native control data.** v0.1.0 does not reinterpret
-  or restore them as user text; if a provider emits a visible `CLK_` token there, the
+  or restore them as user text; if a provider emits a visible `OpenCloak_` token there, the
   residual-token audit can still report it ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)).
 - **SSE framing assumes LF** (`\n\n`), which is what Anthropic emits; CRLF is Phase 1.
 - No TLS pinning or response-signature checks block a local HTTP proxy (verified).

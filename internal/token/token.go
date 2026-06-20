@@ -63,7 +63,7 @@ func NewKeyer(path string) (*Keyer, error) {
 	return &Keyer{key: data[:keyLen]}, nil
 }
 
-// Derive returns the CLK_<TYPE>_<id> token for (typ, value). The collision
+// Derive returns the OpenCloak_<TYPE>_<id> token for (typ, value). The collision
 // avoidance map records which normalized values already own each id within a
 // single namespace; callers that need namespace isolation should pass a
 // dedicated collision map. collisions maps id → normalized value; it is
@@ -107,7 +107,7 @@ func (k *Keyer) hmacHex(data string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// format assembles the CLK_<TYPE>_<id> string.
+// format assembles the OpenCloak_<TYPE>_<id> string.
 func format(typ types.Type, id string) string {
 	return Prefix + string(typ) + "_" + id
 }
@@ -126,6 +126,6 @@ func normalize(typ types.Type, value string) string {
 	return v
 }
 
-// TokenPattern is the regexp source that matches any CLK_… token, used by
+// TokenPattern is the regexp source that matches any OpenCloak_… token, used by
 // the restore scanner. The id part is at least idBaseLen hex chars.
-const TokenPattern = `CLK_[A-Z0-9]+_[0-9a-f]{12,}`
+const TokenPattern = `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`

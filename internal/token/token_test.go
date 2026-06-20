@@ -73,10 +73,10 @@ func TestFormat(t *testing.T) {
 	k := newTestKeyer(t)
 	collisions := map[string]string{}
 	tok := k.Derive(types.TypeEmail, "user@Example.COM", collisions)
-	if !strings.HasPrefix(tok, "CLK_EMAIL_") {
+	if !strings.HasPrefix(tok, "OpenCloak_EMAIL_") {
 		t.Fatalf("unexpected prefix: %q", tok)
 	}
-	id := strings.TrimPrefix(tok, "CLK_EMAIL_")
+	id := strings.TrimPrefix(tok, "OpenCloak_EMAIL_")
 	if len(id) < idBaseLen {
 		t.Fatalf("id too short (%d chars): %q", len(id), tok)
 	}
@@ -114,7 +114,7 @@ func TestCollisionExtension(t *testing.T) {
 	// Derive the token for "real-secret" so we know the base id.
 	cReal := map[string]string{}
 	tokReal := k.Derive(types.TypeSecret, "real-secret", cReal)
-	baseID := strings.TrimPrefix(tokReal, "CLK_SECRET_")
+	baseID := strings.TrimPrefix(tokReal, "OpenCloak_SECRET_")
 
 	// Now build a fresh collision map that pretends another value already owns
 	// that base id. Deriving "real-secret" again must produce an extended id.
@@ -122,7 +122,7 @@ func TestCollisionExtension(t *testing.T) {
 		baseID: "some-other-normalized-value",
 	}
 	tokExtended := k.Derive(types.TypeSecret, "real-secret", cManip)
-	extID := strings.TrimPrefix(tokExtended, "CLK_SECRET_")
+	extID := strings.TrimPrefix(tokExtended, "OpenCloak_SECRET_")
 
 	if len(extID) <= len(baseID) {
 		t.Fatalf("expected extended id (len>%d) after collision, got %q (len=%d)", len(baseID), extID, len(extID))

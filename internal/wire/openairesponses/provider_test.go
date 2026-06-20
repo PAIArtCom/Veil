@@ -17,7 +17,7 @@ import (
 
 var (
 	ctx     = context.Background()
-	tokenRe = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+	tokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
 )
 
 const (
@@ -71,7 +71,7 @@ func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {
 		}
 	}
 	if !tokenRe.Match(masked) {
-		t.Fatalf("expected CLK_ token in masked body: %s", masked)
+		t.Fatalf("expected OpenCloak_ token in masked body: %s", masked)
 	}
 	if !bytes.Contains(masked, []byte(`static `+awsKey+` must stay`)) {
 		t.Fatalf("static tools definition was altered: %s", masked)
@@ -145,8 +145,8 @@ func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreResponse: %v", err)
 	}
-	if bytes.Contains(restored, []byte("CLK_")) {
-		t.Fatalf("residual CLK_ in restored response: %s", restored)
+	if bytes.Contains(restored, []byte("OpenCloak_")) {
+		t.Fatalf("residual OpenCloak_ in restored response: %s", restored)
 	}
 	for _, plain := range [][]byte{[]byte(dsn), []byte(email)} {
 		if !bytes.Contains(restored, plain) {

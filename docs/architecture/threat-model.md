@@ -52,7 +52,7 @@ These must hold for every change touching detection, masking, restore, or egress
 ## Residual risks (acknowledged)
 
 - **Orphan tokens.** If the model mangles a token (splits, re-encodes), restore may miss
-  it and a `CLK_…` literal could land in output. Mitigations: an identifier-safe token
+  it and an `OpenCloak_…` literal could land in output. Mitigations: an identifier-safe token
   form that survives in code without breaking syntax, and residual-token scans owned by
   `internal/stream` for raw streams and `internal/mask` for final text/wire buffers. Hits
   are audited as `AuditEvent{Kind:"residual_token"}` without sensitive values. ([Token

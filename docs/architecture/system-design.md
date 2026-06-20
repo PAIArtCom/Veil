@@ -19,7 +19,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   │   ├── l1/            [implemented] regex + entropy + validators + context keywords
 │   │   └── resolver/      [implemented] Finding merge/de-overlap and precedence
 │   ├── mask/              [implemented] offset-safe replacement + token mapping writes
-│   ├── token/            [implemented] CLK_<TYPE>_<id>, HMAC, normalize, local key
+│   ├── token/            [implemented] OpenCloak_<TYPE>_<id>, HMAC, normalize, local key
 │   ├── mapstore/         [implemented] token<->value reverse map (State), scoped in-mem
 │   ├── wire/             [implemented] internal provider-native JSON adapters
 │   │   ├── anthropic/    [implemented] /v1/messages  (Phase 0)
@@ -51,7 +51,7 @@ in the roadmap pass against a real Claude Code flow.
 | `internal/detect/l1` | Pattern detection: built-in regex rules, Shannon entropy + context keywords, checksums/validators (Luhn, IBAN, date parsing). |
 | `internal/detect/resolver` | Merge same-type overlaps, resolve cross-type conflicts, and emit non-overlapping findings. |
 | `internal/mask` | Consume resolved findings, perform offset-safe replacement, call token strategy, write token mappings into `State`, and scan final text/wire buffers for residual tokens. |
-| `internal/token` | The `CLK_<TYPE>_<id>` format, HMAC derivation, `normalize`, and the local key. |
+| `internal/token` | The `OpenCloak_<TYPE>_<id>` format, HMAC derivation, `normalize`, and the local key. |
 | `internal/mapstore` | The token↔value reverse map behind `State`; in-memory, scoped by request/stream and optional session/tenant namespace. |
 | `internal/wire` | Internal provider adapters that extract/apply text spans for each provider's native request/response JSON. No unified schema. |
 | `internal/stream` | Restore tokens in streaming responses (chunk-level + SSE-event-level) and scan raw streams for residual tokens at flush/end-of-stream. |

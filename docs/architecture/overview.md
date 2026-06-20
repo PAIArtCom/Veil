@@ -50,7 +50,7 @@ dev tool ◀──protected response fields(real)── [RESTORE inbound] ◀─
 |---|---|---|
 | **Detector** | Find sensitive findings | Layered: L1 patterns now, L2 NER later. Findings include confidence and source. [Spec](../concepts/detection-layers.md) |
 | **Resolver** | Merge and de-overlap findings | Same-type merge; cross-type precedence before any replacement. [ADR-0008](decisions/0008-finding-model-and-conflict-resolution.md) |
-| **Tokenizer** | Map value ↔ token, deterministically | `CLK_<TYPE>_<id>`. [Spec](../concepts/token-spec.md) |
+| **Tokenizer** | Map value ↔ token, deterministically | `OpenCloak_<TYPE>_<id>`. [Spec](../concepts/token-spec.md) |
 | **Masker** | Apply token strategy to resolved findings | Offset-safe replacement and token→value mapping writes |
 | **State** | Hold token→value reverse mappings for restore | Explicit request/stream handle with scoped in-memory namespaces. [ADR-0009](decisions/0009-state-lifecycle-and-scope.md) |
 | **Wire adapters** | Walk each provider's request/response JSON | OpenCloak-maintained internal adapters at first: Anthropic Messages live-accepted; OpenAI Responses offline-verified and local Codex CLI live-accepted. Direct `api.openai.com` upstream acceptance is not claimed until a valid OpenAI API key is available. OpenAI Chat and Gemini are later. Native shapes, no unified IR; buffered/SSE restore is provider-aware. |

@@ -29,7 +29,7 @@ func (p *provider) NewStreamRestorer(op string) (wire.StreamRestorer, error) {
 //     captured at content_block_start so a stop/flush knows how to drain.
 //   - textTail is the held partial-token suffix of a text block: the trailing
 //     bytes of the concatenated text_delta payloads that could still grow into a
-//     CLK_ token, carried forward until proven complete or flushed.
+//     OpenCloak_ token, carried forward until proven complete or flushed.
 //   - jsonBuf accumulates a tool_use block's input_json_delta fragments so the
 //     COMPLETE reconstructed JSON can be restored at block stop (tools need
 //     complete input, and full-parse restore is escaping-correct).
@@ -103,7 +103,7 @@ func (s *streamRestorer) handleDelta(eventData []byte, restore wire.RestoreFunc)
 		// safe prefix and hold back the new partial-token suffix. This is the
 		// same holdback the raw byte restorer applies, but driven per content
 		// block on decoded text rather than on raw SSE bytes — so a token split
-		// across text_delta events (mid-CLK_/mid-TYPE/mid-hex) is reassembled
+		// across text_delta events (mid-OpenCloak_/mid-TYPE/mid-hex) is reassembled
 		// before any match is attempted.
 		combined := append(blk.textTail, []byte(gjson.GetBytes(eventData, "delta.text").Str)...)
 		danger := token.PartialSuffixStart(combined)

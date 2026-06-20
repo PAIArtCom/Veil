@@ -17,7 +17,7 @@ type Detector interface {
 type TransformOperator = types.TransformOperator
 
 const (
-	// OperatorToken replaces values with deterministic reversible CLK_<TYPE>_<id>
+	// OperatorToken replaces values with deterministic reversible OpenCloak_<TYPE>_<id>
 	// tokens. This is the OpenCloak default.
 	OperatorToken TransformOperator = types.OperatorToken
 	// OperatorFormatPreserving is reserved for deterministic realistic surrogates

@@ -9,7 +9,7 @@ import (
 )
 
 // Type is a category of sensitive data. It is embedded in every token as
-// CLK_<TYPE>_<id> so that handling and restore can branch on the category.
+// OpenCloak_<TYPE>_<id> so that handling and restore can branch on the category.
 // See docs/concepts/token-spec.md.
 type Type = types.Type
 

@@ -35,7 +35,7 @@ func newTestEngineWithDetector(t *testing.T, det opencloak.Detector) *opencloak.
 }
 
 // ADR-0011 §4 test matrix for the stateful, cross-event SSE restorer
-// (Engine.NewSSEStreamRestorer / *opencloak.SSEStream). These tests split CLK_
+// (Engine.NewSSEStreamRestorer / *opencloak.SSEStream). These tests split OpenCloak_
 // tokens across logical SSE events (not just TCP byte boundaries) at every
 // dangerous position and assert the client-reassembled output restores fully.
 //
@@ -169,13 +169,13 @@ func TestSSETextTokenSplitAcrossEvents(t *testing.T) {
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
-	// Dangerous split positions: mid-"CLK_", mid-TYPE, mid-hex. Derive concrete
+	// Dangerous split positions: mid-"OpenCloak_", mid-TYPE, mid-hex. Derive concrete
 	// offsets from the token shape so the test is deterministic for any token.
-	underscore := strings.Index(tok, "_") // after "CLK"
+	underscore := strings.Index(tok, "_") // after "OpenCloak"
 	typeEnd := strings.Index(tok[underscore+1:], "_") + underscore + 1
 	splitPoints := []int{
-		2,              // mid-"CLK_" ("CL" | "K_...")
-		underscore + 1, // just after "CLK_" (TYPE boundary)
+		2,              // mid-"OpenCloak_"
+		underscore + 1, // just after "OpenCloak_" (TYPE boundary)
 		typeEnd,        // end of TYPE (before "_<hex>")
 		typeEnd + 3,    // mid-hex
 		len(tok) - 1,   // last hex char split off
@@ -197,8 +197,8 @@ func TestSSETextTokenSplitAcrossEvents(t *testing.T) {
 		if got != want {
 			t.Fatalf("split@%d: got %q want %q", sp, got, want)
 		}
-		if strings.Contains(got, "CLK_") {
-			t.Fatalf("split@%d: residual CLK_ in %q", sp, got)
+		if strings.Contains(got, "OpenCloak_") {
+			t.Fatalf("split@%d: residual OpenCloak_ in %q", sp, got)
 		}
 	}
 
@@ -416,7 +416,7 @@ func TestSSEMultiIndexIsolation(t *testing.T) {
 		blockStart(2, "thinking"),
 		textDeltaEvent(0, "addr "+textFrags[0]),
 		inputJSONDeltaEvent(1, toolFrags[0]),
-		// A thinking_delta carrying a CLK_-looking token: must be untouched.
+		// A thinking_delta carrying an OpenCloak_-looking token: must be untouched.
 		thinkingDeltaEvent(2, "reasoning "+textTok),
 		textDeltaEvent(0, textFrags[1]+" done"),
 		inputJSONDeltaEvent(1, toolFrags[1]),
@@ -443,7 +443,7 @@ func TestSSEMultiIndexIsolation(t *testing.T) {
 	if toolDeltaIndex != 1 {
 		t.Fatalf("consolidated tool delta keyed to index %d, want 1", toolDeltaIndex)
 	}
-	if !strings.Contains(toolJSON, "AKIAIOSFODNN7EXAMPLE") || strings.Contains(toolJSON, "CLK_") {
+	if !strings.Contains(toolJSON, "AKIAIOSFODNN7EXAMPLE") || strings.Contains(toolJSON, "OpenCloak_") {
 		t.Fatalf("tool input not restored/isolated: %q", toolJSON)
 	}
 	// Thinking on index 2 passes through UNRESTORED (token still present).
@@ -581,7 +581,7 @@ func TestSSEFlushResidualAuditsOnce(t *testing.T) {
 
 	// A validly-shaped token never minted in this scope (residual). Deliver it
 	// whole then end the stream; the held tail flushes it as residual.
-	const residual = "CLK_IPV4_00aa11bb22cc"
+	const residual = "OpenCloak_IPV4_00aa11bb22cc"
 	s := newSSE(t, e, st)
 	_, _ = s.Event(context.Background(), blockStart(0, "text"))
 	_, _ = s.Event(context.Background(), textDeltaEvent(0, "x "+residual[:6]))
@@ -629,16 +629,16 @@ func TestSSENoTokenPassThroughNoAudit(t *testing.T) {
 	}
 }
 
-// A CLK_-shaped non-token (fails TokenPattern: too-short id) split across events
+// A OpenCloak_-shaped non-token (fails TokenPattern: too-short id) split across events
 // is left untouched and not counted.
-func TestSSECLKShapedNonTokenUntouched(t *testing.T) {
+func TestSSEOpenCloakShapedNonTokenUntouched(t *testing.T) {
 	scope := opencloak.Scope{Session: "sse-I2"}
 	audit := &recordingAudit{}
 	e := newTestEngineWithAudit(t, audit)
 	st := wireState(t, e, scope)
 
-	// 4 hex chars (< 12) → not a token per CLK_[A-Z0-9]+_[0-9a-f]{12,}.
-	const fake = "CLK_SECRET_dead"
+	// 4 hex chars (< 12) → not a token per OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}.
+	const fake = "OpenCloak_SECRET_dead"
 	frags := splitToken(fake, 6)
 	s := newSSE(t, e, st)
 	events := [][]byte{
@@ -649,7 +649,7 @@ func TestSSECLKShapedNonTokenUntouched(t *testing.T) {
 	}
 	got := reassembleText(t, sseStreamCollect(t, s, events))
 	if got != "x "+fake+" y" {
-		t.Fatalf("CLK-shaped non-token altered: got %q want %q", got, "x "+fake+" y")
+		t.Fatalf("OpenCloak-shaped non-token altered: got %q want %q", got, "x "+fake+" y")
 	}
 	if len(audit.snapshot()) != 0 {
 		t.Fatalf("non-token must not be counted as residual: %v", audit.snapshot())

@@ -72,7 +72,7 @@ Embedders can provide any `PolicyProvider` that returns the public `Policy` shap
 type TransformOperator string
 
 const (
-    OperatorToken            TransformOperator = "token"             // default reversible CLK token
+    OperatorToken            TransformOperator = "token"             // default reversible OpenCloak token
     OperatorFormatPreserving TransformOperator = "format_preserving" // Phase 1; type-specific reverse strategy
     OperatorRedact           TransformOperator = "redact"            // Phase 1; irreversible
     OperatorBlock            TransformOperator = "block"

@@ -13,7 +13,7 @@ import (
 	opencloak "github.com/cloakia/opencloak"
 )
 
-var streamTokenRe = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+var streamTokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 // recordingAudit is a test AuditSink that captures every recorded event. It is
 // concurrency-safe so it can also be used under the race detector.
@@ -151,7 +151,7 @@ func TestStreamRoundTripWireWithMaskRequest(t *testing.T) {
 	if got != want {
 		t.Fatalf("wire-token stream round-trip:\n want %q\n got  %q", want, got)
 	}
-	if strings.Contains(got, "CLK_") {
+	if strings.Contains(got, "OpenCloak_") {
 		t.Fatalf("residual token after restore: %q", got)
 	}
 }
@@ -167,7 +167,7 @@ func TestStreamResidualAuditOnFlush(t *testing.T) {
 	e := newTestEngineWithAudit(t, audit)
 
 	// A validly-shaped token that the store does not know in this scope.
-	const residualTok = "CLK_IPV4_001122334455"
+	const residualTok = "OpenCloak_IPV4_001122334455"
 	_, st, err := e.Mask(ctx, opencloak.Scope{}, "plain text no secrets")
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
@@ -218,7 +218,7 @@ func TestRestoreResponseResidualAuditUsesCtx(t *testing.T) {
 	}
 
 	// Response references a token never minted in this scope → residual.
-	const residualTok = "CLK_SECRET_0a1b2c3d4e5f"
+	const residualTok = "OpenCloak_SECRET_0a1b2c3d4e5f"
 	respBody := []byte(`{"role":"assistant","content":[{"type":"text","text":"leftover ` + residualTok + ` here"}],"stop_reason":"end_turn"}`)
 
 	callCtx := context.WithValue(context.Background(), ctxKey{}, "resp-call")
@@ -289,7 +289,7 @@ func TestNoResidualNoAudit(t *testing.T) {
 
 func TestRestoreStreamChunkNilState(t *testing.T) {
 	e := newTestEngineWithAudit(t, nil)
-	chunk := []byte("CLK_SECRET_0a1b2c3d4e5f and text")
+	chunk := []byte("OpenCloak_SECRET_0a1b2c3d4e5f and text")
 	got := e.RestoreStreamChunk(nil, chunk)
 	if !bytes.Equal(got, chunk) {
 		t.Fatalf("RestoreStreamChunk(nil) must return chunk unchanged: got %q", got)

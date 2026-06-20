@@ -48,7 +48,7 @@ security, API, and implementation choices.
 |---|---|---|
 | [0001](0001-base-url-proxy-over-hooks.md) | Attach via base-URL local proxy, not in-process hooks | Accepted |
 | [0002](0002-engine-transport-split.md) | Engine / transport split (one core, many shells) | Accepted |
-| [0003](0003-deterministic-reversible-token-spec.md) | Deterministic, reversible, type-aware token spec | Accepted |
+| [0003](0003-deterministic-reversible-token-spec.md) | Deterministic, reversible, type-aware token spec | Partially superseded by ADR-0014 |
 | [0004](0004-auth-pass-through.md) | Authentication is pass-through, engine is credential-free | Accepted |
 | [0005](0005-global-in-memory-scope.md) | Global, in-memory mapping scope | Superseded by ADR-0009 |
 | [0006](0006-l1-only-mvp-defer-l2.md) | L1-only MVP; defer the L2 NER model | Accepted |
@@ -59,3 +59,4 @@ security, API, and implementation choices.
 | [0011](0011-streaming-restore-cross-event-holdback.md) | Streaming restore across SSE event boundaries | Accepted |
 | [0012](0012-phase-0-l1-rule-sourcing.md) | Phase 0 L1 rule sourcing and RuleSets behavior | Accepted |
 | [0013](0013-openai-responses-provider.md) | OpenAI Responses provider for Codex CLI | Accepted |
+| [0014](0014-opencloak-token-prefix.md) | Use OpenCloak token namespace prefix | Accepted |

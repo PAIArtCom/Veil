@@ -102,19 +102,19 @@ with no perceptible latency, and without breaking the agent.
   your dev tool  (Claude Code / Codex / …)
        │  protected text/tool fields with real secrets & PII
        ▼
-  ┌──────────────────────────────────────────────┐
-  │  OpenCloak   (local proxy OR embedded library) │
-  │  ① detect  → ② mask → reversible token         │
-  │     e.g.  sk-live-abc…  →  CLK_SECRET_7f3a…    │
-  └──────────────────────────────────────────────┘
+  ┌────────────────────────────────────────────────────────┐
+  │  OpenCloak   (local proxy OR embedded library)         │
+  │  ① detect  → ② mask → reversible token                 │
+  │     e.g.  sk-live-abc…  →  OpenCloak_SECRET_7f3a…      │
+  └────────────────────────────────────────────────────────┘
        │  protected fields contain tokens — opaque payloads keep native shape
        ▼
   LLM provider  (Anthropic / OpenAI / …)
-       │  response & tool-calls reference CLK_SECRET_7f3a…
+       │  response & tool-calls reference OpenCloak_SECRET_7f3a…
        ▼
-  ┌──────────────────────────────────────────────┐
-  │  OpenCloak   ③ restore tokens → real values    │
-  └──────────────────────────────────────────────┘
+  ┌────────────────────────────────────────────────────────┐
+  │  OpenCloak   ③ restore tokens → real values            │
+  └────────────────────────────────────────────────────────┘
        │  real values — tools, files, terminal all work
        ▼
   your dev tool
@@ -126,7 +126,7 @@ Three properties make this safe and seamless:
   LLM, restore on the way *back*. Everything local (tool execution, file writes, terminal
   display) is untouched.
   See [redaction model](docs/concepts/redaction-model.md).
-- **Deterministic, reversible, type-aware tokens** (`CLK_<TYPE>_<id>`) — the same value
+- **Deterministic, reversible, type-aware tokens** (`OpenCloak_<TYPE>_<id>`) — the same value
   always maps to the same token, so prompt caches stay warm and multi-turn context stays
   coherent. See [token spec](docs/concepts/token-spec.md).
 - **Layered detection** — L1 pattern matching (secrets, structured PII) ships first; an

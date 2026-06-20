@@ -48,7 +48,7 @@ func TestResponsesStreamRestoresSplitOutputTextAndFunctionArguments(t *testing.T
 	}
 	out = append(out, flushed...)
 	joined := bytes.Join(out, []byte("\n"))
-	if bytes.Contains(joined, []byte("CLK_")) {
+	if bytes.Contains(joined, []byte("OpenCloak_")) {
 		t.Fatalf("residual token in stream output: %s", joined)
 	}
 	if !bytes.Contains(joined, []byte(dsn)) {
@@ -84,7 +84,7 @@ func TestResponsesStreamRestoresCompletedEventOutput(t *testing.T) {
 	if len(outs) != 1 {
 		t.Fatalf("outs len = %d, want 1", len(outs))
 	}
-	if bytes.Contains(outs[0], []byte("CLK_")) || !bytes.Contains(outs[0], []byte(email)) {
+	if bytes.Contains(outs[0], []byte("OpenCloak_")) || !bytes.Contains(outs[0], []byte(email)) {
 		t.Fatalf("completed event not restored: %s", outs[0])
 	}
 }

@@ -35,7 +35,7 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 
 var ctx = context.Background()
 
-var engineTokenRe = regexp.MustCompile(`CLK_[A-Z0-9]+_[0-9a-f]{12,}`)
+var engineTokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 func extractEngineToken(t *testing.T, text string) string {
 	t.Helper()
@@ -58,8 +58,8 @@ func TestMaskRestoreEmail(t *testing.T) {
 	if strings.Contains(masked, "user@example.com") {
 		t.Fatalf("email not masked: %q", masked)
 	}
-	if !strings.Contains(masked, "CLK_EMAIL_") {
-		t.Fatalf("expected CLK_EMAIL_ token in masked text: %q", masked)
+	if !strings.Contains(masked, "OpenCloak_EMAIL_") {
+		t.Fatalf("expected OpenCloak_EMAIL_ token in masked text: %q", masked)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -80,8 +80,8 @@ func TestMaskRestoreAWSKey(t *testing.T) {
 	if strings.Contains(masked, "AKIAIOSFODNN7EXAMPLE") {
 		t.Fatalf("AWS key not masked: %q", masked)
 	}
-	if !strings.Contains(masked, "CLK_SECRET_") {
-		t.Fatalf("expected CLK_SECRET_ token: %q", masked)
+	if !strings.Contains(masked, "OpenCloak_SECRET_") {
+		t.Fatalf("expected OpenCloak_SECRET_ token: %q", masked)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -153,10 +153,10 @@ func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 			if strings.Contains(masked, tc.plaintext) {
 				t.Fatalf("plaintext secret was not masked: %q", masked)
 			}
-			if got := strings.Count(masked, "CLK_SECRET_"); got != 1 {
-				t.Fatalf("CLK_SECRET_ count = %d, want 1 in %q", got, masked)
+			if got := strings.Count(masked, "OpenCloak_SECRET_"); got != 1 {
+				t.Fatalf("OpenCloak_SECRET_ count = %d, want 1 in %q", got, masked)
 			}
-			if strings.Contains(masked, "CLK_URL_") {
+			if strings.Contains(masked, "OpenCloak_URL_") {
 				t.Fatalf("URL overlap won over secret span: %q", masked)
 			}
 			if tc.wantKeep != "" && !strings.Contains(masked, tc.wantKeep) {
@@ -246,7 +246,7 @@ func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
 		"token=" + existing,
 		"secret=" + existing,
 		"Authorization: Bearer " + existing,
-		"token=CLK_SECRET_001122334455",
+		"token=OpenCloak_SECRET_001122334455",
 	}
 	for _, text := range cases {
 		t.Run(text, func(t *testing.T) {
@@ -309,7 +309,7 @@ func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
 			if strings.Contains(masked, newSecret) {
 				t.Fatalf("new real secret was not masked: %q", masked)
 			}
-			if got := strings.Count(masked, "CLK_SECRET_"); got < 2 {
+			if got := strings.Count(masked, "OpenCloak_SECRET_"); got < 2 {
 				t.Fatalf("want existing token plus new secret token, got %d in %q", got, masked)
 			}
 
@@ -325,7 +325,7 @@ func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
 }
 
 func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
-	const existing = "CLK_SECRET_001122334455"
+	const existing = "OpenCloak_SECRET_001122334455"
 	text := "token=" + existing
 	start := strings.Index(text, existing)
 	if start < 0 {
@@ -359,7 +359,7 @@ func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
 }
 
 func TestExternalDetectorBroadSpanPreservesOpenCloakTokenAndMasksRemainder(t *testing.T) {
-	const existing = "CLK_SECRET_001122334455"
+	const existing = "OpenCloak_SECRET_001122334455"
 	const newSecret = "NEW_SECRET_VALUE_123456789"
 	text := "prefix " + existing + " suffix " + newSecret
 	syn := &syntheticDetector{findings: []opencloak.Finding{
@@ -416,7 +416,7 @@ func TestMaskRequestExistingOpenCloakTokensIdempotent(t *testing.T) {
 	if strings.Contains(got, newSecret) {
 		t.Fatalf("new real secret was not masked in provider field: %s", masked)
 	}
-	if gotCount := strings.Count(got, "CLK_SECRET_"); gotCount < 3 {
+	if gotCount := strings.Count(got, "OpenCloak_SECRET_"); gotCount < 3 {
 		t.Fatalf("want two existing token occurrences plus one new token, got %d in %s", gotCount, masked)
 	}
 }
@@ -472,7 +472,7 @@ func TestRestoreNilState(t *testing.T) {
 
 func TestRestoreUnknownTokenPassThrough(t *testing.T) {
 	e := newTestEngine(t)
-	text := "value=CLK_SECRET_deadbeef0001"
+	text := "value=OpenCloak_SECRET_deadbeef0001"
 	_, st, err := e.Mask(ctx, opencloak.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
@@ -483,7 +483,7 @@ func TestRestoreUnknownTokenPassThrough(t *testing.T) {
 		t.Fatalf("Restore: %v", err)
 	}
 	// Unknown token is left as-is.
-	if !strings.Contains(restored, "CLK_SECRET_deadbeef0001") {
+	if !strings.Contains(restored, "OpenCloak_SECRET_deadbeef0001") {
 		t.Fatalf("unknown token should be left as-is; got %q", restored)
 	}
 }
@@ -818,8 +818,8 @@ func TestIgnoredTypeDoesNotSuppressMaskableOverlap(t *testing.T) {
 	if strings.Contains(masked, secretValue) {
 		t.Fatalf("secret value not masked (ignored-type suppression bug): %q", masked)
 	}
-	if !strings.Contains(masked, "CLK_SECRET_") {
-		t.Fatalf("expected CLK_SECRET_ token in masked text: %q", masked)
+	if !strings.Contains(masked, "OpenCloak_SECRET_") {
+		t.Fatalf("expected OpenCloak_SECRET_ token in masked text: %q", masked)
 	}
 
 	restored, err := e.Restore(ctx, st, masked)

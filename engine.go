@@ -282,7 +282,7 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 }
 
 // Mask replaces detected sensitive values in text with deterministic, reversible
-// tokens (CLK_<TYPE>_<id>). It returns the State needed to restore the same text surface.
+// tokens (OpenCloak_<TYPE>_<id>). It returns the State needed to restore the same text surface.
 func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error) {
 	policy, err := e.activePolicy(ctx, scope)
 	if err != nil {
@@ -301,7 +301,7 @@ func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked str
 	return maskedText, &State{scope: scope}, nil
 }
 
-// tokenRe matches any CLK_… token in text.
+// tokenRe matches any OpenCloak_… token in text.
 var tokenRe = regexp.MustCompile(token.TokenPattern)
 
 // Restore replaces tokens in text with their original values using st. A nil State is
@@ -478,7 +478,7 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 // (accumulate while relaying, audit once at end of stream).
 //
 // Unlike the stateless RestoreSSEEvent, an SSEStream holds the provider's
-// cross-event holdback (e.g. a CLK_ token split across content_block_delta
+// cross-event holdback (e.g. an OpenCloak_ token split across content_block_delta
 // events), so the proxy can drive it one complete event at a time and have
 // split tokens reassembled before any restore is attempted.
 //
@@ -549,7 +549,7 @@ func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 	}
 }
 
-// restoreScan returns a RestoreFunc that replaces CLK_… tokens found in text
+// restoreScan returns a RestoreFunc that replaces OpenCloak_… tokens found in text
 // with their stored values under scope (unknown tokens left as-is, consistent
 // with the text-surface Restore), counting every validly-shaped but unresolved
 // token into residual by TYPE string. It is the single token-scan shared by the
@@ -574,10 +574,10 @@ func (e *Engine) restoreScan(scope Scope, residual map[string]int) wire.RestoreF
 	}
 }
 
-// restoreFuncTracking returns a RestoreFunc that replaces CLK_… tokens found in
+// restoreFuncTracking returns a RestoreFunc that replaces OpenCloak_… tokens found in
 // text with their stored values under st's scope (unknown tokens left as-is,
 // consistent with the text-surface Restore) plus a snapshot accessor that
-// reports residual tokens — validly-shaped CLK_… tokens that were not found in
+// reports residual tokens — validly-shaped OpenCloak_… tokens that were not found in
 // st's scope — grouped by TYPE. Callers use it to emit a residual_token audit
 // event after a buffered or SSE-event restore, mirroring the streaming surface.
 //
