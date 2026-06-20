@@ -18,8 +18,9 @@ No changes yet.
 - Standalone loopback proxy for Anthropic Messages / Claude Code, live-accepted on
   2026-06-17 against real Claude Code traffic.
 - OpenAI Responses provider path for Codex CLI with offline verification, sanitized
-  fixtures, and local Codex CLI Responses live acceptance; direct `api.openai.com`
-  upstream evidence remains unclaimed until a valid OpenAI API key is available.
+  fixtures, and local Codex CLI Responses live acceptance as the v0.1.0 OpenAI Responses
+  protocol evidence. A separate direct `api.openai.com` official-service run is not
+  claimed.
 - Maintained `examples/embed` SDK reference integration outside the standalone proxy.
 - Local JSON policy file support for `token`, `ignore`, and `block`, with strict
   fail-closed validation for unknown keys, reserved operators, and non-empty `rule_sets`.
@@ -30,8 +31,8 @@ No changes yet.
   forwarding unchecked plaintext-bearing blocks. Opaque media/document payloads and
   provider thinking/control traces remain outside the v0.1.0 de-identification surface.
 - Codex live acceptance: Codex CLI 0.140.0 passed a controlled Responses-wire run through
-  OpenCloak with a Responses-compatible upstream; direct `api.openai.com` upstream evidence
-  remains unclaimed until a valid OpenAI API key is available.
+  OpenCloak with a Responses-compatible upstream. This is the v0.1.0 OpenAI Responses
+  protocol evidence.
 - CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
   built-in default policy instead of passing a typed nil local provider into the engine.
 
@@ -55,5 +56,5 @@ No changes yet.
 - OpenAI Chat, Gemini, remote MCP egress classification, L2 default-on semantic PII,
   HTTP/gRPC service, local web console, `redact`, `format_preserving`, and configurable
   rule packs remain planned or reserved.
-- Direct `api.openai.com` upstream acceptance remains unclaimed until a valid OpenAI API
-  key is available.
+- A separate direct `api.openai.com` official-service end-to-end run is not part of the
+  v0.1.0 release gate and is not claimed.

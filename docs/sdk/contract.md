@@ -3,9 +3,10 @@
 **Status:** Accepted (contract); the text/stream SDK surface is implemented, the
 standalone Claude Code proxy path is live-accepted, OpenAI Responses is implemented with
 offline fixtures and local Codex CLI Responses live acceptance, and the SDK is validated by
-the maintained reference integration in `examples/embed`. Direct `https://api.openai.com`
-upstream acceptance, OpenAI Chat, Gemini, and Phase 1 operators remain reserved or
-unclaimed.
+the maintained reference integration in `examples/embed`. The Codex CLI Responses run is
+the v0.1.0 OpenAI Responses protocol evidence; a separate direct
+`https://api.openai.com` official-service run, OpenAI Chat, Gemini, and Phase 1 operators
+remain unclaimed or reserved.
 
 OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the

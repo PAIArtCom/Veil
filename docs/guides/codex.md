@@ -5,9 +5,9 @@ OpenAI Responses/Codex provider path is implemented in the standalone proxy and 
 sanitized fixtures, proxy tests, a loopback Codex CLI 0.140.0 capture, and controlled
 Codex CLI 0.140.0 live runs through a Responses-compatible upstream, including the
 2026-06-20 `OpenCloak_` prefix refresh
-([acceptance report](../architecture/codex-live-acceptance.md)). Direct
-`https://api.openai.com` upstream acceptance is not claimed until a valid OpenAI API key is
-available for a separate run.
+([acceptance report](../architecture/codex-live-acceptance.md)). This is the v0.1.0
+OpenAI Responses protocol evidence. A separate direct `https://api.openai.com`
+official-service run is not part of the release gate and is not claimed.
 
 Grounded in verified Codex behavior
 ([survey](../research/gateway-integration-survey.md),
@@ -66,8 +66,8 @@ provider's WebSocket capability, which can bypass an HTTP proxy. (Verified;
   tool output.
 - Unsupported Responses input item shapes fail closed before upstream egress.
 - The local Codex CLI Responses path is live-accepted, including the 2026-06-20
-  `OpenCloak_` prefix refresh. Direct `https://api.openai.com` upstream acceptance remains
-  unclaimed until a valid OpenAI API key is available for that separate run.
+  `OpenCloak_` prefix refresh. This is the v0.1.0 OpenAI Responses protocol evidence; a
+  separate direct `https://api.openai.com` official-service run is not claimed.
 - **AWS Bedrock** (SigV4 signs body+host) cannot be served by a rewrite proxy — out of
   scope for the MVP.
 - Avoid `CODEX_SANDBOX=seatbelt` interactions with OS-level proxies; the explicit

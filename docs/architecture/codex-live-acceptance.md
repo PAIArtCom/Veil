@@ -1,9 +1,9 @@
 # Codex CLI Live Acceptance
 
 **Status:** Passed for the local Codex CLI Responses path with a Responses-compatible
-upstream, including the 2026-06-20 `OpenCloak_` prefix refresh. Direct
-`https://api.openai.com` upstream acceptance remains unclaimed until a valid OpenAI API key
-is available.
+upstream, including the 2026-06-20 `OpenCloak_` prefix refresh. This is the v0.1.0
+OpenAI Responses protocol evidence. A separate direct `https://api.openai.com`
+official-service run is not part of the release gate and is not claimed.
 
 **Initial run date:** 2026-06-17
 
@@ -123,13 +123,16 @@ OpenCloak logged one non-restore `context canceled` upstream stream-read event a
 closed the SSE stream. The Codex command exited successfully, local shell execution
 completed, and the provider-bound plaintext checks passed.
 
-## Direct OpenAI Upstream Status
+## OpenAI Protocol Boundary
 
-A redacted `codex doctor` probe for the built-in OpenAI provider reported stored API-key
-auth, but the key was rejected by the OpenAI API as invalid. Therefore this report does not
-claim direct `https://api.openai.com` upstream live acceptance. The verified claim is the
-Codex CLI 0.140.0 Responses wire path through OpenCloak with a live
-Responses-compatible upstream.
+Codex CLI speaks the OpenAI Responses API over the custom provider's HTTP+SSE transport.
+The controlled Codex live runs therefore validate OpenCloak's OpenAI Responses protocol
+path for v0.1.0. The report does not separately claim an official `https://api.openai.com`
+service end-to-end run; that separate run is outside the v0.1.0 release gate.
+
+A historical redacted `codex doctor` probe for the built-in OpenAI provider reported
+stored API-key auth, but the key was rejected by the OpenAI API as invalid. That historical
+probe is not part of the v0.1.0 release gate.
 
 ## Hygiene
 

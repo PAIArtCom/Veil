@@ -140,7 +140,8 @@ pass, the binary help path runs, and the live Claude Code acceptance report is r
 Anthropic Messages buffered wire, streaming restore, and loopback proxy. R2 release
 hardening adds the maintained `examples/embed` SDK reference integration outside the
 standalone proxy. R3 adds offline-verified OpenAI Responses provider support for Codex,
-now with local Codex CLI live acceptance evidence; direct `api.openai.com` upstream
-acceptance is not claimed until a valid OpenAI API key is available. R4 adds strict local
-policy-file loading for `token`, `ignore`, and `block`. OpenAI Chat, Gemini, service,
-configurable rule packs, `redact`, `format_preserving`, and console remain Phase 1+.
+now with local Codex CLI live acceptance evidence as the v0.1.0 OpenAI Responses protocol
+claim. A separate direct `api.openai.com` official-service run is not part of the release
+gate. R4 adds strict local policy-file loading for `token`, `ignore`, and `block`. OpenAI
+Chat, Gemini, service, configurable rule packs, `redact`, `format_preserving`, and console
+remain Phase 1+.

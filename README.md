@@ -15,8 +15,9 @@ with the real values.
 > wire masking/restore, streaming restore, loopback Claude Code proxy, maintained SDK
 > embed reference integration, OpenAI Responses wire adapter, and local policy file are
 > implemented and test-verified. Claude Code is live-accepted; the local Codex CLI
-> Responses path is live-accepted with sanitized evidence; direct `api.openai.com`
-> upstream acceptance is not claimed until a valid OpenAI API key is available.
+> Responses path is live-accepted with sanitized evidence and is the v0.1.0 OpenAI
+> Responses protocol evidence. A separate direct `api.openai.com` official-service run is
+> not part of the v0.1.0 release gate and is not claimed.
 
 ---
 

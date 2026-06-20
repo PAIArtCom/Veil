@@ -10,9 +10,9 @@ actions require an explicit maintainer decision.
 - R1-R7 runtime evidence is recorded through Specability.
 - Claude Code live acceptance remains reproducible from
   [Guide: Claude Code](claude-code.md).
-- Codex/OpenAI Responses live acceptance is recorded with sanitized evidence. If the
-  release claim requires direct `api.openai.com` upstream evidence, rerun the Codex
-  acceptance task with a valid OpenAI API key first.
+- Codex/OpenAI Responses live acceptance is recorded with sanitized evidence. The local
+  Codex CLI Responses run is the v0.1.0 OpenAI Responses protocol evidence; a separate
+  direct `api.openai.com` official-service run is not part of this release gate.
 - No raw provider captures, credentials, local key files, or real secrets are staged.
 
 ## Local Gate
@@ -60,8 +60,9 @@ Compare the result against the reference bands in
 - Changelog has a v0.1.0-ready entry.
 - SECURITY.md has private-reporting guidance and known security limits.
 - Claude Code guide is copy-paste runnable for the live-accepted path.
-- Codex guide distinguishes the local Codex CLI live-accepted path from unclaimed direct
-  `api.openai.com` upstream acceptance.
+- Codex guide presents the local Codex CLI live-accepted path as the OpenAI Responses
+  protocol evidence and avoids claiming a separate direct `api.openai.com` official-service
+  run.
 - Deployment guide documents clean-checkout build, release artifact shape, local policy,
   and verification commands.
 - Planned behavior remains labeled planned or reserved.

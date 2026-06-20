@@ -12,8 +12,9 @@ agent 的工具调用，全部使用真实值运行。
 > **状态：v0.1.0 release candidate 强化中。** 文本引擎、Anthropic Messages wire
 > 掩码/还原、流式还原、本地 Claude Code 代理、SDK 内嵌参考集成、OpenAI Responses
 > wire adapter、以及本地 policy 文件均已实现并通过测试。Claude Code 路径已通过真实
-> 流量验收；本机 Codex CLI Responses 路径已通过带脱敏证据的 live run；direct
-> `api.openai.com` upstream 验收仍需有效 OpenAI API key 后才能声明。
+> 流量验收；本机 Codex CLI Responses 路径已通过带脱敏证据的 live run，这就是 v0.1.0
+> 的 OpenAI Responses 协议验收。direct `api.openai.com` 官方服务端到端验收不是本次
+> release gate，也不单独声明。
 
 ---
 
@@ -87,8 +88,8 @@ OpenCloak 是**一套引擎、不同外壳**（见[架构总览](docs/architectu
 
 1. **独立本地代理** —— 把 CLI 的 base URL 指向它（Claude Code 用 `ANTHROPIC_BASE_URL`；
    Codex 通过自定义 `model_providers` 条目走 OpenAI Responses；本机 Codex CLI Responses
-   路径已通过 live acceptance，direct `api.openai.com` upstream 仍需有效 OpenAI API key 后
-   单独验收）。凭证原样透传，只改写请求体。
+   路径已通过 live acceptance，作为 v0.1.0 的 OpenAI Responses 协议证据；direct
+   `api.openai.com` 官方服务端到端 run 不属于本次 release gate）。凭证原样透传，只改写请求体。
 2. **可嵌入 Go 库** —— 把引擎放进你自己的网关，在你的请求/响应接缝处调用。SDK 是
    **通用的**，并由仓库内维护的参考集成验证 —— 不为任何单一网关定制。见
    [SDK 契约](docs/sdk/contract.md) 与 [`examples/embed`](examples/embed/)。

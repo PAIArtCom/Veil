@@ -41,8 +41,8 @@ private source code as evidence.
 
 - Claude Code / Anthropic Messages is live-accepted.
 - Codex / OpenAI Responses is implemented with offline verification and local Codex CLI
-  Responses live acceptance. Direct `https://api.openai.com` upstream acceptance is not
-  claimed for v0.1.0 evidence.
+  Responses live acceptance. This is the v0.1.0 OpenAI Responses protocol evidence; a
+  separate direct `https://api.openai.com` official-service run is not claimed.
 - OpenAI Chat, Gemini, remote MCP egress classification, HTTP/gRPC service, local web
   console, L2 default-on detection, `redact`, `format_preserving`, and configurable rule
   packs are not shipped v0.1.0 behavior.

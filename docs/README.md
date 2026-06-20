@@ -6,10 +6,10 @@ nothing is stored ad hoc.
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
 > R2/R3 release hardening has added the maintained SDK embed reference integration and
 > OpenAI Responses support for Codex. R4 added the local policy file. The local Codex CLI
-> Responses path is live-accepted with sanitized evidence; direct `api.openai.com`
-> upstream acceptance is not claimed until a valid OpenAI API key is available. Documents
-> that describe interfaces or setup which do **not exist yet** are explicitly marked
-> **Planned / Draft**.
+> Responses path is live-accepted with sanitized evidence and is the v0.1.0 OpenAI
+> Responses protocol evidence. A separate direct `api.openai.com` official-service run is
+> not part of the v0.1.0 release gate and is not claimed. Documents that describe
+> interfaces or setup which do **not exist yet** are explicitly marked **Planned / Draft**.
 
 ## Purpose
 
@@ -35,7 +35,7 @@ SDK, guide, and research documentation.
 - **Secret-bearing evidence**: Raw provider captures, credentials, local keys, and real secrets must not be committed as documentation evidence. Verified by: architecture/formal-release-plan.md.
 - **ADR history drift**: Accepted decisions are superseded by new ADRs rather than rewritten. Verified by: architecture/decisions/README.md.
 - **Guide routing drift**: Setup instructions must name the exact supported base-URL path and known limits. Verified by: guides/claude-code.md.
-- **Live-acceptance overclaim**: Codex/OpenAI Responses support must distinguish local Codex CLI live acceptance from unclaimed direct `api.openai.com` upstream acceptance. Verified by: architecture/codex-live-acceptance.md.
+- **Live-acceptance overclaim**: Codex/OpenAI Responses support must present the local Codex CLI Responses run as the v0.1.0 protocol evidence without claiming a separate direct `api.openai.com` official-service run. Verified by: architecture/codex-live-acceptance.md.
 
 ## Open Questions
 

@@ -3,8 +3,8 @@
 **Status:** v0.1.0 pre-release. The maintained `examples/embed` reference integration
 validates the SDK seams outside the standalone proxy. Anthropic Messages is
 live-accepted through Claude Code; OpenAI Responses is implemented with offline fixtures
-and local Codex CLI Responses live acceptance. Direct `https://api.openai.com` upstream
-acceptance is not claimed for v0.1.0 evidence.
+and local Codex CLI Responses live acceptance as the v0.1.0 OpenAI Responses protocol
+evidence. A separate direct `https://api.openai.com` official-service run is not claimed.
 
 How to embed the OpenCloak engine into a gateway. The patterns below are the
 lowest-common-denominator wiring confirmed against three real gateways — see the
