@@ -83,6 +83,46 @@ therefore failed closed with `opencloak config: nil policy provider` before any 
 egress. This was repaired before the passing live run; the failed attempt forwarded zero
 upstream requests.
 
+## Provider Request Optimization Refresh Run
+
+**Date:** 2026-06-20 (Asia/Shanghai)
+
+**Reason:** OpenAI Responses request masking changed after the prefix refresh: the provider
+adapter now records JSON string-literal ranges and applies changed spans with a one-pass
+range rewrite when possible, falling back to structural `sjson` updates when not. The
+local Codex CLI live run was rerun after that code change.
+
+**Code under test:** local `opencloak` binary built from the current working tree after the
+provider batch-apply optimization.
+
+Codex CLI `0.140.0` was run with temporary `codex exec -c ...` provider configuration
+pointing at `http://127.0.0.1:18888/v1`. OpenCloak forwarded to a sanitized pass-through
+capture proxy at `127.0.0.1:18889/clipal`, which forwarded to the local
+Responses-compatible `clipal` upstream. The global `~/.codex/config.toml` was not edited.
+The capture proxy recorded only booleans, byte counts, paths, status codes, and content
+types; raw temporary outputs were inspected for boolean checks and deleted.
+
+| Observation | Result |
+|---|---|
+| Codex reached OpenCloak over `POST /v1/responses` | Passed |
+| Upstream requests observed | 2 |
+| Upstream request path | `/clipal/v1/responses` |
+| Upstream response status/content type | `200`, `text/event-stream` |
+| Upstream request 1 contained `OpenCloak_` tokens | Yes (`12` token-prefix occurrences) |
+| Upstream request 1 contained old `CLK_` tokens | No |
+| Upstream request 1 contained the throwaway plaintext values | No |
+| Upstream request 2 contained `OpenCloak_` tokens | Yes (`16` token-prefix occurrences) |
+| Upstream request 2 contained old `CLK_` tokens | No |
+| Upstream request 2 contained the throwaway plaintext values | No |
+| Codex local command execution completed | Yes |
+| Local final output contained the expected restored throwaway values | Yes |
+| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Codex event stream completed | Yes |
+
+OpenCloak logged one non-restore `context canceled` upstream stream-read event after Codex
+closed the SSE stream. The Codex command exited successfully, local shell execution
+completed, and the provider-bound plaintext checks passed.
+
 ## Direct OpenAI Upstream Status
 
 A redacted `codex doctor` probe for the built-in OpenAI provider reported stored API-key

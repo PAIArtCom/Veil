@@ -78,6 +78,41 @@ counts, not raw provider bodies or credential headers.
 | Local `dsn_arg.txt` contained residual `OpenCloak_` or `CLK_` tokens | No |
 | Claude Code result status | `success`, `num_turns=2` |
 
+## Provider Request Optimization Refresh Run
+
+**Date:** 2026-06-20 (Asia/Shanghai)
+
+**Reason:** Provider request masking changed after the prefix refresh: Anthropic and
+OpenAI Responses request adapters now try a range-based batch JSON string rewrite before
+falling back to structural `sjson` updates. The Claude Code live runbook was rerun after
+that code change.
+
+**Code under test:** local `opencloak` binary built from the current working tree after the
+provider batch-apply optimization.
+
+The run used Claude Code `2.1.178`, `ANTHROPIC_BASE_URL=http://127.0.0.1:18788`, an
+OpenCloak proxy upstreamed to a sanitized pass-through capture proxy on
+`127.0.0.1:18789`, and real Anthropic traffic at `https://api.anthropic.com`. The capture
+proxy recorded only booleans, byte counts, paths, status codes, and content types. Raw
+temporary outputs were inspected for boolean checks and deleted.
+
+| Observation | Result |
+|---|---|
+| Claude reached OpenCloak over `/v1/messages?beta=true` | Passed |
+| Upstream requests observed | 2 |
+| Upstream response status/content type | `200`, `text/event-stream; charset=utf-8` |
+| Upstream request 1 contained `OpenCloak_` tokens | Yes (`5` token-prefix occurrences) |
+| Upstream request 1 contained old `CLK_` tokens | No |
+| Upstream request 1 contained the throwaway plaintext DSN | No |
+| Upstream request 2 contained `OpenCloak_` tokens | Yes (`7` token-prefix occurrences) |
+| Upstream request 2 contained old `CLK_` tokens | No |
+| Upstream request 2 contained the throwaway plaintext DSN | No |
+| Local final output contained the expected restored throwaway DSN | Yes |
+| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local `dsn_arg.txt` contained the restored throwaway DSN | Yes |
+| Local `dsn_arg.txt` contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Claude Code result status | `success`, `num_turns=2` |
+
 ## Issue Found During Acceptance
 
 The first live tool-use run exposed a real proxy bug: Claude Code sent `Accept-Encoding`,

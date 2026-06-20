@@ -354,9 +354,14 @@ func (e *Engine) MaskRequest(ctx context.Context, scope Scope, provider, op stri
 		if len(blocked) > 0 {
 			allBlocked = append(allBlocked, blocked...)
 		}
+		if maskedText == span.Text {
+			continue
+		}
 		maskedSpans = append(maskedSpans, wire.MaskedSpan{
 			Path:       span.Path,
 			MaskedText: maskedText,
+			Start:      span.Start,
+			End:        span.End,
 		})
 	}
 

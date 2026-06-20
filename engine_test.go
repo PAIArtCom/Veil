@@ -15,7 +15,7 @@ import (
 
 // newTestEngine builds an Engine backed by a fixed, deterministic key so
 // token values are stable across test runs.
-func newTestEngine(t *testing.T) *opencloak.Engine {
+func newTestEngine(t testing.TB) *opencloak.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {

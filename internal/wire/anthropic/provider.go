@@ -71,9 +71,7 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 	case gjson.Null:
 		// Optional field absent or null.
 	case gjson.String:
-		if sys.Str != "" {
-			spans = append(spans, wire.TextSpan{Path: "system", Text: sys.Str, Role: "system"})
-		}
+		appendStringSpan(sys, "system", "system", &spans)
 	case gjson.JSON:
 		if !sys.IsArray() {
 			return nil, fmt.Errorf("anthropic: unsupported system shape")
@@ -92,14 +90,7 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 					walkErr = fmt.Errorf("anthropic: system.%d text block has non-string text", idx)
 					return false
 				}
-				text := val.Get("text").Str
-				if text != "" {
-					spans = append(spans, wire.TextSpan{
-						Path: fmt.Sprintf("system.%d.text", idx),
-						Text: text,
-						Role: "system",
-					})
-				}
+				appendStringSpan(val.Get("text"), fmt.Sprintf("system.%d.text", idx), "system", &spans)
 			case "image", "document", "thinking":
 				// Opaque media/document payloads and provider thinking/control traces
 				// are outside the v0.1.0 text/tool-I/O de-identification surface.
@@ -132,13 +123,7 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 			walkErr = fmt.Errorf("anthropic: messages.%d missing content", mi)
 			return false
 		case gjson.String:
-			if content.Str != "" {
-				spans = append(spans, wire.TextSpan{
-					Path: fmt.Sprintf("messages.%d.content", mi),
-					Text: content.Str,
-					Role: role,
-				})
-			}
+			appendStringSpan(content, fmt.Sprintf("messages.%d.content", mi), role, &spans)
 		case gjson.JSON:
 			if !content.IsArray() {
 				walkErr = fmt.Errorf("anthropic: messages.%d content must be a string or array", mi)
@@ -181,14 +166,7 @@ func extractContentBlocks(content gjson.Result, mi int64, role string, spans *[]
 				walkErr = fmt.Errorf("anthropic: messages.%d.content.%d text block has non-string text", mi, bi)
 				return false
 			}
-			text := blk.Get("text").Str
-			if text != "" {
-				*spans = append(*spans, wire.TextSpan{
-					Path: fmt.Sprintf("messages.%d.content.%d.text", mi, bi),
-					Text: text,
-					Role: role,
-				})
-			}
+			appendStringSpan(blk.Get("text"), fmt.Sprintf("messages.%d.content.%d.text", mi, bi), role, spans)
 
 		case "tool_use":
 			inputPath := fmt.Sprintf("messages.%d.content.%d.input", mi, bi)
@@ -218,13 +196,7 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 	case gjson.Null:
 		return fmt.Errorf("anthropic: %s missing content", basePath)
 	case gjson.String:
-		if innerContent.Str != "" {
-			*spans = append(*spans, wire.TextSpan{
-				Path: basePath,
-				Text: innerContent.Str,
-				Role: role,
-			})
-		}
+		appendStringSpan(innerContent, basePath, role, spans)
 	case gjson.JSON:
 		if !innerContent.IsArray() {
 			return fmt.Errorf("anthropic: %s must be a string or array", basePath)
@@ -242,14 +214,7 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 					walkErr = fmt.Errorf("anthropic: %s.%d text block has non-string text", basePath, ii)
 					return false
 				}
-				text := ib.Get("text").Str
-				if text != "" {
-					*spans = append(*spans, wire.TextSpan{
-						Path: fmt.Sprintf("%s.%d.text", basePath, ii),
-						Text: text,
-						Role: role,
-					})
-				}
+				appendStringSpan(ib.Get("text"), fmt.Sprintf("%s.%d.text", basePath, ii), role, spans)
 			case "image", "document":
 				// Opaque media/document payloads are outside the text replacement
 				// surface; OpenCloak does not parse or regenerate them.
@@ -318,9 +283,7 @@ func validateToolResultBlock(block gjson.Result, parent string, index int64) err
 func extractStringLeaves(val gjson.Result, path string, role string, spans *[]wire.TextSpan) {
 	switch val.Type {
 	case gjson.String:
-		if val.Str != "" {
-			*spans = append(*spans, wire.TextSpan{Path: path, Text: val.Str, Role: role})
-		}
+		appendStringSpan(val, path, role, spans)
 	case gjson.JSON:
 		val.ForEach(func(k, v gjson.Result) bool {
 			var childPath string
@@ -351,17 +314,22 @@ func sjsonEscapeKey(key string) string {
 	return key
 }
 
-// ApplyRequest sets each masked span back into the body using sjson surgical
-// set — only the targeted string values change; all other bytes are preserved.
-// Spans are applied sequentially; because sjson paths are structural (key/index
-// based, not byte-offset based) they remain valid regardless of value-length
-// changes from earlier sets.
+// ApplyRequest sets masked spans back into the request body. The hot path uses
+// recorded JSON string-literal byte ranges to rewrite all changed values in one
+// pass; spans without valid ranges fall back to sjson structural sets. Only the
+// targeted string values change, and all other bytes are preserved.
 func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan) ([]byte, error) {
 	if err := validateMessagesOp(op); err != nil {
 		return nil, err
 	}
 	if err := validateJSON("request", body); err != nil {
 		return nil, err
+	}
+
+	if out, ok, err := wire.ApplyMaskedSpansByRange(body, spans); err != nil {
+		return nil, fmt.Errorf("anthropic: batch apply: %w", err)
+	} else if ok {
+		return out, nil
 	}
 
 	var err error
@@ -372,6 +340,22 @@ func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan)
 		}
 	}
 	return body, nil
+}
+
+func appendStringSpan(val gjson.Result, path, role string, spans *[]wire.TextSpan) {
+	if val.Str == "" {
+		return
+	}
+	*spans = append(*spans, textSpanFromString(val, path, role))
+}
+
+func textSpanFromString(val gjson.Result, path, role string) wire.TextSpan {
+	span := wire.TextSpan{Path: path, Text: val.Str, Role: role}
+	if val.Type == gjson.String && strings.HasPrefix(val.Raw, `"`) {
+		span.Start = val.Index
+		span.End = val.Index + len(val.Raw)
+	}
+	return span
 }
 
 // RestoreResponse restores tokens in a non-streaming Anthropic response body.

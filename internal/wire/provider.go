@@ -9,15 +9,19 @@ type RestoreFunc func(text string) (string, error)
 // TextSpan is a provider-native text field extracted from request JSON. Path is a stable
 // provider-local path that ApplyRequest can use to put the masked text back.
 type TextSpan struct {
-	Path string
-	Text string
-	Role string
+	Path  string
+	Text  string
+	Role  string
+	Start int // optional byte offset of the JSON string literal in the original body
+	End   int // optional byte offset just after the JSON string literal
 }
 
 // MaskedSpan is a text span after masking, ready to be applied back to provider JSON.
 type MaskedSpan struct {
 	Path       string
 	MaskedText string
+	Start      int // optional byte offset copied from TextSpan.Start
+	End        int // optional byte offset copied from TextSpan.End
 }
 
 // ErrStreamingUnsupported is returned by NewStreamRestorer for providers/ops

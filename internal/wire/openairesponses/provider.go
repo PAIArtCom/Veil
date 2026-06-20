@@ -59,8 +59,8 @@ func (p *provider) ExtractRequest(op string, body []byte) ([]wire.TextSpan, erro
 	input := gjson.GetBytes(body, "input")
 	switch input.Type {
 	case gjson.String:
-		if input.Str != "" {
-			spans = append(spans, wire.TextSpan{Path: "input", Text: input.Str, Role: "user"})
+		if err := appendOptionalStringSpan(input, "input", "user", &spans); err != nil {
+			return nil, err
 		}
 	case gjson.JSON:
 		if !input.IsArray() {
@@ -179,9 +179,18 @@ func appendOptionalStringSpan(val gjson.Result, path, role string, spans *[]wire
 		return fmt.Errorf("openai-responses: unsupported non-string value at %s", path)
 	}
 	if val.Str != "" {
-		*spans = append(*spans, wire.TextSpan{Path: path, Text: val.Str, Role: role})
+		*spans = append(*spans, textSpanFromString(val, path, role))
 	}
 	return nil
+}
+
+func textSpanFromString(val gjson.Result, path, role string) wire.TextSpan {
+	span := wire.TextSpan{Path: path, Text: val.Str, Role: role}
+	if val.Type == gjson.String && strings.HasPrefix(val.Raw, `"`) {
+		span.Start = val.Index
+		span.End = val.Index + len(val.Raw)
+	}
+	return span
 }
 
 func isJSONObject(val gjson.Result) bool {
@@ -196,6 +205,12 @@ func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan)
 	}
 	if err := validateJSON("request", body); err != nil {
 		return nil, err
+	}
+
+	if out, ok, err := wire.ApplyMaskedSpansByRange(body, spans); err != nil {
+		return nil, fmt.Errorf("openai-responses: batch apply: %w", err)
+	} else if ok {
+		return out, nil
 	}
 
 	var err error

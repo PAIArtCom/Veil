@@ -60,6 +60,7 @@ Top-level release metadata:
 - [Contribution guide](../CONTRIBUTING.md)
 - [Release checklist](guides/release-checklist.md)
 - [Codex CLI live acceptance](architecture/codex-live-acceptance.md)
+- [Performance evaluation](architecture/performance-evaluation.md)
 - [v0.1.0 release report](architecture/v0.1.0-release-report.md)
 
 ## Reading order
@@ -78,6 +79,7 @@ Top-level release metadata:
 [Claude Code guide](guides/claude-code.md) or [Codex CLI guide](guides/codex.md).
 
 **Preparing a release cut?** → [Release checklist](guides/release-checklist.md) →
+[Performance evaluation](architecture/performance-evaluation.md) →
 [v0.1.0 release report](architecture/v0.1.0-release-report.md).
 
 ## Conventions

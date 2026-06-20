@@ -12,7 +12,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	opencloak "github.com/cloakia/opencloak"
-	_ "github.com/cloakia/opencloak/internal/wire/openairesponses"
+	"github.com/cloakia/opencloak/internal/wire/openairesponses"
 )
 
 var (
@@ -41,6 +41,34 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 		t.Fatalf("opencloak.New: %v", err)
 	}
 	return e
+}
+
+func TestExtractRequestTopLevelStringInputHasRange(t *testing.T) {
+	body := []byte(`{"instructions":"system ` + awsKey + `","input":"email ` + email + `","stream":true}`)
+
+	spans, err := openairesponses.New().ExtractRequest("responses", body)
+	if err != nil {
+		t.Fatalf("ExtractRequest: %v", err)
+	}
+	var inputSpanFound bool
+	for _, span := range spans {
+		if span.Path != "input" {
+			continue
+		}
+		inputSpanFound = true
+		if span.Text != "email "+email {
+			t.Fatalf("input span text = %q", span.Text)
+		}
+		if span.Start <= 0 || span.End <= span.Start || span.End > len(body) {
+			t.Fatalf("input span invalid range: start=%d end=%d body=%s", span.Start, span.End, body)
+		}
+		if got := string(body[span.Start:span.End]); got != `"email `+email+`"` {
+			t.Fatalf("input span range points to %q", got)
+		}
+	}
+	if !inputSpanFound {
+		t.Fatalf("missing top-level input span: %+v", spans)
+	}
 }
 
 func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {

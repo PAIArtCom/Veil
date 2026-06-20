@@ -38,6 +38,22 @@ specability reconcile docs/architecture/decisions --json
 `gofmt -l .` must print no paths. `specability scan --json` and reconcile commands must
 not report drift or invalid modules.
 
+## Performance Baseline
+
+Performance checks are advisory release evidence, not hard CI timing gates. Run them when
+detector coverage, masking, provider walkers, or long-context handling changes:
+
+```sh
+go test -run '^$' \
+  -bench 'BenchmarkDetect(Tiered|Complex)|BenchmarkDetect(NoSecret|Mixed|Secret)' \
+  -benchmem ./internal/detect/l1
+
+go test -run '^$' -bench 'BenchmarkMask(Text|Request)' -benchmem .
+```
+
+Compare the result against the reference bands in
+[Performance evaluation](../architecture/performance-evaluation.md).
+
 ## Documentation Gate
 
 - README and README.zh-CN describe shipped scope and known limits.

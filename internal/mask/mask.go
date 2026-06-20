@@ -89,27 +89,31 @@ func Apply(
 		actions[i].tok = tok
 	}
 
-	// Rebuild text right-to-left so byte offsets stay valid.
-	buf := []byte(text)
-	for i := len(actions) - 1; i >= 0; i-- {
-		a := actions[i]
-		switch a.op {
-		case types.OperatorToken:
-			buf = replaceBytes(buf, a.finding.Start, a.finding.End, []byte(a.tok))
-		case types.OperatorIgnore:
-			// leave as-is
+	outLen := len(text)
+	for _, a := range actions {
+		if a.op == types.OperatorToken {
+			outLen += len(a.tok) - (a.finding.End - a.finding.Start)
 		}
 	}
 
-	return Result{Masked: string(buf)}, nil
-}
+	buf := make([]byte, 0, outLen)
+	cursor := 0
+	for _, a := range actions {
+		f := a.finding
+		if cursor < f.Start {
+			buf = append(buf, text[cursor:f.Start]...)
+		}
+		switch a.op {
+		case types.OperatorToken:
+			buf = append(buf, a.tok...)
+		case types.OperatorIgnore:
+			buf = append(buf, text[f.Start:f.End]...)
+		}
+		cursor = f.End
+	}
+	if cursor < len(text) {
+		buf = append(buf, text[cursor:]...)
+	}
 
-// replaceBytes replaces buf[start:end] with replacement and returns the new
-// slice.
-func replaceBytes(buf []byte, start, end int, replacement []byte) []byte {
-	result := make([]byte, 0, len(buf)-(end-start)+len(replacement))
-	result = append(result, buf[:start]...)
-	result = append(result, replacement...)
-	result = append(result, buf[end:]...)
-	return result
+	return Result{Masked: string(buf)}, nil
 }
