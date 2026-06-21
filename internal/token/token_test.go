@@ -135,6 +135,46 @@ func TestCollisionExtension(t *testing.T) {
 	}
 }
 
+func TestKnownPrefixAndRestoreWithAdjacentHexSuffix(t *testing.T) {
+	const known = "OpenCloak_SECRET_0a1b2c3d4e5f"
+	const suffix = "0123456789abcdef0123456789abcdef"
+	lookup := func(tok string) (string, bool) {
+		if tok == known {
+			return "real-secret", true
+		}
+		return "", false
+	}
+
+	prefixLen, value, ok := KnownPrefix(known+suffix, lookup)
+	if !ok {
+		t.Fatal("expected known token prefix")
+	}
+	if prefixLen != len(known) {
+		t.Fatalf("prefixLen = %d, want %d", prefixLen, len(known))
+	}
+	if value != "real-secret" {
+		t.Fatalf("value = %q, want real-secret", value)
+	}
+	restored, ok := RestoreKnownPrefix(known+suffix, lookup)
+	if !ok {
+		t.Fatal("expected restore through known prefix")
+	}
+	if restored != "real-secret"+suffix {
+		t.Fatalf("restored = %q, want %q", restored, "real-secret"+suffix)
+	}
+}
+
+func TestDetectionPrefixLenUnknownTokenShapeProtectsOnlyBaseID(t *testing.T) {
+	const unknown = "OpenCloak_SECRET_deadbeef0001"
+	const suffix = "0123456789abcdef"
+	lookup := func(string) (string, bool) { return "", false }
+
+	got := DetectionPrefixLen(unknown+suffix, lookup)
+	if got != len(unknown) {
+		t.Fatalf("DetectionPrefixLen = %d, want base token length %d", got, len(unknown))
+	}
+}
+
 func TestKeyerAutoCreate(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "subdir", "key")

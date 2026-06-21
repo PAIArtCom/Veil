@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/cloakia/opencloak/internal/detect"
+	"github.com/cloakia/opencloak/internal/detect/resolver"
 	"github.com/cloakia/opencloak/internal/mapstore"
 	"github.com/cloakia/opencloak/internal/mask"
 	"github.com/cloakia/opencloak/internal/stream"
@@ -157,11 +158,13 @@ func ignoredByPolicy(policy types.Policy) func(types.Finding) bool {
 }
 
 type byteSpan struct {
-	start int
-	end   int
+	start    int
+	end      int
+	matchEnd int
+	known    bool
 }
 
-func existingTokenSpans(text string) []byteSpan {
+func existingTokenSpans(text string, lookup func(string) (string, bool)) []byteSpan {
 	locs := tokenRe.FindAllStringIndex(text, -1)
 	if len(locs) == 0 {
 		return nil
@@ -171,7 +174,20 @@ func existingTokenSpans(text string) []byteSpan {
 		if len(loc) != 2 {
 			continue
 		}
-		spans = append(spans, byteSpan{start: loc[0], end: loc[1]})
+		raw := text[loc[0]:loc[1]]
+		prefixLen, _, known := token.KnownPrefix(raw, lookup)
+		if !known {
+			prefixLen = token.DetectionPrefixLen(raw, lookup)
+		}
+		if prefixLen == 0 {
+			continue
+		}
+		spans = append(spans, byteSpan{
+			start:    loc[0],
+			end:      loc[0] + prefixLen,
+			matchEnd: loc[1],
+			known:    known,
+		})
 	}
 	return spans
 }
@@ -236,6 +252,34 @@ func preserveExistingTokenSpans(findings []types.Finding, spans []byteSpan) []ty
 	return out
 }
 
+func hexSuffixFindingsAfterKnownTokens(spans []byteSpan, keep func(types.Finding) bool) []types.Finding {
+	var out []types.Finding
+	for _, span := range spans {
+		if !span.known || span.matchEnd <= span.end {
+			continue
+		}
+		// TokenPattern greedily consumes adjacent lowercase hex. Once the
+		// store proves the real token prefix, any substantial extra hex suffix
+		// is ordinary provider-bound text and must not be hidden by the token
+		// idempotency guard.
+		if span.matchEnd-span.end < 8 {
+			continue
+		}
+		f := types.Finding{
+			Start:  span.end,
+			End:    span.matchEnd,
+			Type:   types.TypeSecret,
+			Score:  0.92,
+			Source: "engine:token-adjacent-hex-suffix",
+		}
+		if keep != nil && !keep(f) {
+			continue
+		}
+		out = append(out, f)
+	}
+	return out
+}
+
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -250,13 +294,16 @@ func minInt(a, b int) int {
 // (text will equal the original). Detection errors are returned as-is
 // (fail-closed).
 func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope, text string) (masked string, blocked []Type, err error) {
-	tokenSpans := existingTokenSpans(text)
+	tokenSpans := existingTokenSpans(text, e.lookup(scope))
 	detectionText := hideSpansForDetection(text, tokenSpans)
 	preFilter := ignoredByPolicy(policy)
 
 	findings, err := e.detector.Detect(ctx, detectionText, preFilter)
 	if err != nil {
 		return "", nil, err
+	}
+	if suffixFindings := hexSuffixFindingsAfterKnownTokens(tokenSpans, preFilter); len(suffixFindings) > 0 {
+		findings = resolver.Resolve(append(findings, suffixFindings...), len(text))
 	}
 	findings = preserveExistingTokenSpans(findings, tokenSpans)
 
@@ -311,9 +358,10 @@ func (e *Engine) Restore(ctx context.Context, st *State, text string) (string, e
 		return "", ErrInvalidState
 	}
 	scope := st.scope
+	lookup := e.lookup(scope)
 	result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-		if v, ok := e.store.Get(scope, tok); ok {
-			return v
+		if restored, ok := token.RestoreKnownPrefix(tok, lookup); ok {
+			return restored
 		}
 		return tok // unknown token → leave as-is
 	})
@@ -566,8 +614,8 @@ func (e *Engine) restoreScan(scope Scope, residual map[string]int) wire.RestoreF
 	lookup := e.lookup(scope)
 	return func(text string) (string, error) {
 		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-			if v, ok := lookup(tok); ok {
-				return v
+			if restored, ok := token.RestoreKnownPrefix(tok, lookup); ok {
+				return restored
 			}
 			// Unknown but validly-shaped token: leave as-is and count by TYPE.
 			if typ, ok := token.ParseType(tok); ok {

@@ -26,6 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           go test -count=1 ./...
+          go test -race -count=1 ./...
           go vet ./...
           go build ./...
           test -z "$(gofmt -l .)"
@@ -44,6 +45,27 @@ jobs:
           ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
           cat dist/release/checksums.txt
 
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          notes_file="${RUNNER_TEMP}/opencloak-release-notes.md"
+          awk -v version="${version}" '
+            /^## \[/ {
+              if (found) {
+                exit
+              }
+              if (index($0, "## [" version "]") == 1) {
+                found = 1
+              }
+            }
+            found {
+              print
+            }
+          ' CHANGELOG.md > "${notes_file}"
+          test -s "${notes_file}"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -54,7 +76,7 @@ jobs:
             "${GITHUB_REF_NAME}"
             dist/release/*
             --title "${GITHUB_REF_NAME}"
-            --notes-file CHANGELOG.md
+            --notes-file "${RUNNER_TEMP}/opencloak-release-notes.md"
           )
 
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then

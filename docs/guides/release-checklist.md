@@ -97,7 +97,7 @@ Only after all gates pass and maintainers approve:
 1. Record the final release report
    ([v0.1.0 release report](../architecture/v0.1.0-release-report.md)).
 2. Create the release commit or tag instructions.
-3. Prepare release notes from CHANGELOG.md.
+3. Prepare release notes from the current version section of CHANGELOG.md.
 4. Do not push tags from this checklist alone. Pushing a `v*` tag triggers automatic
    GitHub Release publication.
 
@@ -108,6 +108,8 @@ before pushing anything:
 git tag -d v0.1.0
 ```
 
-The tag-triggered GitHub Actions workflow builds the same assets and publishes the GitHub
-Release automatically. If an artifact is built from the wrong commit or with the wrong
-version metadata, delete `dist/release` and rebuild from a clean, verified tree.
+The tag-triggered GitHub Actions workflow runs the Go release gate including race tests,
+builds the same assets, extracts the current changelog version section as release notes,
+and publishes the GitHub Release automatically. If an artifact is built from the wrong
+commit or with the wrong version metadata, delete `dist/release` and rebuild from a clean,
+verified tree.

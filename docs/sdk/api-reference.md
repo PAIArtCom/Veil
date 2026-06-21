@@ -125,6 +125,11 @@ func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([
 func (e *Engine) RestoreStreamChunk(st *State, chunk []byte) []byte
 func (e *Engine) FlushStream(st *State) []byte
 func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byte) ([]byte, error)
+func (e *Engine) NewSSEStreamRestorer(st *State) (*SSEStream, error)
+
+type SSEStream struct { /* opaque */ }
+func (s *SSEStream) Event(ctx context.Context, eventData []byte) ([][]byte, error)
+func (s *SSEStream) Flush(ctx context.Context) ([][]byte, error)
 ```
 
 The SDK surface names avoid `L0/L1/L2` because detection uses `L1` for pattern rules and
@@ -202,5 +207,12 @@ incomplete `State` handles. `Mask` and `MaskRequest` return `ErrBlocked` or a
 this build cannot execute. Non-empty `Policy.RuleSets` returns
 `ErrUnsupportedPolicyFeature` / `*UnsupportedPolicyFeatureError` in Phase 0. Raw
 `RestoreStreamChunk`/`FlushStream` stay error-free hot-path helpers.
+
+`RestoreSSEEvent` is a stateless per-event helper for hosts that already parse SSE and
+can tolerate token boundaries inside one complete event payload. `NewSSEStreamRestorer`
+is the provider-aware stateful SSE helper: it accepts complete parsed event payloads,
+holds back token fragments across adjacent provider events, and emits zero or more
+restored event payloads from `Event` plus any final payloads from `Flush`. Use it when a
+provider can split assistant text or tool JSON across SSE events.
 
 See the [threat model](../architecture/threat-model.md).

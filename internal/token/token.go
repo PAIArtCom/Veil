@@ -129,3 +129,82 @@ func normalize(typ types.Type, value string) string {
 // TokenPattern is the regexp source that matches any OpenCloak_… token, used by
 // the restore scanner. The id part is at least idBaseLen hex chars.
 const TokenPattern = `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`
+
+// KnownPrefix splits a token-shaped string at the longest valid token prefix
+// that resolves through lookup. It handles ambiguous runs such as:
+//
+//	OpenCloak_SECRET_<12hex><adjacent-hex-secret>
+//
+// where the regex scanner sees one long hex id but the map store contains only
+// the real token prefix. The returned suffix must be emitted or detected as
+// ordinary user text; it is not part of the token.
+func KnownPrefix(tok string, lookup func(string) (string, bool)) (prefixLen int, value string, found bool) {
+	if lookup == nil {
+		return 0, "", false
+	}
+	idStart, ok := idStart(tok)
+	if !ok {
+		return 0, "", false
+	}
+	hexLen := len(tok) - idStart
+	for idLen := longestValidIDLen(hexLen); idLen >= idBaseLen; idLen-- {
+		end := idStart + idLen
+		if value, ok := lookup(tok[:end]); ok {
+			return end, value, true
+		}
+	}
+	return 0, "", false
+}
+
+// DetectionPrefixLen returns the byte length that should be treated as an
+// already-existing token before L1 detection. Store-resident tokens are
+// protected at their real length. Unknown token-shaped runs protect only the
+// 12-hex base token so an adjacent hex secret is still visible to detection.
+func DetectionPrefixLen(tok string, lookup func(string) (string, bool)) int {
+	if prefixLen, _, ok := KnownPrefix(tok, lookup); ok {
+		return prefixLen
+	}
+	idStart, ok := idStart(tok)
+	if !ok || len(tok)-idStart < idBaseLen {
+		return 0
+	}
+	return idStart + idBaseLen
+}
+
+// RestoreKnownPrefix returns the restored value plus any non-token suffix when
+// tok starts with a store-resident token. It returns found=false when no valid
+// prefix resolves.
+func RestoreKnownPrefix(tok string, lookup func(string) (string, bool)) (restored string, found bool) {
+	prefixLen, value, ok := KnownPrefix(tok, lookup)
+	if !ok {
+		return "", false
+	}
+	return value + tok[prefixLen:], true
+}
+
+func idStart(tok string) (int, bool) {
+	if !strings.HasPrefix(tok, Prefix) {
+		return 0, false
+	}
+	rest := tok[len(Prefix):]
+	typeEnd := strings.IndexByte(rest, '_')
+	if typeEnd <= 0 || !isAllTokenType(rest[:typeEnd]) {
+		return 0, false
+	}
+	idStart := len(Prefix) + typeEnd + 1
+	if idStart >= len(tok) || !isAllLowerHex(tok[idStart:]) {
+		return 0, false
+	}
+	return idStart, true
+}
+
+func longestValidIDLen(hexLen int) int {
+	if hexLen < idBaseLen {
+		return 0
+	}
+	max := sha256.Size * 2
+	if hexLen < max {
+		max = hexLen
+	}
+	return max
+}

@@ -653,7 +653,9 @@ func buildRules() []rule {
 
 		// Conservative generic assignment fallback. It masks only the value side
 		// of obvious credential assignments and relies on post-match suppressors
-		// to avoid placeholders, UUID/hash literals, URLs, and business IDs.
+		// to avoid placeholders, URLs, and business IDs. Hex values are still
+		// masked on this path because the field name has already supplied secret
+		// context (`api_key`, `token`, `authorization`, etc.).
 		{
 			typ: types.TypeSecret, source: "l1:secret-assignment", score: 0.80,
 			re: regexp.MustCompile(`(?i)\b(?:api[_\s-]?key|secret|token|password|passwd|pwd|credential|authorization)\b\s*(?:[:=]|=>)\s*['"]?([A-Za-z0-9][A-Za-z0-9._~+/=\-]{7,})`),
@@ -734,9 +736,6 @@ func validGenericSecretSpan(text string, start, end int) bool {
 		return false
 	}
 	cand := strings.TrimSpace(text[start:end])
-	if isHexHash(cand) && !isStrongSecretAssignmentContext(text, start) {
-		return false
-	}
 	if isBusinessIDContext(text, start) {
 		return false
 	}

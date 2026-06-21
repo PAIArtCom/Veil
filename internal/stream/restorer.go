@@ -111,8 +111,8 @@ func (r *Restorer) restore(b []byte) []byte {
 	}
 	return tokenRe.ReplaceAllFunc(b, func(match []byte) []byte {
 		tok := string(match)
-		if v, found := r.lookup(tok); found {
-			return []byte(v)
+		if restored, found := token.RestoreKnownPrefix(tok, r.lookup); found {
+			return []byte(restored)
 		}
 		// Residual: a real-shaped token we cannot restore. Leave it as-is and
 		// record its TYPE. Every TokenPattern match has a parseable TYPE.

@@ -324,6 +324,49 @@ func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
 	}
 }
 
+func TestMaskKnownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
+	e := newTestEngine(t)
+	scope := opencloak.Scope{Session: "token-adjacent-hex"}
+
+	firstMasked, firstState, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
+	if err != nil {
+		t.Fatalf("initial Mask: %v", err)
+	}
+	existing := extractEngineToken(t, firstMasked)
+	const hexSecret = "0123456789abcdef0123456789abcdef"
+	combined := existing + hexSecret
+
+	restored, err := e.Restore(ctx, firstState, combined)
+	if err != nil {
+		t.Fatalf("Restore known prefix: %v", err)
+	}
+	if restored != "AKIAIOSFODNN7EXAMPLE"+hexSecret {
+		t.Fatalf("known prefix restore mismatch:\n want %q\n got  %q", "AKIAIOSFODNN7EXAMPLE"+hexSecret, restored)
+	}
+
+	remasked, secondState, err := e.Mask(ctx, scope, combined)
+	if err != nil {
+		t.Fatalf("second Mask: %v", err)
+	}
+	if !strings.Contains(remasked, existing) {
+		t.Fatalf("known OpenCloak token prefix should survive unchanged: %q", remasked)
+	}
+	if strings.Contains(remasked, hexSecret) {
+		t.Fatalf("adjacent hex suffix leaked through second Mask: %q", remasked)
+	}
+	if got := strings.Count(remasked, "OpenCloak_SECRET_"); got < 2 {
+		t.Fatalf("want original token plus suffix token, got %d in %q", got, remasked)
+	}
+
+	roundTrip, err := e.Restore(ctx, secondState, remasked)
+	if err != nil {
+		t.Fatalf("Restore remasked: %v", err)
+	}
+	if roundTrip != "AKIAIOSFODNN7EXAMPLE"+hexSecret {
+		t.Fatalf("round-trip mismatch:\n want %q\n got  %q", "AKIAIOSFODNN7EXAMPLE"+hexSecret, roundTrip)
+	}
+}
+
 func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
 	const existing = "OpenCloak_SECRET_001122334455"
 	text := "token=" + existing

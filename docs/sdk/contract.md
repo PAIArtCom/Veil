@@ -71,6 +71,11 @@ func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([
 func (e *Engine) RestoreStreamChunk(st *State, chunk []byte) []byte        // stateful; byte-split tolerant — UNIVERSAL
 func (e *Engine) FlushStream(st *State) []byte                             // emit any held-back tail
 func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byte) ([]byte, error) // ergonomic; for parsed-SSE hosts
+func (e *Engine) NewSSEStreamRestorer(st *State) (*SSEStream, error)       // stateful; parsed SSE with cross-event holdback
+
+type SSEStream struct { /* opaque */ }
+func (s *SSEStream) Event(ctx context.Context, eventData []byte) ([][]byte, error)
+func (s *SSEStream) Flush(ctx context.Context) ([][]byte, error)
 ```
 
 These names are deliberately not `L0/L1/L2`: detection already uses `L1` for pattern
@@ -89,8 +94,10 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   spans already present in protected text/tool-I/O fields. This prevents residual tokens
   from earlier turns from being wrapped into nested tokens on a later request.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,
-  Orbit default). Use `RestoreSSEEvent` if you already parse SSE events (CLIProxyAPI,
-  Orbit's transform path). Both share the same `State`.
+  Orbit default). Use `NewSSEStreamRestorer` if you already parse SSE and need
+  provider-aware holdback across adjacent events. Use `RestoreSSEEvent` only as a
+  lower-level stateless helper for one complete event payload. All stream helpers share
+  the same `State`.
 - **Restore error surface.** Text, buffered response, and parsed-SSE restore return
   errors and receive `ctx` so callers can audit deliberately. Raw chunk restore and
   `FlushStream` are provider-agnostic hot-path helpers without `ctx` or an error return;

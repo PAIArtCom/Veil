@@ -579,6 +579,11 @@ func TestProviderSecretRulesPositive(t *testing.T) {
 func TestSecretReviewRegressionDetections(t *testing.T) {
 	cases := []string{
 		"webhook_secret=4f3c2b1a9e8d7c6b5a4f3c2b1a9e8d7c",
+		"api_key=0123456789abcdef0123456789abcdef",
+		"token=0123456789abcdef0123456789abcdef",
+		"apikey: 0123456789abcdef0123456789abcdef01234567",
+		"api_key=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		"cloudflare_api_key=0123456789abcdef0123456789abcdef01234567",
 	}
 
 	for _, text := range cases {
@@ -612,8 +617,8 @@ func TestSecretSuppressorsNegative(t *testing.T) {
 			text: "order_id=550e8400-e29b-41d4-a716-446655440000",
 		},
 		{
-			name: "sha256 hash",
-			text: "token=2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+			name: "sha256 hash in checksum context",
+			text: "checksum=2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
 		},
 		{
 			name: "url value",
@@ -658,10 +663,6 @@ func TestSecretSuppressorsNegative(t *testing.T) {
 		{
 			name: "age secret placeholder",
 			text: "AGE_KEY=AGE-SECRET-KEY-${AGE_SECRET_KEY}",
-		},
-		{
-			name: "cloudflare broad context hex not migrated",
-			text: "cloudflare_api_key=" + strings.Repeat("a", 40),
 		},
 		{
 			name: "process env secret reference",

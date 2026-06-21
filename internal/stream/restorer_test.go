@@ -23,8 +23,8 @@ func staticLookup(table map[string]string) func(string) (string, bool) {
 // any chunking of the same input.
 func wholeRestore(table map[string]string, input string) string {
 	return string(tokenRe.ReplaceAllFunc([]byte(input), func(m []byte) []byte {
-		if v, ok := table[string(m)]; ok {
-			return []byte(v)
+		if restored, ok := token.RestoreKnownPrefix(string(m), staticLookup(table)); ok {
+			return []byte(restored)
 		}
 		return m
 	}))
@@ -287,6 +287,23 @@ func TestResidualTokenEmittedAndCounted(t *testing.T) {
 	}
 	if counts["SECRET"] != 0 {
 		t.Fatalf("restored token must not be counted as residual: %v", counts)
+	}
+}
+
+func TestKnownTokenPrefixWithAdjacentHexSuffixRestores(t *testing.T) {
+	const suffix = "0123456789abcdef0123456789abcdef"
+	input := "value " + tokSecret + suffix + " done"
+	want := "value AKIAIOSFODNN7EXAMPLE" + suffix + " done"
+
+	for _, splits := range [][]int{
+		nil,
+		{len("value "+tokSecret) + 3},
+		pseudoRandomSplits(len(input), 7),
+	} {
+		got := feedSplit(fixtureTable, input, splits)
+		if got != want {
+			t.Fatalf("splits %v:\n want %q\n got  %q", splits, want, got)
+		}
 	}
 }
 

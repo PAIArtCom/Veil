@@ -76,3 +76,7 @@ from an earlier turn is fed back into a later protected text/tool-I/O field, the
 preserves that token instead of wrapping it in a second token. If the token is still known
 in the current scope, restore can resolve it to the original value; if it is unknown or
 cross-scope, it remains a residual token rather than becoming a nested mapping.
+When a known token is immediately followed by additional lowercase hex, restore treats the
+store-resident prefix as the token and leaves the suffix as ordinary text. On a later
+outbound mask pass, a substantial hex suffix after a known token is detected as new
+`SECRET` text rather than being hidden inside the token idempotency guard.

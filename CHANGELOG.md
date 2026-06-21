@@ -36,7 +36,8 @@ No changes yet.
 - CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
   built-in default policy instead of passing a typed nil local provider into the engine.
 - Multi-platform release automation: local scripts and a tag-triggered GitHub Release
-  workflow build darwin/linux/windows amd64/arm64 binaries with SHA-256 checksums.
+  workflow build darwin/linux/windows amd64/arm64 binaries with SHA-256 checksums, race
+  tests, and release notes sliced to the current changelog section.
 
 ### Security
 - Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,
@@ -44,6 +45,11 @@ No changes yet.
   secret contexts are not dropped by generic false-positive suppressors.
 - Made outbound masking idempotent for existing `OpenCloak_` tokens so residual or orphan tokens
   from earlier turns are not wrapped into nested tokens on a later provider-bound request.
+- Masked hex-only credential values in `api_key`, `apikey`, `token`, and related strong
+  secret contexts instead of suppressing them as generic hashes.
+- Restored the longest store-resident `OpenCloak_` token prefix when a token is
+  immediately followed by additional lowercase hex, and made later outbound masking treat
+  the extra hex suffix as new `SECRET` text instead of hiding it inside the token guard.
 - Suppressed code-reference false positives such as `process.env.API_KEY`,
   `config.get(...)`, and `parseToken(...)` without regressing real secret detection.
 - Rejected local policy files whose effective operator coverage ignores every supported

@@ -20,6 +20,11 @@ OpenCloak_<TYPE>_<id>
 Restore pattern: `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`. Implementations should scan for the
 fixed `OpenCloak_` structure and validate type/id segments; do not rely solely on
 word-boundary regex matching, because a token may sit next to identifier characters.
+Because the id suffix is hex and collision extension can lengthen it, restore
+implementations also check the local reverse map for the longest known token prefix. If a
+known token is immediately followed by additional hex text, only the known prefix is
+restored as a token; the suffix remains ordinary text and is eligible for masking on a
+later outbound pass.
 
 Example: `sk-live-9f8a7b6c…` → `OpenCloak_SECRET_7f3a9c2e1b8d`
 
