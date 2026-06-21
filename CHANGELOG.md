@@ -9,7 +9,7 @@ release.
 
 No changes yet.
 
-## [0.1.0] - Pending
+## [0.1.0] - 2026-06-21
 
 ### Added
 - Local OpenCloak engine with L1 detection, conflict resolution, deterministic reversible

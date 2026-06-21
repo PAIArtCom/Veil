@@ -7,8 +7,8 @@ supported text and tool-I/O provider egress while preserving local tool behavior
 
 | Version | Status |
 |---|---|
-| `main` / release-candidate branch | Security fixes accepted |
-| `v0.1.0` | Pending release cut |
+| `main` / development branch | Security fixes accepted |
+| `v0.1.0` | Current release |
 | Earlier tags | None |
 
 ## Reporting a Vulnerability

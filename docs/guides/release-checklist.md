@@ -1,8 +1,8 @@
 # Guide: Release Checklist
 
-**Status: v0.1.0 release-candidate checklist.** This is an operator checklist for preparing
-a release cut. It does not authorize pushing tags or publishing GitHub releases; those
-actions require an explicit maintainer decision.
+**Status: v0.1.0 release checklist.** This is an operator checklist for cutting or
+validating a release. It does not authorize pushing tags or publishing GitHub releases;
+those actions require an explicit maintainer decision.
 
 ## Preconditions
 

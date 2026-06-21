@@ -105,7 +105,7 @@ to start. If the default file is absent, the proxy uses the built-in policy.
 
 ## Release verification
 
-Before cutting a release candidate, run the full local gate from the repository root:
+Before cutting or validating a release, run the full local gate from the repository root:
 
 ```sh
 go test -count=1 ./...

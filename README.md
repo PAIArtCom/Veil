@@ -11,13 +11,13 @@ comes back it **restores them**. The model never sees the real values in the sup
 text/tool surfaces — but your terminal, your files, and the agent's tool calls all run
 with the real values.
 
-> **Status: v0.1.0 release-candidate hardening.** The text engine, Anthropic Messages
-> wire masking/restore, streaming restore, loopback Claude Code proxy, maintained SDK
-> embed reference integration, OpenAI Responses wire adapter, and local policy file are
-> implemented and test-verified. Claude Code is live-accepted; the local Codex CLI
-> Responses path is live-accepted with sanitized evidence and is the v0.1.0 OpenAI
-> Responses protocol evidence. A separate direct `api.openai.com` official-service run is
-> not part of the v0.1.0 release gate and is not claimed.
+> **Status: v0.1.0 release.** The text engine, Anthropic Messages wire masking/restore,
+> streaming restore, loopback Claude Code proxy, maintained SDK embed reference
+> integration, OpenAI Responses wire adapter, and local policy file are implemented and
+> test-verified. Claude Code is live-accepted; the local Codex CLI Responses path is
+> live-accepted with sanitized evidence and is the v0.1.0 OpenAI Responses protocol
+> evidence. A separate direct `api.openai.com` official-service run is not part of the
+> v0.1.0 release gate and is not claimed.
 
 ---
 
