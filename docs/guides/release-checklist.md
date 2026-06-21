@@ -69,35 +69,26 @@ Compare the result against the reference bands in
 
 ## Artifact Instructions
 
-Release builds should write the binary into the versioned platform artifact directory and
-inject version metadata:
+Release builds should produce the full v0.1.0 platform matrix and checksum manifest:
 
 ```sh
-version=v0.1.0
-commit="$(git rev-parse --short HEAD)"
-build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-out_dir="dist/opencloak_${version}_$(go env GOOS)_$(go env GOARCH)"
-bin_name="opencloak"
+VERSION=v0.1.0 ./scripts/build-release.sh
+./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
+local_bin="dist/release/opencloak-v0.1.0-$(go env GOOS)-$(go env GOARCH)"
 if [ "$(go env GOOS)" = "windows" ]; then
-  bin_name="opencloak.exe"
+  local_bin="${local_bin}.exe"
 fi
-bin_path="$out_dir/$bin_name"
-
-mkdir -p "$out_dir"
-go build -trimpath \
-  -ldflags "-X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}" \
-  -o "$bin_path" ./cmd/opencloak
-
-"$bin_path" version
-shasum -a 256 "$bin_path" > "$bin_path.sha256"
+"$local_bin" version
 ```
 
-Expected binary paths:
+Expected release assets:
 
 | Platform | Artifact path |
 |---|---|
-| macOS/Linux | `dist/opencloak_<version>_<os>_<arch>/opencloak` |
-| Windows | `dist/opencloak_<version>_windows_<arch>/opencloak.exe` |
+| macOS | `dist/release/opencloak-<version>-darwin-amd64`, `dist/release/opencloak-<version>-darwin-arm64` |
+| Linux | `dist/release/opencloak-<version>-linux-amd64`, `dist/release/opencloak-<version>-linux-arm64` |
+| Windows | `dist/release/opencloak-<version>-windows-amd64.exe`, `dist/release/opencloak-<version>-windows-arm64.exe` |
+| Checksums | `dist/release/checksums.txt` |
 
 ## Release Cut
 
@@ -116,5 +107,7 @@ before pushing anything:
 git tag -d v0.1.0
 ```
 
-If an artifact is built from the wrong commit or with the wrong version metadata, delete
-the affected `dist/opencloak_v0.1.0_*` directory and rebuild from a clean, verified tree.
+The tag-triggered GitHub Actions workflow builds the same assets and creates a draft
+GitHub Release for maintainer review. If an artifact is built from the wrong commit or
+with the wrong version metadata, delete `dist/release` and rebuild from a clean, verified
+tree.

@@ -35,6 +35,8 @@ No changes yet.
   protocol evidence.
 - CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
   built-in default policy instead of passing a typed nil local provider into the engine.
+- Multi-platform release automation: local scripts and a tag-triggered draft GitHub
+  Release workflow build darwin/linux/windows amd64/arm64 binaries with SHA-256 checksums.
 
 ### Security
 - Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,

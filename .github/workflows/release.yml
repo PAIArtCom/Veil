@@ -1,0 +1,57 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run Go release checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 ./...
+          go vet ./...
+          go build ./...
+          test -z "$(gofmt -l .)"
+          git diff --check
+
+      - name: Build release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}" ./scripts/build-release.sh
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
+          cat dist/release/checksums.txt
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/release/* \
+            --draft \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file CHANGELOG.md

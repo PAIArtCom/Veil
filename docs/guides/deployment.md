@@ -21,35 +21,24 @@ go build -o ./bin/opencloak ./cmd/opencloak
 ./bin/opencloak proxy --help
 ```
 
-For release artifacts, the expected binary paths are:
+For release artifacts, use the multi-platform release builder:
+
+```sh
+VERSION=v0.1.0 ./scripts/build-release.sh
+./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
+```
+
+The builder injects `version`, `commit`, and `buildDate` with Go linker flags and writes
+GitHub Release-ready binaries to `dist/release/`.
+
+Expected release asset names:
 
 | Platform | Artifact path |
 |---|---|
-| macOS/Linux | `dist/opencloak_<version>_<os>_<arch>/opencloak` |
-| Windows | `dist/opencloak_<version>_windows_<arch>/opencloak.exe` |
-
-Release builds should write the binary into the versioned platform artifact directory and
-inject version metadata with Go linker flags:
-
-```sh
-version=v0.1.0
-commit="$(git rev-parse --short HEAD)"
-build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-out_dir="dist/opencloak_${version}_$(go env GOOS)_$(go env GOARCH)"
-bin_name="opencloak"
-if [ "$(go env GOOS)" = "windows" ]; then
-  bin_name="opencloak.exe"
-fi
-bin_path="$out_dir/$bin_name"
-
-mkdir -p "$out_dir"
-go build -trimpath \
-  -ldflags "-X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}" \
-  -o "$bin_path" ./cmd/opencloak
-
-"$bin_path" version
-shasum -a 256 "$bin_path" > "$bin_path.sha256"
-```
+| macOS | `dist/release/opencloak-<version>-darwin-amd64`, `dist/release/opencloak-<version>-darwin-arm64` |
+| Linux | `dist/release/opencloak-<version>-linux-amd64`, `dist/release/opencloak-<version>-linux-arm64` |
+| Windows | `dist/release/opencloak-<version>-windows-amd64.exe`, `dist/release/opencloak-<version>-windows-arm64.exe` |
+| Checksums | `dist/release/checksums.txt` |
 
 ## Run the Claude Code proxy
 
