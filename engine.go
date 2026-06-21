@@ -252,17 +252,28 @@ func preserveExistingTokenSpans(findings []types.Finding, spans []byteSpan) []ty
 	return out
 }
 
-func hexSuffixFindingsAfterKnownTokens(spans []byteSpan, keep func(types.Finding) bool) []types.Finding {
+const (
+	minKnownTokenAdjacentHexSecretLen   = 8
+	minUnknownTokenAdjacentHexSecretLen = 32
+)
+
+func hexSuffixFindingsAfterTokenPrefixes(spans []byteSpan, keep func(types.Finding) bool) []types.Finding {
 	var out []types.Finding
 	for _, span := range spans {
-		if !span.known || span.matchEnd <= span.end {
+		if span.matchEnd <= span.end {
 			continue
 		}
 		// TokenPattern greedily consumes adjacent lowercase hex. Once the
-		// store proves the real token prefix, any substantial extra hex suffix
-		// is ordinary provider-bound text and must not be hidden by the token
-		// idempotency guard.
-		if span.matchEnd-span.end < 8 {
+		// store proves a real token prefix, any extra hex suffix is ordinary
+		// provider-bound text. Unknown token-shaped prefixes are more
+		// ambiguous: a short suffix may be a collision-extended residual
+		// token, but a substantial hex suffix should not leak just because it
+		// abuts an OpenCloak-shaped prefix.
+		minLen := minUnknownTokenAdjacentHexSecretLen
+		if span.known {
+			minLen = minKnownTokenAdjacentHexSecretLen
+		}
+		if span.matchEnd-span.end < minLen {
 			continue
 		}
 		f := types.Finding{
@@ -302,7 +313,7 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 	if err != nil {
 		return "", nil, err
 	}
-	if suffixFindings := hexSuffixFindingsAfterKnownTokens(tokenSpans, preFilter); len(suffixFindings) > 0 {
+	if suffixFindings := hexSuffixFindingsAfterTokenPrefixes(tokenSpans, preFilter); len(suffixFindings) > 0 {
 		findings = resolver.Resolve(append(findings, suffixFindings...), len(text))
 	}
 	findings = preserveExistingTokenSpans(findings, tokenSpans)

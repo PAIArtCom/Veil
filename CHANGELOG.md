@@ -50,6 +50,9 @@ No changes yet.
 - Restored the longest store-resident `OpenCloak_` token prefix when a token is
   immediately followed by additional lowercase hex, and made later outbound masking treat
   the extra hex suffix as new `SECRET` text instead of hiding it inside the token guard.
+- Hardened fabricated or unknown `OpenCloak_` token-shaped prefixes followed by substantial
+  lowercase hex so the adjacent hex suffix is masked instead of passing through as plain
+  text.
 - Suppressed code-reference false positives such as `process.env.API_KEY`,
   `config.get(...)`, and `parseToken(...)` without regressing real secret detection.
 - Rejected local policy files whose effective operator coverage ignores every supported

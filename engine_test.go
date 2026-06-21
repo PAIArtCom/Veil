@@ -367,6 +367,49 @@ func TestMaskKnownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
 	}
 }
 
+func TestMaskUnknownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
+	e := newTestEngine(t)
+	scope := opencloak.Scope{Session: "unknown-token-adjacent-hex"}
+	const unknownToken = "OpenCloak_SECRET_aaaaaaaaaaaa"
+	const hexSecret = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+	text := unknownToken + hexSecret + " tail"
+
+	masked, st, err := e.Mask(ctx, scope, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if !strings.Contains(masked, unknownToken) {
+		t.Fatalf("unknown OpenCloak token prefix should remain visible as a residual token: %q", masked)
+	}
+	if strings.Contains(masked, hexSecret) {
+		t.Fatalf("adjacent hex suffix leaked through Mask: %q", masked)
+	}
+	if got := strings.Count(masked, "OpenCloak_SECRET_"); got < 2 {
+		t.Fatalf("want unknown token plus masked suffix token, got %d in %q", got, masked)
+	}
+
+	restored, err := e.Restore(ctx, st, masked)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if restored != text {
+		t.Fatalf("round-trip should preserve unknown token prefix and restore suffix:\n want %q\n got  %q", text, restored)
+	}
+}
+
+func TestMaskUnknownExtendedOpenCloakTokenPassThrough(t *testing.T) {
+	e := newTestEngine(t)
+	text := "residual OpenCloak_SECRET_aaaaaaaaaaaaeeee tail"
+
+	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if masked != text {
+		t.Fatalf("short unknown extended token should remain pass-through:\n input %q\n got   %q", text, masked)
+	}
+}
+
 func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
 	const existing = "OpenCloak_SECRET_001122334455"
 	text := "token=" + existing

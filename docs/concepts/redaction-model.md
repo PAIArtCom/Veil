@@ -80,3 +80,7 @@ When a known token is immediately followed by additional lowercase hex, restore 
 store-resident prefix as the token and leaves the suffix as ordinary text. On a later
 outbound mask pass, a substantial hex suffix after a known token is detected as new
 `SECRET` text rather than being hidden inside the token idempotency guard.
+For fabricated or unknown token-shaped prefixes, OpenCloak preserves the minimal residual
+token prefix but masks substantial adjacent hex as `SECRET` text. This keeps residual
+tokens visible while preventing an `OpenCloak_`-shaped prefix from becoming a shield for a
+bare hex secret.

@@ -25,6 +25,10 @@ implementations also check the local reverse map for the longest known token pre
 known token is immediately followed by additional hex text, only the known prefix is
 restored as a token; the suffix remains ordinary text and is eligible for masking on a
 later outbound pass.
+Unknown token-shaped text is not trusted as store-resident beyond the minimal residual
+prefix on outbound masking. A substantial lowercase-hex suffix after an unknown
+`OpenCloak_`-shaped prefix is treated as candidate `SECRET` text rather than as protected
+token id space.
 
 Example: `sk-live-9f8a7b6c…` → `OpenCloak_SECRET_7f3a9c2e1b8d`
 
