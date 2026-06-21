@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-draft-release:
+  build-and-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,14 +44,21 @@ jobs:
           ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
           cat dist/release/checksums.txt
 
-      - name: Create draft GitHub Release
+      - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "${GITHUB_REF_NAME}" \
-            dist/release/* \
-            --draft \
-            --title "${GITHUB_REF_NAME}" \
+          release_args=(
+            "${GITHUB_REF_NAME}"
+            dist/release/*
+            --title "${GITHUB_REF_NAME}"
             --notes-file CHANGELOG.md
+          )
+
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            release_args+=(--prerelease)
+          fi
+
+          gh release create "${release_args[@]}"

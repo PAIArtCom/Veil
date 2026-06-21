@@ -1,8 +1,8 @@
 # Guide: Release Checklist
 
 **Status: v0.1.0 release checklist.** This is an operator checklist for cutting or
-validating a release. It does not authorize pushing tags or publishing GitHub releases;
-those actions require an explicit maintainer decision.
+validating a release. It does not authorize pushing tags; pushing a `v*` tag is the
+explicit maintainer release action and triggers automatic GitHub Release publication.
 
 ## Preconditions
 
@@ -98,7 +98,8 @@ Only after all gates pass and maintainers approve:
    ([v0.1.0 release report](../architecture/v0.1.0-release-report.md)).
 2. Create the release commit or tag instructions.
 3. Prepare release notes from CHANGELOG.md.
-4. Do not push tags or publish a GitHub release from this checklist alone.
+4. Do not push tags from this checklist alone. Pushing a `v*` tag triggers automatic
+   GitHub Release publication.
 
 If a local tag is created before approval or points at the wrong commit, delete it locally
 before pushing anything:
@@ -107,7 +108,6 @@ before pushing anything:
 git tag -d v0.1.0
 ```
 
-The tag-triggered GitHub Actions workflow builds the same assets and creates a draft
-GitHub Release for maintainer review. If an artifact is built from the wrong commit or
-with the wrong version metadata, delete `dist/release` and rebuild from a clean, verified
-tree.
+The tag-triggered GitHub Actions workflow builds the same assets and publishes the GitHub
+Release automatically. If an artifact is built from the wrong commit or with the wrong
+version metadata, delete `dist/release` and rebuild from a clean, verified tree.
