@@ -4,14 +4,14 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 func TestPutGet(t *testing.T) {
 	s := New()
 	scope := types.Scope{}
-	s.Put(scope, "OpenCloak_SECRET_abc123456789", "my-secret")
-	v, ok := s.Get(scope, "OpenCloak_SECRET_abc123456789")
+	s.Put(scope, "PAIArtVeil_SECRET_abc123456789", "my-secret")
+	v, ok := s.Get(scope, "PAIArtVeil_SECRET_abc123456789")
 	if !ok {
 		t.Fatal("expected ok=true")
 	}
@@ -22,7 +22,7 @@ func TestPutGet(t *testing.T) {
 
 func TestMissing(t *testing.T) {
 	s := New()
-	_, ok := s.Get(types.Scope{}, "OpenCloak_SECRET_unknown000000")
+	_, ok := s.Get(types.Scope{}, "PAIArtVeil_SECRET_unknown000000")
 	if ok {
 		t.Fatal("expected ok=false for unknown token")
 	}
@@ -33,11 +33,11 @@ func TestScopeIsolation(t *testing.T) {
 	scopeA := types.Scope{Tenant: "alice"}
 	scopeB := types.Scope{Tenant: "bob"}
 
-	s.Put(scopeA, "OpenCloak_SECRET_abc123456789", "alice-secret")
-	s.Put(scopeB, "OpenCloak_SECRET_abc123456789", "bob-secret")
+	s.Put(scopeA, "PAIArtVeil_SECRET_abc123456789", "alice-secret")
+	s.Put(scopeB, "PAIArtVeil_SECRET_abc123456789", "bob-secret")
 
-	va, oka := s.Get(scopeA, "OpenCloak_SECRET_abc123456789")
-	vb, okb := s.Get(scopeB, "OpenCloak_SECRET_abc123456789")
+	va, oka := s.Get(scopeA, "PAIArtVeil_SECRET_abc123456789")
+	vb, okb := s.Get(scopeB, "PAIArtVeil_SECRET_abc123456789")
 
 	if !oka || va != "alice-secret" {
 		t.Fatalf("scopeA: got (%q, %v), want (alice-secret, true)", va, oka)
@@ -47,8 +47,8 @@ func TestScopeIsolation(t *testing.T) {
 	}
 
 	// A token in scopeA should not be visible in scopeB when it has a different value.
-	s.Put(scopeA, "OpenCloak_SECRET_onlyinalice0", "only-alice")
-	_, okInB := s.Get(scopeB, "OpenCloak_SECRET_onlyinalice0")
+	s.Put(scopeA, "PAIArtVeil_SECRET_onlyinalice0", "only-alice")
+	_, okInB := s.Get(scopeB, "PAIArtVeil_SECRET_onlyinalice0")
 	if okInB {
 		t.Fatal("cross-scope restore must not succeed")
 	}

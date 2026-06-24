@@ -2,7 +2,7 @@
 
 **Status:** Implemented benchmark framework for v0.1.0 local engine paths.
 
-This document defines the repeatable performance evaluation used for OpenCloak's local
+This document defines the repeatable performance evaluation used for Veil's local
 de-identification paths. It measures local CPU and allocation overhead only; provider
 network latency, model latency, and live CLI behavior are covered by acceptance tests, not
 by these microbenchmarks.
@@ -60,7 +60,7 @@ For a more stable comparison across changes, run several samples and compare wit
 `benchstat` if available:
 
 ```sh
-go test -run '^$' -bench 'BenchmarkMask(Text|Request)' -benchmem -count=5 . > /tmp/opencloak-mask.new
+go test -run '^$' -bench 'BenchmarkMask(Text|Request)' -benchmem -count=5 . > /tmp/veil-mask.new
 ```
 
 These benchmarks are not hard CI timing gates. Wall-clock thresholds are machine-sensitive,

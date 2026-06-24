@@ -1,6 +1,6 @@
 # Security Policy
 
-OpenCloak is security-sensitive software: its purpose is to keep secrets and PII out of
+Veil is security-sensitive software: its purpose is to keep secrets and PII out of
 supported text and tool-I/O provider egress while preserving local tool behavior.
 
 ## Supported Versions

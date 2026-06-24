@@ -13,7 +13,7 @@ func TestApplyMaskedSpansByRangeRewritesStringLiteralsInOnePass(t *testing.T) {
 
 	out, ok, err := ApplyMaskedSpansByRange(body, []MaskedSpan{
 		{Path: "b", MaskedText: "x\"y\nz", Start: bStart, End: bStart + len(`"line"`)},
-		{Path: "a", MaskedText: "OpenCloak_SECRET_001122334455", Start: aStart, End: aStart + len(`"old"`)},
+		{Path: "a", MaskedText: "PAIArtVeil_SECRET_001122334455", Start: aStart, End: aStart + len(`"old"`)},
 	})
 	if err != nil {
 		t.Fatalf("ApplyMaskedSpansByRange error: %v", err)
@@ -24,7 +24,7 @@ func TestApplyMaskedSpansByRangeRewritesStringLiteralsInOnePass(t *testing.T) {
 	if !gjson.ValidBytes(out) {
 		t.Fatalf("rewritten body is not valid JSON: %s", out)
 	}
-	if got := gjson.GetBytes(out, "a").Str; got != "OpenCloak_SECRET_001122334455" {
+	if got := gjson.GetBytes(out, "a").Str; got != "PAIArtVeil_SECRET_001122334455" {
 		t.Fatalf("a = %q", got)
 	}
 	if got := gjson.GetBytes(out, "b").Str; got != "x\"y\nz" {

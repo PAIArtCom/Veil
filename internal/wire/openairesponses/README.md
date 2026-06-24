@@ -6,7 +6,7 @@ Codex CLI.
 ## Purpose
 
 This provider supports the OpenAI Responses `POST /v1/responses` operation for
-local OpenCloak proxy and SDK callers. It masks user/developer input text and
+local Veil proxy and SDK callers. It masks user/developer input text and
 local tool-result output before provider egress, then restores output text and
 agentic tool-call arguments before the trusted local Codex side consumes them.
 
@@ -32,7 +32,7 @@ agentic tool-call arguments before the trusted local Codex side consumes them.
 - **Prompt variable leakage**: Stored-prompt variables can carry local user or tool data even when the prompt id itself is provider control metadata. String variables are masked and non-string variables fail closed. Verified by: provider_test.go.
 - **File/image payload references**: `input_image` and `input_file` blocks can carry signed URLs, file ids, or inline payloads that v0.1.0 does not parse. These blocks fail closed before provider egress. Verified by: provider_test.go.
 - **Tool-result leakage**: `function_call_output.output` can contain local file or shell data and must be masked on the next provider-bound request. Verified by: provider_test.go.
-- **Streaming tool arguments**: `response.function_call_arguments.delta` and related delta streams can split `OpenCloak_` tokens across events; arguments are buffered and restored before local tool execution sees them. Verified by: stream_test.go.
+- **Streaming tool arguments**: `response.function_call_arguments.delta` and related delta streams can split `PAIArtVeil_` tokens across events; arguments are buffered and restored before local tool execution sees them. Verified by: stream_test.go.
 - **Static tool schema integrity**: `tools` entries may contain example-looking strings but are static provider instructions and must not be masked. Verified by: provider_test.go.
 - **Capture hygiene**: Tests use throwaway fixture values only and must not commit raw Codex/OpenAI captures. Verified by: ../../../docs/guides/codex.md.
 

@@ -6,7 +6,7 @@ and service manager units remain planned.
 
 ## Run model
 
-OpenCloak's standalone transport is a **long-lived local daemon**. Its process memory holds
+Veil's standalone transport is a **long-lived local daemon**. Its process memory holds
 scoped token↔value maps for tools pointed at it; each proxied request/stream gets an
 explicit `State`, with optional longer-lived session/project namespaces for multi-turn
 self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
@@ -14,11 +14,11 @@ self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scop
 ## Install from a clean checkout
 
 ```sh
-git clone https://github.com/cloakia/opencloak.git
-cd opencloak
-go build -o ./bin/opencloak ./cmd/opencloak
-./bin/opencloak version
-./bin/opencloak proxy --help
+git clone https://github.com/PAIArtCom/Veil.git
+cd veil
+go build -o ./bin/veil ./cmd/veil
+./bin/veil version
+./bin/veil proxy --help
 ```
 
 For release artifacts, use the multi-platform release builder:
@@ -35,15 +35,15 @@ Expected release asset names:
 
 | Platform | Artifact path |
 |---|---|
-| macOS | `dist/release/opencloak-<version>-darwin-amd64`, `dist/release/opencloak-<version>-darwin-arm64` |
-| Linux | `dist/release/opencloak-<version>-linux-amd64`, `dist/release/opencloak-<version>-linux-arm64` |
-| Windows | `dist/release/opencloak-<version>-windows-amd64.exe`, `dist/release/opencloak-<version>-windows-arm64.exe` |
+| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64` |
+| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64` |
+| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe` |
 | Checksums | `dist/release/checksums.txt` |
 
 ## Run the Claude Code proxy
 
 ```sh
-./bin/opencloak proxy --addr 127.0.0.1:8788
+./bin/veil proxy --addr 127.0.0.1:8788
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
@@ -54,11 +54,11 @@ captures.
 
 ## Local policy
 
-OpenCloak can load a local policy JSON file for single-user per-type behavior. Precedence:
+Veil can load a local policy JSON file for single-user per-type behavior. Precedence:
 
-1. `opencloak proxy --policy /path/to/policy.json`
-2. `OPENCLOAK_POLICY=/path/to/policy.json`
-3. `~/.opencloak/policy.json` if the file exists
+1. `veil proxy --policy /path/to/policy.json`
+2. `VEIL_POLICY=/path/to/policy.json`
+3. `~/.veil/policy.json` if the file exists
 4. Built-in defaults if no configured/default policy file exists
 
 Minimal safe config:
@@ -77,7 +77,7 @@ Supported v0.1.0 operators are `token`, `ignore`, and `block`. `redact`,
 `format_preserving`, and non-empty `rule_sets` are reserved and fail closed. Unknown keys
 also fail closed, including `comment`, `label`, `metadata`, provider labels, analytics
 labels, customer labels, raw payload references, dotenv paths, or secret-looking values.
-If `--policy` or `OPENCLOAK_POLICY` points to a missing or invalid file, the proxy refuses
+If `--policy` or `VEIL_POLICY` points to a missing or invalid file, the proxy refuses
 to start. If the default file is absent, the proxy uses the built-in policy.
 
 ## Security invariants (non-negotiable)
@@ -88,7 +88,7 @@ to start. If the default file is absent, the proxy uses the built-in policy.
   the clear.
 - **Credentials pass through.** The proxy forwards the tool's own auth header; it stores no
   provider credentials ([ADR-0004](../architecture/decisions/0004-auth-pass-through.md)).
-- **Protect the local key.** `~/.opencloak/key` (the HMAC root) and any optional local map
+- **Protect the local key.** `~/.veil/key` (the HMAC root) and any optional local map
   cache hold sensitive material; they are git-ignored and must not be backed up to shared
   storage.
 
@@ -120,16 +120,16 @@ regression gate for the shipped proxy path; use the runbook in
 
 - Listen address (implemented flag: `--addr`, default `127.0.0.1:8787`).
 - Upstream provider base URL (implemented flag: `--upstream`, default `https://api.anthropic.com`).
-- Local policy file (implemented flag: `--policy`; env `OPENCLOAK_POLICY`; default path `~/.opencloak/policy.json` if present).
+- Local policy file (implemented flag: `--policy`; env `VEIL_POLICY`; default path `~/.veil/policy.json` if present).
 - Per-type `token`, `ignore`, and `block` operators (implemented); `redact`, `format_preserving`, and rule-set selection are planned and fail closed.
 - Optional local map cache (off by default; in-memory is the default).
-- Key path (default `~/.opencloak/key`, generated on first run).
+- Key path (default `~/.veil/key`, generated on first run).
 
 ## Observability (planned)
 
 - Local-only counters: requests processed, findings masked by type, blocked (fail-closed)
   requests, residual-token flags.
-- Any aggregate reporting to a control plane (Cloakia) is opt-in and subject to
+- Any aggregate reporting to a control plane (PAIArt) is opt-in and subject to
   audit-data minimization ([open-core boundary](../product/open-core-boundary.md)).
 
 _This page will gain service-manager units and package-manager installation notes when

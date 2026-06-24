@@ -74,7 +74,7 @@ Release builds should produce the full v0.1.0 platform matrix and checksum manif
 ```sh
 VERSION=v0.1.0 ./scripts/build-release.sh
 ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
-local_bin="dist/release/opencloak-v0.1.0-$(go env GOOS)-$(go env GOARCH)"
+local_bin="dist/release/veil-v0.1.0-$(go env GOOS)-$(go env GOARCH)"
 if [ "$(go env GOOS)" = "windows" ]; then
   local_bin="${local_bin}.exe"
 fi
@@ -85,9 +85,9 @@ Expected release assets:
 
 | Platform | Artifact path |
 |---|---|
-| macOS | `dist/release/opencloak-<version>-darwin-amd64`, `dist/release/opencloak-<version>-darwin-arm64` |
-| Linux | `dist/release/opencloak-<version>-linux-amd64`, `dist/release/opencloak-<version>-linux-arm64` |
-| Windows | `dist/release/opencloak-<version>-windows-amd64.exe`, `dist/release/opencloak-<version>-windows-arm64.exe` |
+| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64` |
+| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64` |
+| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe` |
 | Checksums | `dist/release/checksums.txt` |
 
 ## Release Cut

@@ -1,15 +1,15 @@
-package opencloak
+package veil
 
 import (
 	"errors"
 	"strings"
 
-	"github.com/cloakia/opencloak/internal/stream"
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/stream"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // Type is a category of sensitive data. It is embedded in every token as
-// OpenCloak_<TYPE>_<id> so that handling and restore can branch on the category.
+// PAIArtVeil_<TYPE>_<id> so that handling and restore can branch on the category.
 // See docs/concepts/token-spec.md.
 type Type = types.Type
 
@@ -84,26 +84,26 @@ func (st *State) Op() string {
 
 // ErrNotImplemented is reserved for planned operations that are not built yet.
 // Callers MUST treat it as fail-closed: block the request, never forward plaintext.
-var ErrNotImplemented = errors.New("opencloak: not implemented")
+var ErrNotImplemented = errors.New("veil: not implemented")
 
 // ErrInvalidState is returned when a restore path receives nil State or, for provider
 // shaped responses, a State without provider/op metadata.
-var ErrInvalidState = errors.New("opencloak: invalid state")
+var ErrInvalidState = errors.New("veil: invalid state")
 
 // ErrBlocked is returned by Mask or MaskRequest when a finding's type is configured
 // with OperatorBlock: the request is refused rather than masked, so a transport can map
 // it to a blocked-by-policy response.
-var ErrBlocked = errors.New("opencloak: blocked by policy")
+var ErrBlocked = errors.New("veil: blocked by policy")
 
 // ErrUnsupportedOperator is returned when Policy selects a transform operator
 // that this build cannot execute. Phase 0 supports token/block/ignore only;
 // format_preserving and redact are reserved for Phase 1 and fail closed here.
-var ErrUnsupportedOperator = errors.New("opencloak: unsupported transform operator")
+var ErrUnsupportedOperator = errors.New("veil: unsupported transform operator")
 
 // ErrUnsupportedPolicyFeature is returned when Policy uses a non-operator feature
 // this build cannot execute. Phase 0 rejects RuleSets instead of silently ignoring
 // them, so caller policy uncertainty cannot become plaintext pass-through.
-var ErrUnsupportedPolicyFeature = errors.New("opencloak: unsupported policy feature")
+var ErrUnsupportedPolicyFeature = errors.New("veil: unsupported policy feature")
 
 // BlockedError reports which sensitive types caused an OperatorBlock decision. It wraps
 // ErrBlocked for errors.Is checks.

@@ -11,14 +11,14 @@ community that drives adoption. This document pins the line.
 > **Individual value is open. Organizational control is paid.**
 
 If a capability makes a single developer safer on their own machine, it belongs in
-**OpenCloak** (open). If a capability lets an *organization* govern, configure, and audit
-many developers, it belongs in **Cloakia** (commercial).
+**Veil** (open). If a capability lets an *organization* govern, configure, and audit
+many developers, it belongs in **PAIArt** (commercial).
 
 ## Feature placement
 
 This table defines open-versus-paid placement, not Phase 0 implementation readiness.
 
-| Capability | OpenCloak (open) | Cloakia (paid) |
+| Capability | Veil (open) | PAIArt (paid) |
 |---|---|---|
 | Detection engine (L1 patterns; L2 NER when it lands) | ✅ | |
 | Deterministic reversible tokenization | ✅ | |
@@ -46,16 +46,16 @@ When a new feature is proposed, ask in order:
 
 ## The two failure modes we are avoiding
 
-- **Too much in open** → no reason to buy Cloakia. Mitigation: organizational *control and
-  visibility* (push, audit, RBAC) is reserved for Cloakia from day one.
+- **Too much in open** → no reason to buy PAIArt. Mitigation: organizational *control and
+  visibility* (push, audit, RBAC) is reserved for PAIArt from day one.
 - **Too little in open** → no community, no adoption, no validation of product-market fit,
   no moat. Mitigation: the entire *engine* and every *single-developer* workflow is open
   and genuinely complete on its own.
 
-## The Cloakia trust paradox
+## The PAIArt trust paradox
 
 Selling to a CISO requires audit logs — but audit *metadata* ("developer X sent 47 AWS
 keys from the payments repo") is itself sensitive, and over-collecting it re-creates the
-leak OpenCloak exists to prevent. Therefore **audit-data minimization is a day-one design
-constraint** of Cloakia, not an afterthought. The trust concern scales with how much
+leak Veil exists to prevent. Therefore **audit-data minimization is a day-one design
+constraint** of PAIArt, not an afterthought. The trust concern scales with how much
 leaves the machine; the cleanest commercial posture is the most local one.

@@ -23,19 +23,19 @@ JSON body. The engine never sees, holds, or needs a provider credential.
 
 ## Alternatives considered
 
-- **Credential substitution (CLIProxyAPI's model).** Rejected for OpenCloak: it would make
+- **Credential substitution (CLIProxyAPI's model).** Rejected for Veil: it would make
   the tool hold every user's provider secrets, require re-implementing OAuth per provider,
   and enlarge the trust surface — the opposite of a privacy tool's posture.
 
 ## Consequences
 
-- OpenCloak stays **credential-free**: no OAuth re-implementation, no secret storage, the
+- Veil stays **credential-free**: no OAuth re-implementation, no secret storage, the
   cleanest possible trust story.
 - The proxy is a terminating forward proxy: accept on `127.0.0.1`, open its own connection
   upstream, forward whichever credential header is present (and `anthropic-beta`, account
   headers, etc.).
 - **Inbound must be locked down.** CLIProxyAPI defaults to *open* inbound when no key is
-  set — a footgun. OpenCloak's proxy binds `127.0.0.1` only. (See
+  set — a footgun. Veil's proxy binds `127.0.0.1` only. (See
   [threat model](../../architecture/threat-model.md).)
 - AWS Bedrock (SigV4 signs body+host) cannot be served by a transparent rewrite proxy and
   is out of scope for the MVP.

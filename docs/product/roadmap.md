@@ -27,7 +27,7 @@ caches, no orphaned tokens). Everything else is downstream.
 runs through Claude Code where the model only ever sees deterministic tokens, overlapping
 findings produce one correct token, tool results and tool-call arguments are restored to
 real values, provider-aware restore errors are visible, the local command executes with the
-real value, files on disk contain no `OpenCloak_` tokens, streamed tokens survive arbitrary byte
+real value, files on disk contain no `PAIArtVeil_` tokens, streamed tokens survive arbitrary byte
 splits, and a second turn hits the prompt cache.
 
 **Milestones** — detailed plan in [phase-0-plan.md](../architecture/phase-0-plan.md):
@@ -59,7 +59,7 @@ Phase 1 ecosystem breadth.
   configurable rule packs remain later. Continue hardening the
   [integration guide](../sdk/integration-guide.md) for third-party gateways.
 
-## Phase 2 — Cloakia (commercial)
+## Phase 2 — PAIArt (commercial)
 
 **Goal:** monetize organizational control.
 

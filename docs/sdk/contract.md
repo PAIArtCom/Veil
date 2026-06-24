@@ -8,7 +8,7 @@ the v0.1.0 OpenAI Responses protocol evidence; a separate direct
 `https://api.openai.com` official-service run, OpenAI Chat, Gemini, and Phase 1 operators
 remain unclaimed or reserved.
 
-OpenCloak's engine is consumed as a **general-purpose library**, not a component tailored
+Veil's engine is consumed as a **general-purpose library**, not a component tailored
 to any one host. This document defines the contract every integration relies on, and the
 evidence that shaped it. For v0.1.0, the wire contract covers provider-native text fields,
 agentic tool inputs/results, and text/tool streaming deltas. It does not claim OCR,
@@ -55,7 +55,7 @@ The three range from "richest" to "barest." The contract is pinned to the barest
 ## The three API surfaces
 
 ```go
-package opencloak
+package veil
 
 import "context"
 
@@ -90,7 +90,7 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   provider/op pairs and malformed provider JSON return errors and must be treated as
   fail-closed. Opaque media/document payloads and provider thinking/control traces are not
   converted into text by the SDK.
-- **Existing OpenCloak tokens.** `Mask` and `MaskRequest` preserve valid `OpenCloak_…` token
+- **Existing Veil tokens.** `Mask` and `MaskRequest` preserve valid `PAIArtVeil_…` token
   spans already present in protected text/tool-I/O fields. This prevents residual tokens
   from earlier turns from being wrapped into nested tokens on a later request.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,

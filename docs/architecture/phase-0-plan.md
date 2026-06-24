@@ -60,7 +60,7 @@ fixtures (split mid-`CLK_`, mid-hex, across three chunks; a `CLK_`-looking strin
 **Build:**
 - `token` — `CLK_<TYPE>_<id>` derivation (`HMAC-SHA256(normalize(value), local_key)`, first 12
   hex), per-type `normalize`, collision check-and-extend; `local_key` load/generate at
-  `~/.opencloak/key` (0600).
+  `~/.veil/key` (0600).
 - `mapstore` — in-memory token↔value store keyed by `Scope` namespace; backs `State`.
 - `detect/l1` — starter detectors: built-in high-value regex rules, Shannon entropy +
   context keywords, validators/checksums (Luhn, IBAN, date parsing); each emits
@@ -110,7 +110,7 @@ boundaries; `FlushStream` drains the tail; the SSE-event path leaves non-text fi
 residual-token → emitted as-is + audit event.
 
 ### M4 — Standalone proxy + end-to-end validation
-**Packages:** `internal/proxy`, `cmd/opencloak` (`proxy` subcommand).
+**Packages:** `internal/proxy`, `cmd/veil` (`proxy` subcommand).
 
 **Build:** base-URL local proxy — binds `127.0.0.1` only, forwards the client credential
 unchanged, exposes the Claude Code `/v1/messages` endpoint, masks outbound, threads `State`

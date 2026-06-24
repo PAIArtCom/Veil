@@ -6,7 +6,7 @@ live-accepted through Claude Code; OpenAI Responses is implemented with offline 
 and local Codex CLI Responses live acceptance as the v0.1.0 OpenAI Responses protocol
 evidence. A separate direct `https://api.openai.com` official-service run is not claimed.
 
-How to embed the OpenCloak engine into a gateway. The patterns below are the
+How to embed the Veil engine into a gateway. The patterns below are the
 lowest-common-denominator wiring confirmed against three real gateways — see the
 [survey](../research/gateway-integration-survey.md) for the exact insertion points in each.
 
@@ -28,7 +28,7 @@ At your outbound choke point (e.g. clipal's `requestPayload.providerBody`, Orbit
 `buildUpstreamRequest`, a CLIProxyAPI request interceptor):
 
 ```go
-scope := opencloak.Scope{
+scope := veil.Scope{
     Tenant:  tenantID,  // empty is fine for single-user local use
     Session: sessionID, // stable agent/session id when available
     Project: projectID,
@@ -115,5 +115,5 @@ The reference proxy applies the same patterns, plus transport rules from the ADR
 - [ ] `State` is threaded from the outbound call to the inbound calls.
 - [ ] Buffered/SSE restore errors are surfaced to logs/audit and handled deliberately.
 - [ ] The right streaming method is used for your relay style.
-- [ ] No `OpenCloak_` token can leak to disk (residual-token scan / the identifier-safe token form).
+- [ ] No `PAIArtVeil_` token can leak to disk (residual-token scan / the identifier-safe token form).
 - [ ] Inbound listener is localhost-only (standalone) or your existing auth (embedded).

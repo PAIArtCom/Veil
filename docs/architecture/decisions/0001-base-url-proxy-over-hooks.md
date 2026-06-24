@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenCloak must rewrite the request body *before* it leaves the machine and transform the
+Veil must rewrite the request body *before* it leaves the machine and transform the
 response on the way back. We evaluated how to attach to the target tools (Claude Code,
 Codex) by reading their source. Findings (full evidence in the
 [gateway integration survey](../../research/gateway-integration-survey.md)):

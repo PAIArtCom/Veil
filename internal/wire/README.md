@@ -21,14 +21,14 @@ restores tokens from buffered and streaming provider responses.
 ## Boundaries
 
 - Does NOT handle: Detection, masking policy, token storage, or scoped restore state (see: ../detect/README.md and ../../docs/sdk/contract.md).
-- Does NOT handle: HTTP routing, credentials, headers, or socket safety (see: ../proxy/README.md and ../../cmd/opencloak/README.md).
+- Does NOT handle: HTTP routing, credentials, headers, or socket safety (see: ../proxy/README.md and ../../cmd/veil/README.md).
 - Does NOT handle: Public third-party provider plugin registration for v0.1.0 (see: ../../docs/architecture/formal-release-plan.md).
 
 ## Adversarial Surfaces
 
 - **Provider shape drift**: New provider fields can carry protected text/tool I/O if walkers silently skip unsupported shapes. Opaque media/document payloads and provider thinking/control traces are a declared non-goal, not a skipped text surface. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
 - **Tool I/O egress**: Tool-call arguments and tool-result outputs can contain restored local values, so provider walkers must cover those request and response fields. Verified by: openairesponses/provider_test.go.
-- **Cross-event token splits**: Streaming deltas can split an `OpenCloak_` token across provider events, so stream restorers must hold partial token tails until safe. Verified by: anthropic/stream_test.go and openairesponses/stream_test.go.
+- **Cross-event token splits**: Streaming deltas can split an `PAIArtVeil_` token across provider events, so stream restorers must hold partial token tails until safe. Verified by: anthropic/stream_test.go and openairesponses/stream_test.go.
 - **Static schema mutation**: Tool definitions are provider instructions, not user data, and changing them can break agent behavior. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
 
 ## Open Questions

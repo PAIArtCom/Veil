@@ -1,6 +1,6 @@
-# OpenCloak Documentation
+# Veil Documentation
 
-This is the map of OpenCloak's documentation. Docs are organized by audience and purpose;
+This is the map of Veil's documentation. Docs are organized by audience and purpose;
 nothing is stored ad hoc.
 
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
@@ -13,7 +13,7 @@ nothing is stored ad hoc.
 
 ## Purpose
 
-This directory is the authoritative map for OpenCloak product, architecture, concept,
+This directory is the authoritative map for Veil product, architecture, concept,
 SDK, guide, and research documentation.
 
 ## Principles
@@ -68,7 +68,7 @@ Top-level release metadata:
 **New here?** → [Product vision](product/vision.md) → [Strategy](product/strategy.md) →
 [Architecture overview](architecture/overview.md).
 
-**Integrating OpenCloak into a gateway?** → [SDK contract](sdk/contract.md) →
+**Integrating Veil into a gateway?** → [SDK contract](sdk/contract.md) →
 [Integration guide](sdk/integration-guide.md) → [Gateway survey](research/gateway-integration-survey.md).
 
 **Want the "why" behind a decision?** → [Decision records](architecture/decisions/README.md).

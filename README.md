@@ -1,10 +1,10 @@
-# OpenCloak
+# Veil
 
 English | [简体中文](README.zh-CN.md)
 
 > The de-identification layer for the LLM era — use AI coding agents without leaking secrets or PII to model providers.
 
-OpenCloak sits between your dev tool (Claude Code, Codex, Copilot, Cursor, …) and the
+Veil sits between your dev tool (Claude Code, Codex, Copilot, Cursor, …) and the
 LLM. Before a protected text or tool-I/O payload leaves your machine it
 **deterministically replaces sensitive values with reversible tokens**; when the response
 comes back it **restores them**. The model never sees the real values in the supported
@@ -23,7 +23,7 @@ with the real values.
 
 ## Purpose
 
-OpenCloak provides a local de-identification engine and reference proxy for AI coding
+Veil provides a local de-identification engine and reference proxy for AI coding
 tools. It masks secrets and structured PII in protected text/tool surfaces before LLM
 egress and restores reversible tokens on the trusted local side.
 
@@ -59,15 +59,15 @@ egress and restores reversible tokens on the trusted local side.
 Build and inspect the local proxy:
 
 ```sh
-go build -o ./bin/opencloak ./cmd/opencloak
-./bin/opencloak version
-./bin/opencloak proxy --help
+go build -o ./bin/veil ./cmd/veil
+./bin/veil version
+./bin/veil proxy --help
 ```
 
-Run Claude Code through OpenCloak:
+Run Claude Code through Veil:
 
 ```sh
-./bin/opencloak proxy --addr 127.0.0.1:8788
+./bin/veil proxy --addr 127.0.0.1:8788
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
@@ -84,8 +84,8 @@ Optional local policy file:
 }
 ```
 
-Use `--policy /path/to/policy.json`, `OPENCLOAK_POLICY`, or
-`~/.opencloak/policy.json`. v0.1.0 policy files support `token`, `ignore`, and `block`;
+Use `--policy /path/to/policy.json`, `VEIL_POLICY`, or
+`~/.veil/policy.json`. v0.1.0 policy files support `token`, `ignore`, and `block`;
 `redact`, `format_preserving`, and non-empty `rule_sets` fail closed.
 
 ## The problem
@@ -94,7 +94,7 @@ AI coding agents stream your code, configuration, and shell context to third-par
 LLMs. API keys, tokens, connection strings, and personal data routinely ride along.
 Faced with this, organizations either ban the tools or quietly accept the leak.
 
-OpenCloak removes the trade-off: keep the productivity, stop the leak — locally,
+Veil removes the trade-off: keep the productivity, stop the leak — locally,
 with no perceptible latency, and without breaking the agent.
 
 ## How it works (one glance)
@@ -104,17 +104,17 @@ with no perceptible latency, and without breaking the agent.
        │  protected text/tool fields with real secrets & PII
        ▼
   ┌────────────────────────────────────────────────────────┐
-  │  OpenCloak   (local proxy OR embedded library)         │
+  │  Veil   (local proxy OR embedded library)         │
   │  ① detect  → ② mask → reversible token                 │
-  │     e.g.  sk-live-abc…  →  OpenCloak_SECRET_7f3a…      │
+  │     e.g.  sk-live-abc…  →  PAIArtVeil_SECRET_7f3a…      │
   └────────────────────────────────────────────────────────┘
        │  protected fields contain tokens — opaque payloads keep native shape
        ▼
   LLM provider  (Anthropic / OpenAI / …)
-       │  response & tool-calls reference OpenCloak_SECRET_7f3a…
+       │  response & tool-calls reference PAIArtVeil_SECRET_7f3a…
        ▼
   ┌────────────────────────────────────────────────────────┐
-  │  OpenCloak   ③ restore tokens → real values            │
+  │  Veil   ③ restore tokens → real values            │
   └────────────────────────────────────────────────────────┘
        │  real values — tools, files, terminal all work
        ▼
@@ -127,7 +127,7 @@ Three properties make this safe and seamless:
   LLM, restore on the way *back*. Everything local (tool execution, file writes, terminal
   display) is untouched.
   See [redaction model](docs/concepts/redaction-model.md).
-- **Deterministic, reversible, type-aware tokens** (`OpenCloak_<TYPE>_<id>`) — the same value
+- **Deterministic, reversible, type-aware tokens** (`PAIArtVeil_<TYPE>_<id>`) — the same value
   always maps to the same token, so prompt caches stay warm and multi-turn context stays
   coherent. See [token spec](docs/concepts/token-spec.md).
 - **Layered detection** — L1 pattern matching (secrets, structured PII) ships first; an
@@ -136,7 +136,7 @@ Three properties make this safe and seamless:
 
 ## Two ways to run it
 
-OpenCloak is **one engine with different shells** (see
+Veil is **one engine with different shells** (see
 [architecture overview](docs/architecture/overview.md)):
 
 1. **Standalone local proxy** — point your CLI's base URL at it
@@ -148,9 +148,9 @@ OpenCloak is **one engine with different shells** (see
    in-repo reference integration; it is not built for any single gateway. See the
    [SDK contract](docs/sdk/contract.md) and [`examples/embed`](examples/embed/).
 
-## OpenCloak vs Cloakia
+## Veil vs PAIArt
 
-| | **OpenCloak** (this repo · Apache-2.0) | **Cloakia** (commercial) |
+| | **Veil** (this repo · Apache-2.0) | **PAIArt** (commercial) |
 |---|---|---|
 | What | The local engine + SDK + reference proxy | The organization control plane |
 | For | Individual developers — free, embeddable everywhere | Security & compliance teams |

@@ -8,7 +8,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // rule is a single pattern-based detection rule.
@@ -740,7 +740,7 @@ func validGenericSecretSpan(text string, start, end int) bool {
 		return false
 	}
 	// Code references are not literal credentials; masking them corrupts the
-	// source code coding agents send (the model then sees an OpenCloak_ token in place
+	// source code coding agents send (the model then sees a PAIArtVeil_ token in place
 	// of an identifier). A dotted identifier path (process.env.API_KEY) or a value
 	// immediately followed by '(' (a function call such as parseToken()) is code,
 	// not a secret. This mirrors the suppression already applied on the entropy

@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenCloak masks by replacing detected byte ranges with reversible tokens. The original
+Veil masks by replacing detected byte ranges with reversible tokens. The original
 public model exposed a `Span{Start, End, Type}`. That is enough for a single detector, but
 it is not enough for the actual Phase 0 detector stack:
 
@@ -16,7 +16,7 @@ it is not enough for the actual Phase 0 detector stack:
 
 Reference projects confirm that this is a correctness boundary, not a cosmetic detail:
 Presidio and PasteGuard both have explicit conflict-resolution logic, while
-privacy-filter merges and de-overlaps spans before rebuilding text. For OpenCloak this is
+privacy-filter merges and de-overlaps spans before rebuilding text. For Veil this is
 even more important because the token map is bijective. Overlapping findings must not
 create two tokens for one original value or one token for a sliced value.
 
@@ -64,7 +64,7 @@ confidence, and bare high-entropy findings require a stricter threshold and lowe
 - **Use entropy only as a validator.** Rejected: it would miss bare high-entropy secrets
   that have no provider-specific prefix.
 - **Adopt Presidio's full analyzer result model.** Rejected: useful concepts are score,
-  source, and conflict resolution. The rest of Presidio's model is larger than OpenCloak's
+  source, and conflict resolution. The rest of Presidio's model is larger tha Veil's
   Phase 0 needs.
 
 ## Consequences

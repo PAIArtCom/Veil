@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 func TestVersionStringDefaultsAreStable(t *testing.T) {
 	got := versionString()
-	want := "opencloak v0.1.0-dev (commit unknown, built unknown)"
+	want := "veil v0.1.0-dev (commit unknown, built unknown)"
 	if got != want {
 		t.Fatalf("versionString() = %q, want %q", got, want)
 	}
@@ -74,7 +74,7 @@ func TestRunProxyRejectsBadUpstream(t *testing.T) {
 }
 
 func TestEnginePolicyProviderNilUsesBuiltInDefaults(t *testing.T) {
-	var provider opencloak.PolicyProvider = enginePolicyProvider(nil)
+	var provider veil.PolicyProvider = enginePolicyProvider(nil)
 	if provider != nil {
 		t.Fatal("nil local provider became a non-nil PolicyProvider interface")
 	}

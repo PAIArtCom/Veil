@@ -6,12 +6,12 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 func TestResponsesStreamRestoresSplitOutputTextAndFunctionArguments(t *testing.T) {
 	e := newTestEngine(t)
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{"input":"use `+dsn+`"}`))
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{"input":"use `+dsn+`"}`))
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestResponsesStreamRestoresSplitOutputTextAndFunctionArguments(t *testing.T
 	}
 	out = append(out, flushed...)
 	joined := bytes.Join(out, []byte("\n"))
-	if bytes.Contains(joined, []byte("OpenCloak_")) {
+	if bytes.Contains(joined, []byte("PAIArtVeil_")) {
 		t.Fatalf("residual token in stream output: %s", joined)
 	}
 	if !bytes.Contains(joined, []byte(dsn)) {
@@ -68,7 +68,7 @@ func TestResponsesStreamRestoresSplitOutputTextAndFunctionArguments(t *testing.T
 
 func TestResponsesStreamRestoresCompletedEventOutput(t *testing.T) {
 	e := newTestEngine(t)
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{"input":"email `+email+`"}`))
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{"input":"email `+email+`"}`))
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestResponsesStreamRestoresCompletedEventOutput(t *testing.T) {
 	if len(outs) != 1 {
 		t.Fatalf("outs len = %d, want 1", len(outs))
 	}
-	if bytes.Contains(outs[0], []byte("OpenCloak_")) || !bytes.Contains(outs[0], []byte(email)) {
+	if bytes.Contains(outs[0], []byte("PAIArtVeil_")) || !bytes.Contains(outs[0], []byte(email)) {
 		t.Fatalf("completed event not restored: %s", outs[0])
 	}
 }

@@ -11,14 +11,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 const (
 	// EnvPolicyPath names the environment variable used when --policy is not set.
-	EnvPolicyPath = "OPENCLOAK_POLICY"
+	EnvPolicyPath = "VEIL_POLICY"
 	// DefaultPolicyRelPath is resolved relative to the user's home directory.
-	DefaultPolicyRelPath = ".opencloak/policy.json"
+	DefaultPolicyRelPath = ".veil/policy.json"
 )
 
 // LoadOptions controls local policy file resolution.
@@ -47,7 +47,7 @@ type Provider struct {
 // Policy returns a defensive copy of the loaded local policy.
 func (p *Provider) Policy(_ context.Context, _ types.Scope) (types.Policy, error) {
 	if p == nil {
-		return types.Policy{}, errors.New("opencloak config: nil policy provider")
+		return types.Policy{}, errors.New("veil config: nil policy provider")
 	}
 	return clonePolicy(p.policy), nil
 }
@@ -68,14 +68,14 @@ func LoadProvider(opts LoadOptions) (*Provider, Source, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if required && errors.Is(err, fs.ErrNotExist) {
-			return nil, Source{}, fmt.Errorf("opencloak config: policy file from %s not found: %s", from, path)
+			return nil, Source{}, fmt.Errorf("veil config: policy file from %s not found: %s", from, path)
 		}
-		return nil, Source{}, fmt.Errorf("opencloak config: read policy %s: %w", path, err)
+		return nil, Source{}, fmt.Errorf("veil config: read policy %s: %w", path, err)
 	}
 
 	policy, err := parsePolicy(data)
 	if err != nil {
-		return nil, Source{}, fmt.Errorf("opencloak config: invalid policy %s: %w", path, err)
+		return nil, Source{}, fmt.Errorf("veil config: invalid policy %s: %w", path, err)
 	}
 	return &Provider{policy: policy}, Source{Path: path, From: from, Loaded: true}, nil
 }
@@ -105,7 +105,7 @@ func resolvePath(opts LoadOptions) (path, from string, required bool, err error)
 		if errors.Is(err, fs.ErrNotExist) {
 			return "", "", false, nil
 		}
-		return "", "", false, fmt.Errorf("opencloak config: inspect default policy %s: %w", defaultPath, err)
+		return "", "", false, fmt.Errorf("veil config: inspect default policy %s: %w", defaultPath, err)
 	}
 	return defaultPath, "default", false, nil
 }

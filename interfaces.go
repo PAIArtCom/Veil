@@ -1,9 +1,9 @@
-package opencloak
+package veil
 
 import (
 	"context"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // Detector finds sensitive findings in text. The L1 pattern detector is built in;
@@ -17,8 +17,8 @@ type Detector interface {
 type TransformOperator = types.TransformOperator
 
 const (
-	// OperatorToken replaces values with deterministic reversible OpenCloak_<TYPE>_<id>
-	// tokens. This is the OpenCloak default.
+	// OperatorToken replaces values with deterministic reversible PAIArtVeil_<TYPE>_<id>
+	// tokens. This is the Veil default.
 	OperatorToken TransformOperator = types.OperatorToken
 	// OperatorFormatPreserving is reserved for deterministic realistic surrogates
 	// such as valid-looking emails or phone numbers. (Phase 1.)
@@ -42,7 +42,7 @@ type TypePolicy = types.TypePolicy
 type Policy = types.Policy
 
 // PolicyProvider supplies the active Policy for a scope. The open-source default reads
-// local files and may ignore scope; Cloakia implements this to fetch and hot-reload
+// local files and may ignore scope; PAIArt implements this to fetch and hot-reload
 // centrally pushed policy per tenant/session/project. This is one of the two seams the
 // commercial control plane attaches to — see docs/product/open-core-boundary.md.
 type PolicyProvider interface {
@@ -59,7 +59,7 @@ type AuditEvent struct {
 }
 
 // AuditSink receives AuditEvents. The open-source default is a no-op (or local
-// counters); Cloakia implements this to collect minimized audit data. This is the
+// counters); PAIArt implements this to collect minimized audit data. This is the
 // second seam the commercial control plane attaches to.
 type AuditSink interface {
 	Record(ctx context.Context, ev AuditEvent)
@@ -69,7 +69,7 @@ type AuditSink interface {
 // key loaded from (or generated at) the default path, a built-in local policy, and a
 // no-op audit sink.
 type Config struct {
-	KeyPath  string         // HMAC key location; default ~/.opencloak/key
+	KeyPath  string         // HMAC key location; default ~/.veil/key
 	Detector Detector       // optional L2 detector; nil = L1 only
 	Policy   PolicyProvider // nil = built-in local policy
 	Audit    AuditSink      // nil = no-op

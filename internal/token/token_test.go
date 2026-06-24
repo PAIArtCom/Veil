@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // newTestKeyer writes a fixed 32-byte key to a temp file so tests are
@@ -73,10 +73,10 @@ func TestFormat(t *testing.T) {
 	k := newTestKeyer(t)
 	collisions := map[string]string{}
 	tok := k.Derive(types.TypeEmail, "user@Example.COM", collisions)
-	if !strings.HasPrefix(tok, "OpenCloak_EMAIL_") {
+	if !strings.HasPrefix(tok, "PAIArtVeil_EMAIL_") {
 		t.Fatalf("unexpected prefix: %q", tok)
 	}
-	id := strings.TrimPrefix(tok, "OpenCloak_EMAIL_")
+	id := strings.TrimPrefix(tok, "PAIArtVeil_EMAIL_")
 	if len(id) < idBaseLen {
 		t.Fatalf("id too short (%d chars): %q", len(id), tok)
 	}
@@ -114,7 +114,7 @@ func TestCollisionExtension(t *testing.T) {
 	// Derive the token for "real-secret" so we know the base id.
 	cReal := map[string]string{}
 	tokReal := k.Derive(types.TypeSecret, "real-secret", cReal)
-	baseID := strings.TrimPrefix(tokReal, "OpenCloak_SECRET_")
+	baseID := strings.TrimPrefix(tokReal, "PAIArtVeil_SECRET_")
 
 	// Now build a fresh collision map that pretends another value already owns
 	// that base id. Deriving "real-secret" again must produce an extended id.
@@ -122,7 +122,7 @@ func TestCollisionExtension(t *testing.T) {
 		baseID: "some-other-normalized-value",
 	}
 	tokExtended := k.Derive(types.TypeSecret, "real-secret", cManip)
-	extID := strings.TrimPrefix(tokExtended, "OpenCloak_SECRET_")
+	extID := strings.TrimPrefix(tokExtended, "PAIArtVeil_SECRET_")
 
 	if len(extID) <= len(baseID) {
 		t.Fatalf("expected extended id (len>%d) after collision, got %q (len=%d)", len(baseID), extID, len(extID))
@@ -136,7 +136,7 @@ func TestCollisionExtension(t *testing.T) {
 }
 
 func TestKnownPrefixAndRestoreWithAdjacentHexSuffix(t *testing.T) {
-	const known = "OpenCloak_SECRET_0a1b2c3d4e5f"
+	const known = "PAIArtVeil_SECRET_0a1b2c3d4e5f"
 	const suffix = "0123456789abcdef0123456789abcdef"
 	lookup := func(tok string) (string, bool) {
 		if tok == known {
@@ -165,7 +165,7 @@ func TestKnownPrefixAndRestoreWithAdjacentHexSuffix(t *testing.T) {
 }
 
 func TestDetectionPrefixLenUnknownTokenShapeProtectsOnlyBaseID(t *testing.T) {
-	const unknown = "OpenCloak_SECRET_deadbeef0001"
+	const unknown = "PAIArtVeil_SECRET_deadbeef0001"
 	const suffix = "0123456789abcdef"
 	lookup := func(string) (string, bool) { return "", false }
 

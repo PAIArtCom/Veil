@@ -1,4 +1,4 @@
-package opencloak_test
+package veil_test
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 func BenchmarkMaskTextTieredBusinessContext(b *testing.B) {
@@ -25,7 +25,7 @@ func BenchmarkMaskTextTieredBusinessContext(b *testing.B) {
 		text := benchmarkBusinessText(tier.records)
 		b.Run(tier.name, func(b *testing.B) {
 			e := newTestEngine(b)
-			scope := opencloak.Scope{Tenant: "bench", Session: "mask-text", Project: tier.name}
+			scope := veil.Scope{Tenant: "bench", Session: "mask-text", Project: tier.name}
 			verifyMaskTextBenchmark(b, e, scope, text)
 			b.SetBytes(int64(len(text)))
 			b.ReportAllocs()
@@ -53,7 +53,7 @@ func BenchmarkMaskRequestOpenAIResponsesBusinessContext(b *testing.B) {
 		body := benchmarkResponsesBody(b, tier.records)
 		b.Run(tier.name, func(b *testing.B) {
 			e := newTestEngine(b)
-			scope := opencloak.Scope{Tenant: "bench", Session: "responses", Project: tier.name}
+			scope := veil.Scope{Tenant: "bench", Session: "responses", Project: tier.name}
 			verifyMaskRequestBenchmark(b, e, scope, "openai-responses", "responses", body)
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
@@ -81,7 +81,7 @@ func BenchmarkMaskRequestAnthropicBusinessTranscript(b *testing.B) {
 		body := benchmarkAnthropicBody(b, tier.records)
 		b.Run(tier.name, func(b *testing.B) {
 			e := newTestEngine(b)
-			scope := opencloak.Scope{Tenant: "bench", Session: "anthropic", Project: tier.name}
+			scope := veil.Scope{Tenant: "bench", Session: "anthropic", Project: tier.name}
 			verifyMaskRequestBenchmark(b, e, scope, "anthropic", "messages", body)
 			b.SetBytes(int64(len(body)))
 			b.ReportAllocs()
@@ -95,7 +95,7 @@ func BenchmarkMaskRequestAnthropicBusinessTranscript(b *testing.B) {
 	}
 }
 
-func verifyMaskTextBenchmark(b *testing.B, e *opencloak.Engine, scope opencloak.Scope, text string) {
+func verifyMaskTextBenchmark(b *testing.B, e *veil.Engine, scope veil.Scope, text string) {
 	b.Helper()
 	masked, _, err := e.Mask(ctx, scope, text)
 	if err != nil {
@@ -110,12 +110,12 @@ func verifyMaskTextBenchmark(b *testing.B, e *opencloak.Engine, scope opencloak.
 			b.Fatalf("benchmark plaintext %q leaked in masked text", plain)
 		}
 	}
-	if !strings.Contains(masked, "OpenCloak_") {
-		b.Fatalf("benchmark text produced no OpenCloak token")
+	if !strings.Contains(masked, "PAIArtVeil_") {
+		b.Fatalf("benchmark text produced no Veil token")
 	}
 }
 
-func verifyMaskRequestBenchmark(b *testing.B, e *opencloak.Engine, scope opencloak.Scope, provider, op string, body []byte) {
+func verifyMaskRequestBenchmark(b *testing.B, e *veil.Engine, scope veil.Scope, provider, op string, body []byte) {
 	b.Helper()
 	masked, _, err := e.MaskRequest(ctx, scope, provider, op, body)
 	if err != nil {
@@ -130,8 +130,8 @@ func verifyMaskRequestBenchmark(b *testing.B, e *opencloak.Engine, scope openclo
 			b.Fatalf("benchmark plaintext %q leaked in masked request", plain)
 		}
 	}
-	if !bytes.Contains(masked, []byte("OpenCloak_")) {
-		b.Fatalf("benchmark request produced no OpenCloak token")
+	if !bytes.Contains(masked, []byte("PAIArtVeil_")) {
+		b.Fatalf("benchmark request produced no Veil token")
 	}
 }
 

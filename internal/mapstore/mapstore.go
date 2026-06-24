@@ -3,7 +3,7 @@ package mapstore
 import (
 	"sync"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // namespaceKey is the composite key used to partition the store.

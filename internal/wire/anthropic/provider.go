@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/cloakia/opencloak/internal/wire"
+	"github.com/PAIArtCom/Veil/internal/wire"
 )
 
 // provider implements wire.Provider for the Anthropic Messages API.
@@ -217,7 +217,7 @@ func extractToolResultContent(innerContent gjson.Result, basePath, role string, 
 				appendStringSpan(ib.Get("text"), fmt.Sprintf("%s.%d.text", basePath, ii), role, spans)
 			case "image", "document":
 				// Opaque media/document payloads are outside the text replacement
-				// surface; OpenCloak does not parse or regenerate them.
+				// surface; Veil does not parse or regenerate them.
 			}
 			return true
 		})

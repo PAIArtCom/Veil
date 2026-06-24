@@ -1,12 +1,12 @@
-# cmd/opencloak
+# cmd/veil
 
-`cmd/opencloak` is the user-facing command-line entry point for the OpenCloak
+`cmd/veil` is the user-facing command-line entry point for the Veil
 engine and local transports.
 
 ## Purpose
 
-This module wires the public OpenCloak SDK and internal transports into the
-`opencloak` binary. For v0.1.0 it exposes the standalone loopback proxy for
+This module wires the public Veil SDK and internal transports into the
+`veil` binary. For v0.1.0 it exposes the standalone loopback proxy for
 Anthropic Messages and OpenAI Responses, local policy-file loading, stable help
 output, and build version metadata for release verification.
 

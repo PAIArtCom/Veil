@@ -1,4 +1,4 @@
-package opencloak
+package veil
 
 import (
 	"context"
@@ -7,24 +7,24 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/cloakia/opencloak/internal/detect"
-	"github.com/cloakia/opencloak/internal/detect/resolver"
-	"github.com/cloakia/opencloak/internal/mapstore"
-	"github.com/cloakia/opencloak/internal/mask"
-	"github.com/cloakia/opencloak/internal/stream"
-	"github.com/cloakia/opencloak/internal/token"
-	"github.com/cloakia/opencloak/internal/types"
-	"github.com/cloakia/opencloak/internal/wire"
+	"github.com/PAIArtCom/Veil/internal/detect"
+	"github.com/PAIArtCom/Veil/internal/detect/resolver"
+	"github.com/PAIArtCom/Veil/internal/mapstore"
+	"github.com/PAIArtCom/Veil/internal/mask"
+	"github.com/PAIArtCom/Veil/internal/stream"
+	"github.com/PAIArtCom/Veil/internal/token"
+	"github.com/PAIArtCom/Veil/internal/types"
+	"github.com/PAIArtCom/Veil/internal/wire"
 
 	// Side-effect import: registers the "anthropic" provider in the wire
 	// registry when the engine package is imported.
-	_ "github.com/cloakia/opencloak/internal/wire/anthropic"
+	_ "github.com/PAIArtCom/Veil/internal/wire/anthropic"
 	// Side-effect import: registers the "openai-responses" provider.
-	_ "github.com/cloakia/opencloak/internal/wire/openairesponses"
+	_ "github.com/PAIArtCom/Veil/internal/wire/openairesponses"
 )
 
-// Engine is the OpenCloak de-identification engine. Construct it with New and use it
-// directly (embedded in a gateway) or via a scaffolded transport under cmd/opencloak.
+// Engine is the Veil de-identification engine. Construct it with New and use it
+// directly (embedded in a gateway) or via a scaffolded transport under cmd/veil.
 //
 // The API has three entry surfaces: text, provider-native wire JSON, and streaming
 // restore. See docs/sdk/contract.md.
@@ -37,9 +37,9 @@ type Engine struct {
 	collisions  map[string]string
 }
 
-// detectorAdapter wraps an opencloak.Detector (which uses the public type
+// detectorAdapter wraps an veil.Detector (which uses the public type
 // aliases) so it can be passed to detect.Orchestrator as an ExternalDetector.
-// Because opencloak.Finding == types.Finding (type alias), no conversion is
+// Because veil.Finding == types.Finding (type alias), no conversion is
 // needed — but we need a separate type to satisfy the interface.
 type detectorAdapter struct {
 	d Detector
@@ -74,7 +74,7 @@ func New(cfg Config) (*Engine, error) {
 // enabled with OperatorToken; PERSON and ADDR are ignored (L2, off by default).
 // DATE is detected by L1 but ignored by default: most dates (timestamps,
 // version dates) are not sensitive and masking them all hurts model utility
-// with little privacy gain. A caller/Cloakia policy can opt in per type.
+// with little privacy gain. A caller/PAIArt policy can opt in per type.
 var defaultPolicy = types.Policy{
 	DefaultOperator: types.OperatorToken,
 	Types: map[types.Type]types.TypePolicy{
@@ -268,7 +268,7 @@ func hexSuffixFindingsAfterTokenPrefixes(spans []byteSpan, keep func(types.Findi
 		// provider-bound text. Unknown token-shaped prefixes are more
 		// ambiguous: a short suffix may be a collision-extended residual
 		// token, but a substantial hex suffix should not leak just because it
-		// abuts an OpenCloak-shaped prefix.
+		// abuts a Veil-shaped prefix.
 		minLen := minUnknownTokenAdjacentHexSecretLen
 		if span.known {
 			minLen = minKnownTokenAdjacentHexSecretLen
@@ -322,7 +322,7 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 	result, err := mask.Apply(text, findings, scope, policy, e.store, e.keyer, e.collisions)
 	e.collisionMu.Unlock()
 	if err != nil {
-		return "", nil, fmt.Errorf("opencloak: mask text: %w", err)
+		return "", nil, fmt.Errorf("veil: mask text: %w", err)
 	}
 
 	if len(result.Blocked) > 0 {
@@ -340,7 +340,7 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 }
 
 // Mask replaces detected sensitive values in text with deterministic, reversible
-// tokens (OpenCloak_<TYPE>_<id>). It returns the State needed to restore the same text surface.
+// tokens (PAIArtVeil_<TYPE>_<id>). It returns the State needed to restore the same text surface.
 func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error) {
 	policy, err := e.activePolicy(ctx, scope)
 	if err != nil {
@@ -359,7 +359,7 @@ func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked str
 	return maskedText, &State{scope: scope}, nil
 }
 
-// tokenRe matches any OpenCloak_… token in text.
+// tokenRe matches any PAIArtVeil_… token in text.
 var tokenRe = regexp.MustCompile(token.TokenPattern)
 
 // Restore replaces tokens in text with their original values using st. A nil State is
@@ -542,7 +542,7 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 // (accumulate while relaying, audit once at end of stream).
 //
 // Unlike the stateless RestoreSSEEvent, an SSEStream holds the provider's
-// cross-event holdback (e.g. an OpenCloak_ token split across content_block_delta
+// cross-event holdback (e.g. a PAIArtVeil_ token split across content_block_delta
 // events), so the proxy can drive it one complete event at a time and have
 // split tokens reassembled before any restore is attempted.
 //
@@ -613,7 +613,7 @@ func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 	}
 }
 
-// restoreScan returns a RestoreFunc that replaces OpenCloak_… tokens found in text
+// restoreScan returns a RestoreFunc that replaces PAIArtVeil_… tokens found in text
 // with their stored values under scope (unknown tokens left as-is, consistent
 // with the text-surface Restore), counting every validly-shaped but unresolved
 // token into residual by TYPE string. It is the single token-scan shared by the
@@ -638,10 +638,10 @@ func (e *Engine) restoreScan(scope Scope, residual map[string]int) wire.RestoreF
 	}
 }
 
-// restoreFuncTracking returns a RestoreFunc that replaces OpenCloak_… tokens found in
+// restoreFuncTracking returns a RestoreFunc that replaces PAIArtVeil_… tokens found in
 // text with their stored values under st's scope (unknown tokens left as-is,
 // consistent with the text-surface Restore) plus a snapshot accessor that
-// reports residual tokens — validly-shaped OpenCloak_… tokens that were not found in
+// reports residual tokens — validly-shaped PAIArtVeil_… tokens that were not found in
 // st's scope — grouped by TYPE. Callers use it to emit a residual_token audit
 // event after a buffered or SSE-event restore, mirroring the streaming surface.
 //

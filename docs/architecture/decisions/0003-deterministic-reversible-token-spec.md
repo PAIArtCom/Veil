@@ -44,7 +44,7 @@ matching. Full normative detail in the [token spec](../../concepts/token-spec.md
 
 - The forward direction is stateless (pure HMAC); only the reverse map needs storage,
   enabling the scoped in-memory mapstore in [ADR-0009](0009-state-lifecycle-and-scope.md).
-- A stable **`local_key`** (e.g. `~/.opencloak/key`, generated once) is the root of
+- A stable **`local_key`** (e.g. `~/.veil/key`, generated once) is the root of
   determinism and must persist across restarts.
 - The identifier-safe form bounds the blast radius of an orphaned token (valid syntax, not
   broken output); residual-token scans still flag leftover `CLK_` tokens.

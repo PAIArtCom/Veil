@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/cloakia/opencloak/internal/mapstore"
-	"github.com/cloakia/opencloak/internal/token"
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/mapstore"
+	"github.com/PAIArtCom/Veil/internal/token"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // Result is returned by Apply.

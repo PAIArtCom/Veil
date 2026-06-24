@@ -3,14 +3,14 @@ package detect
 import (
 	"context"
 
-	"github.com/cloakia/opencloak/internal/detect/l1"
-	"github.com/cloakia/opencloak/internal/detect/resolver"
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/detect/l1"
+	"github.com/PAIArtCom/Veil/internal/detect/resolver"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // ExternalDetector is the interface for external (L2) detectors. It mirrors
-// opencloak.Detector but lives in internal/types to avoid an import cycle.
-// The engine wires a concrete opencloak.Detector into this via an adapter.
+// veil.Detector but lives in internal/types to avoid an import cycle.
+// The engine wires a concrete veil.Detector into this via an adapter.
 type ExternalDetector interface {
 	Detect(ctx context.Context, text string) ([]types.Finding, error)
 }

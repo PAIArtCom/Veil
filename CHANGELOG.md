@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to OpenCloak are documented here. The format follows
+All notable changes to Veil are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it reaches a tagged
 release.
@@ -12,8 +12,8 @@ No changes yet.
 ## [0.1.0] - 2026-06-21
 
 ### Added
-- Local OpenCloak engine with L1 detection, conflict resolution, deterministic reversible
-  `OpenCloak_` tokenization, scoped restore state, and fail-closed policy validation.
+- Local Veil engine with L1 detection, conflict resolution, deterministic reversible
+  `PAIArtVeil_` tokenization, scoped restore state, and fail-closed policy validation.
 - Public SDK text, provider-native wire, and stream restore surfaces.
 - Standalone loopback proxy for Anthropic Messages / Claude Code, live-accepted on
   2026-06-17 against real Claude Code traffic.
@@ -31,9 +31,9 @@ No changes yet.
   forwarding unchecked plaintext-bearing blocks. Opaque media/document payloads and
   provider thinking/control traces remain outside the v0.1.0 de-identification surface.
 - Codex live acceptance: Codex CLI 0.140.0 passed a controlled Responses-wire run through
-  OpenCloak with a Responses-compatible upstream. This is the v0.1.0 OpenAI Responses
+  Veil with a Responses-compatible upstream. This is the v0.1.0 OpenAI Responses
   protocol evidence.
-- CLI policy startup: fixed the no-policy-file path so `opencloak proxy` actually uses the
+- CLI policy startup: fixed the no-policy-file path so `veil proxy` actually uses the
   built-in default policy instead of passing a typed nil local provider into the engine.
 - Multi-platform release automation: local scripts and a tag-triggered GitHub Release
   workflow build darwin/linux/windows amd64/arm64 binaries with SHA-256 checksums, race
@@ -43,14 +43,14 @@ No changes yet.
 - Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,
   dash-spelled AWS `Secret-Access-Key` headers, and secret-looking hex values in strong
   secret contexts are not dropped by generic false-positive suppressors.
-- Made outbound masking idempotent for existing `OpenCloak_` tokens so residual or orphan tokens
+- Made outbound masking idempotent for existing `PAIArtVeil_` tokens so residual or orphan tokens
   from earlier turns are not wrapped into nested tokens on a later provider-bound request.
 - Masked hex-only credential values in `api_key`, `apikey`, `token`, and related strong
   secret contexts instead of suppressing them as generic hashes.
-- Restored the longest store-resident `OpenCloak_` token prefix when a token is
+- Restored the longest store-resident `PAIArtVeil_` token prefix when a token is
   immediately followed by additional lowercase hex, and made later outbound masking treat
   the extra hex suffix as new `SECRET` text instead of hiding it inside the token guard.
-- Hardened fabricated or unknown `OpenCloak_` token-shaped prefixes followed by substantial
+- Hardened fabricated or unknown `PAIArtVeil_` token-shaped prefixes followed by substantial
   lowercase hex so the adjacent hex suffix is masked instead of passing through as plain
   text.
 - Suppressed code-reference false positives such as `process.env.API_KEY`,

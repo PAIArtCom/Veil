@@ -27,12 +27,12 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
-// tokenRe matches an OpenCloak_ token, mirroring the engine's token grammar
+// tokenRe matches a PAIArtVeil_ token, mirroring the engine's token grammar
 // used elsewhere in the repo's tests.
-var tokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
+var tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 // recorder is a mutex-guarded holder for byte slices an httptest handler records
 // on its own goroutine and the test goroutine reads after the response
@@ -85,15 +85,15 @@ const (
 )
 
 // newTestEngine builds an Engine with a fixed deterministic key.
-func newTestEngine(t *testing.T) *opencloak.Engine {
+func newTestEngine(t *testing.T) *veil.Engine {
 	t.Helper()
-	return newTestEngineCfg(t, opencloak.Config{})
+	return newTestEngineCfg(t, veil.Config{})
 }
 
 // newTestEngineCfg builds an Engine with a fixed deterministic key, merging any
 // caller-supplied Config fields (Detector/Policy/Audit). KeyPath is always set
 // to a per-test temp file so tokens are deterministic and isolated.
-func newTestEngineCfg(t *testing.T, cfg opencloak.Config) *opencloak.Engine {
+func newTestEngineCfg(t *testing.T, cfg veil.Config) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -105,16 +105,16 @@ func newTestEngineCfg(t *testing.T, cfg opencloak.Config) *opencloak.Engine {
 		t.Fatalf("write test key: %v", err)
 	}
 	cfg.KeyPath = keyPath
-	e, err := opencloak.New(cfg)
+	e, err := veil.New(cfg)
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	return e
 }
 
 // newTestProxy wires a Proxy at engine pointed at upstream with a buffered logger
 // so tests can assert on log output. It returns the proxy and the log buffer.
-func newTestProxy(t *testing.T, engine *opencloak.Engine, upstream string) (*Proxy, *bytes.Buffer) {
+func newTestProxy(t *testing.T, engine *veil.Engine, upstream string) (*Proxy, *bytes.Buffer) {
 	t.Helper()
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
@@ -128,8 +128,8 @@ func newTestProxy(t *testing.T, engine *opencloak.Engine, upstream string) (*Pro
 // ---- Test 1: buffered round-trip (exit #1, #3, #6) ---------------------------
 
 // A request whose message content and a tool_result both carry a detectable
-// secret is masked on the way out (the fake upstream sees only OpenCloak_ tokens, no
-// plaintext) and restored on the way back (the client sees plaintext, no OpenCloak_).
+// secret is masked on the way out (the fake upstream sees only PAIArtVeil_ tokens, no
+// plaintext) and restored on the way back (the client sees plaintext, no PAIArtVeil_).
 // The fake upstream closes the loop: it extracts a token from the masked request
 // it received and echoes that exact token in its response, proving the proxy
 // threads the live State.
@@ -145,7 +145,7 @@ func TestBufferedRoundTrip(t *testing.T) {
 		rec.record(body, nil)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		// Echo the token in a text block and a tool_use.input field.
 		resp := `{"id":"msg_1","type":"message","role":"assistant","content":[` +
@@ -179,17 +179,17 @@ func TestBufferedRoundTrip(t *testing.T) {
 	receivedBody := rec.lastBody()
 	// Outbound: upstream saw a token, never the plaintext (exit #1).
 	if !tokenRe.Match(receivedBody) {
-		t.Fatalf("upstream body missing OpenCloak_ token: %s", receivedBody)
+		t.Fatalf("upstream body missing PAIArtVeil_ token: %s", receivedBody)
 	}
 	if bytes.Contains(receivedBody, []byte(awsKey)) {
 		t.Fatalf("plaintext secret leaked to upstream: %s", receivedBody)
 	}
-	// Inbound: client got plaintext back, no residual OpenCloak_ (exit #3, #6).
+	// Inbound: client got plaintext back, no residual PAIArtVeil_ (exit #3, #6).
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("client status = %d, want 200; body=%s", resp.StatusCode, clientBody)
 	}
-	if bytes.Contains(clientBody, []byte("OpenCloak_")) {
-		t.Fatalf("residual OpenCloak_ token in client response: %s", clientBody)
+	if bytes.Contains(clientBody, []byte("PAIArtVeil_")) {
+		t.Fatalf("residual PAIArtVeil_ token in client response: %s", clientBody)
 	}
 	if !bytes.Contains(clientBody, []byte(awsKey)) {
 		t.Fatalf("original secret not restored in client response: %s", clientBody)
@@ -215,7 +215,7 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 		rec.record(body, r.Header)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		resp := `{"id":"resp_1","output":[` +
 			`{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Using ` + tok + `"}]},` +
@@ -253,7 +253,7 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 	}
 	receivedBody := rec.lastBody()
 	if !tokenRe.Match(receivedBody) {
-		t.Fatalf("upstream body missing OpenCloak_ token: %s", receivedBody)
+		t.Fatalf("upstream body missing PAIArtVeil_ token: %s", receivedBody)
 	}
 	if bytes.Contains(receivedBody, []byte(email)) {
 		t.Fatalf("plaintext email leaked to upstream: %s", receivedBody)
@@ -264,8 +264,8 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("client status = %d, want 200; body=%s", resp.StatusCode, clientBody)
 	}
-	if bytes.Contains(clientBody, []byte("OpenCloak_")) {
-		t.Fatalf("residual OpenCloak_ token in client response: %s", clientBody)
+	if bytes.Contains(clientBody, []byte("PAIArtVeil_")) {
+		t.Fatalf("residual PAIArtVeil_ token in client response: %s", clientBody)
 	}
 	if !bytes.Contains(clientBody, []byte(awsKey)) {
 		t.Fatalf("original secret not restored in client response: %s", clientBody)
@@ -287,7 +287,7 @@ func TestOpenAIResponsesStreamingRoundTrip(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		cut := len(tok) / 2
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -326,8 +326,8 @@ func TestOpenAIResponsesStreamingRoundTrip(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", resp.StatusCode, clientStream)
 	}
-	if bytes.Contains(clientStream, []byte("OpenCloak_")) {
-		t.Fatalf("residual OpenCloak_ token in client stream: %s", clientStream)
+	if bytes.Contains(clientStream, []byte("PAIArtVeil_")) {
+		t.Fatalf("residual PAIArtVeil_ token in client stream: %s", clientStream)
 	}
 	if !bytes.Contains(clientStream, []byte(awsKey)) {
 		t.Fatalf("original secret not restored in client stream: %s", clientStream)
@@ -381,7 +381,7 @@ func TestOpenAIResponsesUnsupportedShapeFailsClosed(t *testing.T) {
 // token shape.
 func splitTokenStream(tok string) string {
 	// Text fragments: cut "<tok>" at two interior positions (mid-TYPE, mid-hex).
-	u := strings.Index(tok, "_") // after OpenCloak
+	u := strings.Index(tok, "_") // after Veil
 	typeEnd := strings.Index(tok[u+1:], "_") + u + 1
 	tf := []string{tok[:u+1], tok[u+1 : typeEnd+3], tok[typeEnd+3:]}
 
@@ -480,7 +480,7 @@ func reassembleTextDeltas(t *testing.T, clientStream []byte) string {
 // The fake upstream emits a token split across multiple content_block_delta
 // events (text and tool_use). The reassembled client stream must restore the
 // text token, deliver the tool input as ONE consolidated JSON value that decodes
-// to the real secret (exit #4), and carry no residual OpenCloak_.
+// to the real secret (exit #4), and carry no residual PAIArtVeil_.
 func TestStreamingRoundTripSplitAcrossEvents(t *testing.T) {
 	engine := newTestEngine(t)
 
@@ -490,7 +490,7 @@ func TestStreamingRoundTripSplitAcrossEvents(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -519,14 +519,14 @@ func TestStreamingRoundTripSplitAcrossEvents(t *testing.T) {
 	if received.Load() != 1 {
 		t.Fatalf("upstream received %d requests, want 1", received.Load())
 	}
-	if bytes.Contains(clientStream, []byte("OpenCloak_")) {
-		t.Fatalf("residual OpenCloak_ token in client stream: %s", clientStream)
+	if bytes.Contains(clientStream, []byte("PAIArtVeil_")) {
+		t.Fatalf("residual PAIArtVeil_ token in client stream: %s", clientStream)
 	}
 	// Text token restored despite the 3-way split.
 	if got := reassembleTextDeltas(t, clientStream); got != "key "+awsKey+" end" {
 		t.Fatalf("reassembled text = %q, want %q", got, "key "+awsKey+" end")
 	}
-	// Exit #4: the tool input decodes to the REAL secret, not an OpenCloak_ literal.
+	// Exit #4: the tool input decodes to the REAL secret, not a PAIArtVeil_ literal.
 	if dsn := toolInputDSN(t, clientStream); dsn != awsKey {
 		t.Fatalf("reassembled tool_use.input dsn = %q, want %q", dsn, awsKey)
 	}
@@ -560,7 +560,7 @@ func TestStreamingSplitAcrossEventsByteAtATime(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -587,8 +587,8 @@ func TestStreamingSplitAcrossEventsByteAtATime(t *testing.T) {
 	if received.Load() != 1 {
 		t.Fatalf("upstream received %d requests, want 1", received.Load())
 	}
-	if bytes.Contains(clientStream, []byte("OpenCloak_")) {
-		t.Fatalf("byte-at-a-time: residual OpenCloak_ token in client stream: %s", clientStream)
+	if bytes.Contains(clientStream, []byte("PAIArtVeil_")) {
+		t.Fatalf("byte-at-a-time: residual PAIArtVeil_ token in client stream: %s", clientStream)
 	}
 	if got := reassembleTextDeltas(t, clientStream); got != "key "+awsKey+" end" {
 		t.Fatalf("byte-at-a-time: reassembled text = %q, want %q", got, "key "+awsKey+" end")
@@ -602,23 +602,23 @@ func TestStreamingSplitAcrossEventsByteAtATime(t *testing.T) {
 
 // blockingPolicy blocks a fixed set of types via OperatorBlock.
 type blockingPolicy struct {
-	block []opencloak.Type
+	block []veil.Type
 }
 
-func (p blockingPolicy) Policy(_ context.Context, _ opencloak.Scope) (opencloak.Policy, error) {
-	types := make(map[opencloak.Type]opencloak.TypePolicy, len(p.block))
+func (p blockingPolicy) Policy(_ context.Context, _ veil.Scope) (veil.Policy, error) {
+	types := make(map[veil.Type]veil.TypePolicy, len(p.block))
 	for _, t := range p.block {
-		types[t] = opencloak.TypePolicy{Operator: opencloak.OperatorBlock}
+		types[t] = veil.TypePolicy{Operator: veil.OperatorBlock}
 	}
-	return opencloak.Policy{
-		DefaultOperator: opencloak.OperatorToken,
+	return veil.Policy{
+		DefaultOperator: veil.OperatorToken,
 		Types:           types,
 	}, nil
 }
 
 func TestBlockedFailClosed(t *testing.T) {
-	engine := newTestEngineCfg(t, opencloak.Config{
-		Policy: blockingPolicy{block: []opencloak.Type{opencloak.TypeSecret}},
+	engine := newTestEngineCfg(t, veil.Config{
+		Policy: blockingPolicy{block: []veil.Type{veil.TypeSecret}},
 	})
 
 	var received atomic.Int64
@@ -664,12 +664,12 @@ func TestBlockedFailClosed(t *testing.T) {
 // out of MaskRequest (fail-closed).
 type erroringDetector struct{}
 
-func (erroringDetector) Detect(_ context.Context, _ string) ([]opencloak.Finding, error) {
+func (erroringDetector) Detect(_ context.Context, _ string) ([]veil.Finding, error) {
 	return nil, errors.New("synthetic detector failure")
 }
 
 func TestMaskErrorFailClosed(t *testing.T) {
-	engine := newTestEngineCfg(t, opencloak.Config{Detector: erroringDetector{}})
+	engine := newTestEngineCfg(t, veil.Config{Detector: erroringDetector{}})
 
 	var received atomic.Int64
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -833,7 +833,7 @@ func TestPromptCachePrefixStability(t *testing.T) {
 // ---- Test 7: unsupported endpoints fail closed -------------------------------
 
 // Unsupported methods and paths are not transparent in the release proxy. They
-// can carry plaintext request bodies that OpenCloak has not verified how to mask,
+// can carry plaintext request bodies that Veil has not verified how to mask,
 // so they must fail before upstream egress.
 func TestUnsupportedEndpointFailsClosed(t *testing.T) {
 	engine := newTestEngine(t)
@@ -886,18 +886,18 @@ func TestUnsupportedEndpointFailsClosed(t *testing.T) {
 // ---- Test 8: restore error visibility (exit #5) ------------------------------
 
 // errOnTokenStream is an sseRestorer that fails Event for any payload containing
-// an OpenCloak_ token, exercising the "restore errors are surfaced, never swallowed;
+// a PAIArtVeil_ token, exercising the "restore errors are surfaced, never swallowed;
 // the stream is not dropped" path (exit #5) through the 1→N event pipeline
 // without relying on gjson/sjson to error (it does not). Non-token events and
-// Flush delegate to a real *opencloak.SSEStream so the rest of the stream
+// Flush delegate to a real *veil.SSEStream so the rest of the stream
 // behaves normally.
 type errOnTokenStream struct {
-	inner   *opencloak.SSEStream
+	inner   *veil.SSEStream
 	failErr error
 }
 
 func (s errOnTokenStream) Event(ctx context.Context, eventData []byte) ([][]byte, error) {
-	if bytes.Contains(eventData, []byte("OpenCloak_")) {
+	if bytes.Contains(eventData, []byte("PAIArtVeil_")) {
 		return nil, s.failErr
 	}
 	return s.inner.Event(ctx, eventData)
@@ -910,11 +910,11 @@ func (s errOnTokenStream) Flush(ctx context.Context) ([][]byte, error) {
 // errOnTokenEngine wraps a real engine but returns an errOnTokenStream from
 // NewSSEStreamRestorer so the streaming-restore error path is injectable.
 type errOnTokenEngine struct {
-	*opencloak.Engine
+	*veil.Engine
 	failErr error
 }
 
-func (e errOnTokenEngine) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+func (e errOnTokenEngine) NewSSEStreamRestorer(st *veil.State) (sseRestorer, error) {
 	inner, err := e.Engine.NewSSEStreamRestorer(st)
 	if err != nil {
 		return nil, err
@@ -979,7 +979,7 @@ func TestRestoreErrorVisibleStreamNotDropped(t *testing.T) {
 		t.Fatalf("restore error not logged: %s", logBuf.String())
 	}
 	// The original (un-restored) event is relayed unchanged — token still present.
-	if !bytes.Contains(clientStream, []byte("OpenCloak_")) {
+	if !bytes.Contains(clientStream, []byte("PAIArtVeil_")) {
 		t.Fatalf("expected original event (with token) to be relayed on restore error: %s", clientStream)
 	}
 	// The stream was NOT dropped: the benign trailing event still arrives.
@@ -999,7 +999,7 @@ type errBufferedEngine struct {
 	failErr error
 }
 
-func (e errBufferedEngine) RestoreResponse(ctx context.Context, st *opencloak.State, body []byte) ([]byte, error) {
+func (e errBufferedEngine) RestoreResponse(ctx context.Context, st *veil.State, body []byte) ([]byte, error) {
 	return nil, e.failErr
 }
 
@@ -1049,11 +1049,11 @@ func TestBufferedRestoreErrorVisibleRawRelayed(t *testing.T) {
 // fail closed with a 502 BEFORE committing the streamed response, never relaying
 // the upstream SSE body (which would leak unrestored tokens).
 type failRestorerEngine struct {
-	*opencloak.Engine
+	*veil.Engine
 	failErr error
 }
 
-func (e failRestorerEngine) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+func (e failRestorerEngine) NewSSEStreamRestorer(st *veil.State) (sseRestorer, error) {
 	return nil, e.failErr
 }
 
@@ -1099,7 +1099,7 @@ func TestStreamRestorerBuildErrorFailsClosed(t *testing.T) {
 		t.Fatalf("status = %d, want 502; body=%s", resp.StatusCode, clientBody)
 	}
 	// No upstream token (or any SSE body) leaked to the client.
-	if bytes.Contains(clientBody, []byte("OpenCloak_")) || bytes.Contains(clientBody, []byte("content_block_delta")) {
+	if bytes.Contains(clientBody, []byte("PAIArtVeil_")) || bytes.Contains(clientBody, []byte("content_block_delta")) {
 		t.Fatalf("upstream SSE body leaked on restorer build failure: %s", clientBody)
 	}
 	// The error is surfaced (logged), not swallowed.
@@ -1158,14 +1158,14 @@ func TestStreamedEventsAreWellFormed(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	// Parse out each data: line and assert no OpenCloak_ remains and the value restored.
+	// Parse out each data: line and assert no PAIArtVeil_ remains and the value restored.
 	sc := bufio.NewScanner(resp.Body)
 	var sawRestored bool
 	for sc.Scan() {
 		line := sc.Text()
 		if strings.HasPrefix(line, "data:") {
-			if strings.Contains(line, "OpenCloak_") {
-				t.Fatalf("OpenCloak_ token survived in data line: %q", line)
+			if strings.Contains(line, "PAIArtVeil_") {
+				t.Fatalf("PAIArtVeil_ token survived in data line: %q", line)
 			}
 			if strings.Contains(line, awsKey) {
 				sawRestored = true
@@ -1188,7 +1188,7 @@ func TestStreamGzipResponseIsDecodedBeforeRestore(t *testing.T) {
 		body, _ := io.ReadAll(r.Body)
 		tok := tokenRe.FindString(string(body))
 		if tok == "" {
-			t.Fatalf("upstream: masked request had no OpenCloak_ token: %s", body)
+			t.Fatalf("upstream: masked request had no PAIArtVeil_ token: %s", body)
 		}
 		sse := "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + tok + "\"}}\n\n" +
 			"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
@@ -1226,7 +1226,7 @@ func TestStreamGzipResponseIsDecodedBeforeRestore(t *testing.T) {
 	if got := resp.Header.Get("Content-Encoding"); got != "" {
 		t.Fatalf("decoded/restored response must not keep Content-Encoding, got %q", got)
 	}
-	if bytes.Contains(clientBody, []byte("OpenCloak_")) {
+	if bytes.Contains(clientBody, []byte("PAIArtVeil_")) {
 		t.Fatalf("token survived gzip SSE restore: %s", clientBody)
 	}
 	if !bytes.Contains(clientBody, []byte(awsKey)) {

@@ -28,7 +28,7 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:8788 claude -p \
   'Use Bash exactly once to run this exact command: printf "%s\n" "<THROWAWAY_DSN>" > dsn_arg.txt && cat dsn_arg.txt. Then reply with exactly the single line printed by the command and nothing else.'
 ```
 
-The OpenCloak proxy listened on `127.0.0.1:8788`. For this run only, its upstream was a
+The Veil proxy listened on `127.0.0.1:8788`. For this run only, its upstream was a
 local pass-through capture proxy on `127.0.0.1:8789` that forwarded to
 `https://api.anthropic.com` and recorded request/response bodies without recording
 credential headers. Raw captures were inspected locally and deleted; they are not
@@ -53,9 +53,9 @@ The throwaway DSN was `postgresql://app:s3cr3t@localhost:5432/mydb`.
 
 **Date:** 2026-06-20 (Asia/Shanghai)
 
-**Code under test:** `8ed7144` (`feat(token): use OpenCloak token prefix`)
+**Code under test:** `8ed7144` (`feat(token): use Veil token prefix`)
 
-ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `OpenCloak_`. The
+ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `PAIArtVeil_`. The
 Claude Code live runbook was rerun after that change using Claude Code `2.1.178`, the
 same throwaway DSN shape, and a sanitized pass-through capture proxy. The capture proxy
 forwarded to `https://api.anthropic.com` and recorded only summary booleans and byte
@@ -63,19 +63,19 @@ counts, not raw provider bodies or credential headers.
 
 | Observation | Result |
 |---|---|
-| Claude reached OpenCloak over `/v1/messages?beta=true` | Passed |
+| Claude reached Veil over `/v1/messages?beta=true` | Passed |
 | Upstream requests observed | 2 |
 | Upstream response status/content type | `200`, `text/event-stream; charset=utf-8` |
-| Upstream request 1 contained `OpenCloak_` tokens | Yes (`5` token-prefix occurrences) |
+| Upstream request 1 contained `PAIArtVeil_` tokens | Yes (`5` token-prefix occurrences) |
 | Upstream request 1 contained old `CLK_` tokens | No |
 | Upstream request 1 contained the throwaway plaintext DSN | No |
-| Upstream request 2 contained `OpenCloak_` tokens | Yes (`7` token-prefix occurrences) |
+| Upstream request 2 contained `PAIArtVeil_` tokens | Yes (`7` token-prefix occurrences) |
 | Upstream request 2 contained old `CLK_` tokens | No |
 | Upstream request 2 contained the throwaway plaintext DSN | No |
 | Local final output contained the expected restored throwaway DSN | Yes |
-| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local final output contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Local `dsn_arg.txt` contained the restored throwaway DSN | Yes |
-| Local `dsn_arg.txt` contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local `dsn_arg.txt` contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Claude Code result status | `success`, `num_turns=2` |
 
 ## Provider Request Optimization Refresh Run
@@ -87,30 +87,30 @@ OpenAI Responses request adapters now try a range-based batch JSON string rewrit
 falling back to structural `sjson` updates. The Claude Code live runbook was rerun after
 that code change.
 
-**Code under test:** local `opencloak` binary built from the current working tree after the
+**Code under test:** local `veil` binary built from the current working tree after the
 provider batch-apply optimization.
 
 The run used Claude Code `2.1.178`, `ANTHROPIC_BASE_URL=http://127.0.0.1:18788`, an
-OpenCloak proxy upstreamed to a sanitized pass-through capture proxy on
+Veil proxy upstreamed to a sanitized pass-through capture proxy on
 `127.0.0.1:18789`, and real Anthropic traffic at `https://api.anthropic.com`. The capture
 proxy recorded only booleans, byte counts, paths, status codes, and content types. Raw
 temporary outputs were inspected for boolean checks and deleted.
 
 | Observation | Result |
 |---|---|
-| Claude reached OpenCloak over `/v1/messages?beta=true` | Passed |
+| Claude reached Veil over `/v1/messages?beta=true` | Passed |
 | Upstream requests observed | 2 |
 | Upstream response status/content type | `200`, `text/event-stream; charset=utf-8` |
-| Upstream request 1 contained `OpenCloak_` tokens | Yes (`5` token-prefix occurrences) |
+| Upstream request 1 contained `PAIArtVeil_` tokens | Yes (`5` token-prefix occurrences) |
 | Upstream request 1 contained old `CLK_` tokens | No |
 | Upstream request 1 contained the throwaway plaintext DSN | No |
-| Upstream request 2 contained `OpenCloak_` tokens | Yes (`7` token-prefix occurrences) |
+| Upstream request 2 contained `PAIArtVeil_` tokens | Yes (`7` token-prefix occurrences) |
 | Upstream request 2 contained old `CLK_` tokens | No |
 | Upstream request 2 contained the throwaway plaintext DSN | No |
 | Local final output contained the expected restored throwaway DSN | Yes |
-| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local final output contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Local `dsn_arg.txt` contained the restored throwaway DSN | Yes |
-| Local `dsn_arg.txt` contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local `dsn_arg.txt` contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Claude Code result status | `success`, `num_turns=2` |
 
 ## Issue Found During Acceptance
@@ -120,7 +120,7 @@ Anthropic returned gzip-compressed SSE, and the proxy attempted restore over com
 bytes, producing a residual `CLK_URL_...` final answer.
 
 The fix is in `e8f37ee`: `internal/proxy` strips client `Accept-Encoding` before the
-upstream request so Go can manage response decompression and OpenCloak restores decoded
+upstream request so Go can manage response decompression and Veil restores decoded
 bytes. `TestStreamGzipResponseIsDecodedBeforeRestore` covers the regression.
 
 ## Final Verification

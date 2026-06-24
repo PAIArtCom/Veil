@@ -7,7 +7,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	"github.com/cloakia/opencloak/internal/wire"
+	"github.com/PAIArtCom/Veil/internal/wire"
 )
 
 // mapRestore returns a RestoreFunc that replaces each known token (substring)
@@ -69,10 +69,10 @@ func TestNewStreamRestorerSupported(t *testing.T) {
 // A token wholly inside a single text_delta with trailing non-hex restores in
 // place and re-encodes delta.text as valid JSON.
 func TestStreamTextDeltaInPlace(t *testing.T) {
-	restore := mapRestore(map[string]string{"OpenCloak_SECRET_0a1b2c3d4e5f": "SECRET"})
+	restore := mapRestore(map[string]string{"PAIArtVeil_SECRET_0a1b2c3d4e5f": "SECRET"})
 	out := collect(t, restore,
 		[]byte(`{"type":"content_block_start","index":0,"content_block":{"type":"text"}}`),
-		[]byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"x OpenCloak_SECRET_0a1b2c3d4e5f y"}}`),
+		[]byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"x PAIArtVeil_SECRET_0a1b2c3d4e5f y"}}`),
 		[]byte(`{"type":"content_block_stop","index":0}`),
 	)
 	got := textOf(out)
@@ -89,12 +89,12 @@ func TestStreamTextDeltaInPlace(t *testing.T) {
 // A token split across two text_delta events: the first event is wholly held
 // (returns zero payloads) and the token surfaces restored on the second.
 func TestStreamTextDeltaHeldThenFlushed(t *testing.T) {
-	restore := mapRestore(map[string]string{"OpenCloak_SECRET_0a1b2c3d4e5f": "SECRET"})
+	restore := mapRestore(map[string]string{"PAIArtVeil_SECRET_0a1b2c3d4e5f": "SECRET"})
 	p := &provider{}
 	sr, _ := p.NewStreamRestorer("messages")
 
-	// "OpenCloak_SE" is wholly a partial-token prefix → entire delta held.
-	outs, err := sr.Event([]byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"OpenCloak_SE"}}`), restore)
+	// "PAIArtVeil_SE" is wholly a partial-token prefix → entire delta held.
+	outs, err := sr.Event([]byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"PAIArtVeil_SE"}}`), restore)
 	if err != nil {
 		t.Fatalf("Event 1: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestStreamTextDeltaHeldThenFlushed(t *testing.T) {
 // input_json_delta fragments are swallowed (zero payloads) and emitted as ONE
 // consolidated input_json_delta before the stop.
 func TestStreamToolConsolidation(t *testing.T) {
-	restore := mapRestore(map[string]string{"OpenCloak_SECRET_0a1b2c3d4e5f": "real-dsn"})
+	restore := mapRestore(map[string]string{"PAIArtVeil_SECRET_0a1b2c3d4e5f": "real-dsn"})
 	p := &provider{}
 	sr, _ := p.NewStreamRestorer("messages")
 
@@ -125,7 +125,7 @@ func TestStreamToolConsolidation(t *testing.T) {
 	if len(o0) != 1 || gjson.GetBytes(o0[0], "type").Str != "content_block_start" {
 		t.Fatalf("content_block_start should pass through, got %s", o0)
 	}
-	o1, _ := sr.Event([]byte(`{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"dsn\":\"OpenCloak_SEC"}}`), restore)
+	o1, _ := sr.Event([]byte(`{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"dsn\":\"PAIArtVeil_SEC"}}`), restore)
 	o2, _ := sr.Event([]byte(`{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"RET_0a1b2c3d4e5f\"}"}}`), restore)
 	if len(o1) != 0 || len(o2) != 0 {
 		t.Fatalf("input_json_delta fragments must be swallowed, got %d and %d", len(o1), len(o2))

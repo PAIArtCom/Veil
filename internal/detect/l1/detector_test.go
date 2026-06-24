@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 func findingsByType(findings []types.Finding, typ types.Type) []types.Finding {
@@ -642,11 +642,11 @@ func TestSecretSuppressorsNegative(t *testing.T) {
 		},
 		{
 			name: "npm package variable",
-			text: "npm_package_name=npm_opencloak",
+			text: "npm_package_name=npm_veil",
 		},
 		{
 			name: "pypi package URL",
-			text: "pypi-url=https://pypi.org/project/opencloak/",
+			text: "pypi-url=https://pypi.org/project/veil/",
 		},
 		{
 			name: "short bearer token",

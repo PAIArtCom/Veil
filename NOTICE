@@ -1,5 +1,5 @@
-OpenCloak
-Copyright 2026 OpenCloak contributors.
+Veil
+Copyright 2026 Veil contributors.
 
 This product includes software developed by Tidwall:
 
@@ -10,7 +10,7 @@ This product includes software developed by Tidwall:
 
 Those dependencies are licensed under the MIT License.
 
-OpenCloak's L1 detector design was informed by public secret-scanning and
+Veil's L1 detector design was informed by public secret-scanning and
 redaction concepts, including projects such as gitleaks and privacy-filter.
 The shipped detector implementation and curated starter rules in this
-repository are OpenCloak code unless a source file states otherwise.
+repository are Veil code unless a source file states otherwise.

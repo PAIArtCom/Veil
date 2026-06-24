@@ -6,7 +6,7 @@
 
 Let people use AI coding agents without leaking secrets or PII to model providers.
 
-OpenCloak is the **de-identification layer for the LLM era**: it removes sensitive data
+Veil is the **de-identification layer for the LLM era**: it removes sensitive data
 from traffic on its way to an LLM and restores it on the way back — deterministically,
 reversibly, and locally — so the productivity of AI tooling no longer requires accepting
 data-exfiltration risk.

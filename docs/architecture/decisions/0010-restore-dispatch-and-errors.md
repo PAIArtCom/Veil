@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenCloak restores tokens on three inbound paths:
+Veil restores tokens on three inbound paths:
 
 - complete buffered provider responses;
 - parsed SSE event payloads;

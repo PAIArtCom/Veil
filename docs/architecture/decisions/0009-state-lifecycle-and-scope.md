@@ -6,7 +6,7 @@ Supersedes [ADR-0005](0005-global-in-memory-scope.md).
 
 ## Context
 
-OpenCloak's reverse map (`token -> original value`) must survive long enough to restore the
+Veil's reverse map (`token -> original value`) must survive long enough to restore the
 response that corresponds to a masked request. ADR-0005 chose a process-global in-memory
 scope because deterministic tokens let the map self-heal. That remains true for simple
 single-user use, but reference implementations expose two hazards:
@@ -14,7 +14,7 @@ single-user use, but reference implementations expose two hazards:
 - a single shared vault can mix unrelated sessions or tenants;
 - TTL-based caches can evict mappings while a long stream is still being restored.
 
-OpenCloak needs the ergonomic default for local use without making cross-session leakage or
+Veil needs the ergonomic default for local use without making cross-session leakage or
 stream eviction part of the architecture.
 
 ## Decision
@@ -55,7 +55,7 @@ reverse restoration.
 ## Alternatives considered
 
 - **One process-global vault for everything.** Rejected: convenient, but it risks
-  accidental cross-session or cross-tenant restoration when OpenCloak is embedded in a
+  accidental cross-session or cross-tenant restoration when Veil is embedded in a
   shared process.
 - **Per-request only, no longer-lived namespace.** Rejected: it handles the immediate
   response but loses the self-healing benefit across retries, cached responses, and

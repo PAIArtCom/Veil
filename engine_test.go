@@ -1,4 +1,4 @@
-package opencloak_test
+package veil_test
 
 import (
 	"context"
@@ -10,12 +10,12 @@ import (
 	"sync"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 // newTestEngine builds an Engine backed by a fixed, deterministic key so
 // token values are stable across test runs.
-func newTestEngine(t testing.TB) *opencloak.Engine {
+func newTestEngine(t testing.TB) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -26,22 +26,22 @@ func newTestEngine(t testing.TB) *opencloak.Engine {
 	if err := os.WriteFile(keyPath, key, 0600); err != nil {
 		t.Fatalf("write test key: %v", err)
 	}
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath})
+	e, err := veil.New(veil.Config{KeyPath: keyPath})
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	return e
 }
 
 var ctx = context.Background()
 
-var engineTokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
+var engineTokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 func extractEngineToken(t *testing.T, text string) string {
 	t.Helper()
 	tok := engineTokenRe.FindString(text)
 	if tok == "" {
-		t.Fatalf("no OpenCloak token found in %q", text)
+		t.Fatalf("no Veil token found in %q", text)
 	}
 	return tok
 }
@@ -51,15 +51,15 @@ func extractEngineToken(t *testing.T, text string) string {
 func TestMaskRestoreEmail(t *testing.T) {
 	e := newTestEngine(t)
 	text := "contact user@example.com for help"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
 	if strings.Contains(masked, "user@example.com") {
 		t.Fatalf("email not masked: %q", masked)
 	}
-	if !strings.Contains(masked, "OpenCloak_EMAIL_") {
-		t.Fatalf("expected OpenCloak_EMAIL_ token in masked text: %q", masked)
+	if !strings.Contains(masked, "PAIArtVeil_EMAIL_") {
+		t.Fatalf("expected PAIArtVeil_EMAIL_ token in masked text: %q", masked)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -73,15 +73,15 @@ func TestMaskRestoreEmail(t *testing.T) {
 func TestMaskRestoreAWSKey(t *testing.T) {
 	e := newTestEngine(t)
 	text := "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
 	if strings.Contains(masked, "AKIAIOSFODNN7EXAMPLE") {
 		t.Fatalf("AWS key not masked: %q", masked)
 	}
-	if !strings.Contains(masked, "OpenCloak_SECRET_") {
-		t.Fatalf("expected OpenCloak_SECRET_ token: %q", masked)
+	if !strings.Contains(masked, "PAIArtVeil_SECRET_") {
+		t.Fatalf("expected PAIArtVeil_SECRET_ token: %q", masked)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -95,7 +95,7 @@ func TestMaskRestoreAWSKey(t *testing.T) {
 func TestMaskRestoreMixed(t *testing.T) {
 	e := newTestEngine(t)
 	text := "email: user@example.com, ip: 192.168.1.1, key: AKIAIOSFODNN7EXAMPLE"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -146,17 +146,17 @@ func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			masked, st, err := e.Mask(ctx, opencloak.Scope{}, tc.text)
+			masked, st, err := e.Mask(ctx, veil.Scope{}, tc.text)
 			if err != nil {
 				t.Fatalf("Mask: %v", err)
 			}
 			if strings.Contains(masked, tc.plaintext) {
 				t.Fatalf("plaintext secret was not masked: %q", masked)
 			}
-			if got := strings.Count(masked, "OpenCloak_SECRET_"); got != 1 {
-				t.Fatalf("OpenCloak_SECRET_ count = %d, want 1 in %q", got, masked)
+			if got := strings.Count(masked, "PAIArtVeil_SECRET_"); got != 1 {
+				t.Fatalf("PAIArtVeil_SECRET_ count = %d, want 1 in %q", got, masked)
 			}
-			if strings.Contains(masked, "OpenCloak_URL_") {
+			if strings.Contains(masked, "PAIArtVeil_URL_") {
 				t.Fatalf("URL overlap won over secret span: %q", masked)
 			}
 			if tc.wantKeep != "" && !strings.Contains(masked, tc.wantKeep) {
@@ -176,7 +176,7 @@ func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 func TestMaskRestoreIPv4(t *testing.T) {
 	e := newTestEngine(t)
 	text := "server at 10.0.0.1 is down"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestMaskRestoreIPv4(t *testing.T) {
 func TestMaskRestoreCreditCard(t *testing.T) {
 	e := newTestEngine(t)
 	text := "card number 4532015112830366 is on file"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestMaskRestoreCreditCard(t *testing.T) {
 
 func TestTokenDeterministicAcrossCalls(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{}
+	scope := veil.Scope{}
 	text := "api_key: AKIAIOSFODNN7EXAMPLE"
 
 	masked1, _, err := e.Mask(ctx, scope, text)
@@ -231,9 +231,9 @@ func TestTokenDeterministicAcrossCalls(t *testing.T) {
 	}
 }
 
-func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
+func TestMaskExistingVeilTokensIdempotent(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{Session: "second-turn"}
+	scope := veil.Scope{Session: "second-turn"}
 
 	firstMasked, firstState, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
 	if err != nil {
@@ -246,7 +246,7 @@ func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
 		"token=" + existing,
 		"secret=" + existing,
 		"Authorization: Bearer " + existing,
-		"token=OpenCloak_SECRET_001122334455",
+		"token=PAIArtVeil_SECRET_001122334455",
 	}
 	for _, text := range cases {
 		t.Run(text, func(t *testing.T) {
@@ -255,7 +255,7 @@ func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
 				t.Fatalf("Mask: %v", err)
 			}
 			if masked != text {
-				t.Fatalf("existing OpenCloak token must not be remasked:\n input: %q\n   got: %q", text, masked)
+				t.Fatalf("existing Veil token must not be remasked:\n input: %q\n   got: %q", text, masked)
 			}
 		})
 	}
@@ -269,9 +269,9 @@ func TestMaskExistingOpenCloakTokensIdempotent(t *testing.T) {
 	}
 }
 
-func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
+func TestMaskExistingVeilTokenStillMasksNewSecrets(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{Session: "mixed-second-turn"}
+	scope := veil.Scope{Session: "mixed-second-turn"}
 
 	firstMasked, _, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
 	if err != nil {
@@ -304,12 +304,12 @@ func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
 				t.Fatalf("Mask: %v", err)
 			}
 			if !strings.Contains(masked, existing) {
-				t.Fatalf("existing OpenCloak token should survive unchanged: %q", masked)
+				t.Fatalf("existing Veil token should survive unchanged: %q", masked)
 			}
 			if strings.Contains(masked, newSecret) {
 				t.Fatalf("new real secret was not masked: %q", masked)
 			}
-			if got := strings.Count(masked, "OpenCloak_SECRET_"); got < 2 {
+			if got := strings.Count(masked, "PAIArtVeil_SECRET_"); got < 2 {
 				t.Fatalf("want existing token plus new secret token, got %d in %q", got, masked)
 			}
 
@@ -324,9 +324,9 @@ func TestMaskExistingOpenCloakTokenStillMasksNewSecrets(t *testing.T) {
 	}
 }
 
-func TestMaskKnownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
+func TestMaskKnownVeilTokenAdjacentHexSuffix(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{Session: "token-adjacent-hex"}
+	scope := veil.Scope{Session: "token-adjacent-hex"}
 
 	firstMasked, firstState, err := e.Mask(ctx, scope, "api_key: AKIAIOSFODNN7EXAMPLE")
 	if err != nil {
@@ -349,12 +349,12 @@ func TestMaskKnownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
 		t.Fatalf("second Mask: %v", err)
 	}
 	if !strings.Contains(remasked, existing) {
-		t.Fatalf("known OpenCloak token prefix should survive unchanged: %q", remasked)
+		t.Fatalf("known Veil token prefix should survive unchanged: %q", remasked)
 	}
 	if strings.Contains(remasked, hexSecret) {
 		t.Fatalf("adjacent hex suffix leaked through second Mask: %q", remasked)
 	}
-	if got := strings.Count(remasked, "OpenCloak_SECRET_"); got < 2 {
+	if got := strings.Count(remasked, "PAIArtVeil_SECRET_"); got < 2 {
 		t.Fatalf("want original token plus suffix token, got %d in %q", got, remasked)
 	}
 
@@ -367,10 +367,10 @@ func TestMaskKnownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
 	}
 }
 
-func TestMaskUnknownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
+func TestMaskUnknownVeilTokenAdjacentHexSuffix(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{Session: "unknown-token-adjacent-hex"}
-	const unknownToken = "OpenCloak_SECRET_aaaaaaaaaaaa"
+	scope := veil.Scope{Session: "unknown-token-adjacent-hex"}
+	const unknownToken = "PAIArtVeil_SECRET_aaaaaaaaaaaa"
 	const hexSecret = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
 	text := unknownToken + hexSecret + " tail"
 
@@ -379,12 +379,12 @@ func TestMaskUnknownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
 		t.Fatalf("Mask: %v", err)
 	}
 	if !strings.Contains(masked, unknownToken) {
-		t.Fatalf("unknown OpenCloak token prefix should remain visible as a residual token: %q", masked)
+		t.Fatalf("unknown Veil token prefix should remain visible as a residual token: %q", masked)
 	}
 	if strings.Contains(masked, hexSecret) {
 		t.Fatalf("adjacent hex suffix leaked through Mask: %q", masked)
 	}
-	if got := strings.Count(masked, "OpenCloak_SECRET_"); got < 2 {
+	if got := strings.Count(masked, "PAIArtVeil_SECRET_"); got < 2 {
 		t.Fatalf("want unknown token plus masked suffix token, got %d in %q", got, masked)
 	}
 
@@ -397,11 +397,11 @@ func TestMaskUnknownOpenCloakTokenAdjacentHexSuffix(t *testing.T) {
 	}
 }
 
-func TestMaskUnknownExtendedOpenCloakTokenPassThrough(t *testing.T) {
+func TestMaskUnknownExtendedVeilTokenPassThrough(t *testing.T) {
 	e := newTestEngine(t)
-	text := "residual OpenCloak_SECRET_aaaaaaaaaaaaeeee tail"
+	text := "residual PAIArtVeil_SECRET_aaaaaaaaaaaaeeee tail"
 
-	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, _, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -410,15 +410,15 @@ func TestMaskUnknownExtendedOpenCloakTokenPassThrough(t *testing.T) {
 	}
 }
 
-func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
-	const existing = "OpenCloak_SECRET_001122334455"
+func TestExternalDetectorCannotRemaskVeilToken(t *testing.T) {
+	const existing = "PAIArtVeil_SECRET_001122334455"
 	text := "token=" + existing
 	start := strings.Index(text, existing)
 	if start < 0 {
 		t.Fatal("test fixture missing token")
 	}
-	syn := &syntheticDetector{findings: []opencloak.Finding{
-		{Start: start, End: start + len(existing), Type: opencloak.TypeSecret, Score: 1.0, Source: "test:external"},
+	syn := &syntheticDetector{findings: []veil.Finding{
+		{Start: start, End: start + len(existing), Type: veil.TypeSecret, Score: 1.0, Source: "test:external"},
 	}}
 
 	key := make([]byte, 32)
@@ -431,25 +431,25 @@ func TestExternalDetectorCannotRemaskOpenCloakToken(t *testing.T) {
 		t.Fatalf("write test key: %v", err)
 	}
 
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath, Detector: syn})
+	e, err := veil.New(veil.Config{KeyPath: keyPath, Detector: syn})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, _, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
 	if masked != text {
-		t.Fatalf("external detector must not remask OpenCloak token:\n input: %q\n   got: %q", text, masked)
+		t.Fatalf("external detector must not remask Veil token:\n input: %q\n   got: %q", text, masked)
 	}
 }
 
-func TestExternalDetectorBroadSpanPreservesOpenCloakTokenAndMasksRemainder(t *testing.T) {
-	const existing = "OpenCloak_SECRET_001122334455"
+func TestExternalDetectorBroadSpanPreservesVeilTokenAndMasksRemainder(t *testing.T) {
+	const existing = "PAIArtVeil_SECRET_001122334455"
 	const newSecret = "NEW_SECRET_VALUE_123456789"
 	text := "prefix " + existing + " suffix " + newSecret
-	syn := &syntheticDetector{findings: []opencloak.Finding{
-		{Start: 0, End: len(text), Type: opencloak.TypeSecret, Score: 1.0, Source: "test:external:broad"},
+	syn := &syntheticDetector{findings: []veil.Finding{
+		{Start: 0, End: len(text), Type: veil.TypeSecret, Score: 1.0, Source: "test:external:broad"},
 	}}
 
 	key := make([]byte, 32)
@@ -462,25 +462,25 @@ func TestExternalDetectorBroadSpanPreservesOpenCloakTokenAndMasksRemainder(t *te
 		t.Fatalf("write test key: %v", err)
 	}
 
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath, Detector: syn})
+	e, err := veil.New(veil.Config{KeyPath: keyPath, Detector: syn})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, _, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
 	if !strings.Contains(masked, existing) {
-		t.Fatalf("existing OpenCloak token must be preserved inside broad external finding: %q", masked)
+		t.Fatalf("existing Veil token must be preserved inside broad external finding: %q", masked)
 	}
 	if strings.Contains(masked, newSecret) {
 		t.Fatalf("non-token part of broad external finding should still be masked: %q", masked)
 	}
 }
 
-func TestMaskRequestExistingOpenCloakTokensIdempotent(t *testing.T) {
+func TestMaskRequestExistingVeilTokensIdempotent(t *testing.T) {
 	e := newTestEngine(t)
-	scope := opencloak.Scope{Session: "wire-second-turn"}
+	scope := veil.Scope{Session: "wire-second-turn"}
 
 	firstBody := []byte(`{"model":"m","max_tokens":8,"messages":[{"role":"user","content":"api_key: AKIAIOSFODNN7EXAMPLE"}]}`)
 	firstMasked, _, err := e.MaskRequest(ctx, scope, "anthropic", "messages", firstBody)
@@ -497,12 +497,12 @@ func TestMaskRequestExistingOpenCloakTokensIdempotent(t *testing.T) {
 	}
 	got := string(masked)
 	if strings.Count(got, existing) != 2 {
-		t.Fatalf("existing OpenCloak token should survive both wire occurrences unchanged: %s", masked)
+		t.Fatalf("existing Veil token should survive both wire occurrences unchanged: %s", masked)
 	}
 	if strings.Contains(got, newSecret) {
 		t.Fatalf("new real secret was not masked in provider field: %s", masked)
 	}
-	if gotCount := strings.Count(got, "OpenCloak_SECRET_"); gotCount < 3 {
+	if gotCount := strings.Count(got, "PAIArtVeil_SECRET_"); gotCount < 3 {
 		t.Fatalf("want two existing token occurrences plus one new token, got %d in %s", gotCount, masked)
 	}
 }
@@ -518,7 +518,7 @@ func TestConcurrentMaskingNoRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < 20; j++ {
-				masked, st, err := e.Mask(ctx, opencloak.Scope{Session: "concurrent"}, text)
+				masked, st, err := e.Mask(ctx, veil.Scope{Session: "concurrent"}, text)
 				if err != nil {
 					errs <- err
 					return
@@ -549,7 +549,7 @@ func TestConcurrentMaskingNoRace(t *testing.T) {
 func TestRestoreNilState(t *testing.T) {
 	e := newTestEngine(t)
 	_, err := e.Restore(ctx, nil, "some text")
-	if !errors.Is(err, opencloak.ErrInvalidState) {
+	if !errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("expected ErrInvalidState, got %v", err)
 	}
 }
@@ -558,8 +558,8 @@ func TestRestoreNilState(t *testing.T) {
 
 func TestRestoreUnknownTokenPassThrough(t *testing.T) {
 	e := newTestEngine(t)
-	text := "value=OpenCloak_SECRET_deadbeef0001"
-	_, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	text := "value=PAIArtVeil_SECRET_deadbeef0001"
+	_, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -569,7 +569,7 @@ func TestRestoreUnknownTokenPassThrough(t *testing.T) {
 		t.Fatalf("Restore: %v", err)
 	}
 	// Unknown token is left as-is.
-	if !strings.Contains(restored, "OpenCloak_SECRET_deadbeef0001") {
+	if !strings.Contains(restored, "PAIArtVeil_SECRET_deadbeef0001") {
 		t.Fatalf("unknown token should be left as-is; got %q", restored)
 	}
 }
@@ -588,15 +588,15 @@ func TestBlockPolicyReturnsBlockedError(t *testing.T) {
 	}
 
 	blockPolicy := &staticPolicy{
-		p: opencloak.Policy{
-			DefaultOperator: opencloak.OperatorToken,
-			Types: map[opencloak.Type]opencloak.TypePolicy{
-				opencloak.TypeSecret: {Operator: opencloak.OperatorBlock},
+		p: veil.Policy{
+			DefaultOperator: veil.OperatorToken,
+			Types: map[veil.Type]veil.TypePolicy{
+				veil.TypeSecret: {Operator: veil.OperatorBlock},
 			},
 		},
 	}
 
-	e, err := opencloak.New(opencloak.Config{
+	e, err := veil.New(veil.Config{
 		KeyPath: keyPath,
 		Policy:  blockPolicy,
 	})
@@ -605,14 +605,14 @@ func TestBlockPolicyReturnsBlockedError(t *testing.T) {
 	}
 
 	text := "key=AKIAIOSFODNN7EXAMPLE"
-	_, _, maskErr := e.Mask(ctx, opencloak.Scope{}, text)
+	_, _, maskErr := e.Mask(ctx, veil.Scope{}, text)
 	if maskErr == nil {
 		t.Fatal("expected error from block policy, got nil")
 	}
-	if !errors.Is(maskErr, opencloak.ErrBlocked) {
+	if !errors.Is(maskErr, veil.ErrBlocked) {
 		t.Fatalf("expected ErrBlocked, got %T: %v", maskErr, maskErr)
 	}
-	var be *opencloak.BlockedError
+	var be *veil.BlockedError
 	if !errors.As(maskErr, &be) {
 		t.Fatalf("expected *BlockedError, got %T", maskErr)
 	}
@@ -621,7 +621,7 @@ func TestBlockPolicyReturnsBlockedError(t *testing.T) {
 	}
 	found := false
 	for _, bt := range be.Types {
-		if bt == opencloak.TypeSecret {
+		if bt == veil.TypeSecret {
 			found = true
 		}
 	}
@@ -644,15 +644,15 @@ func TestIgnorePolicyLeaveTypeUnchanged(t *testing.T) {
 	}
 
 	ignoreEmailPolicy := &staticPolicy{
-		p: opencloak.Policy{
-			DefaultOperator: opencloak.OperatorToken,
-			Types: map[opencloak.Type]opencloak.TypePolicy{
-				opencloak.TypeEmail: {Operator: opencloak.OperatorIgnore},
+		p: veil.Policy{
+			DefaultOperator: veil.OperatorToken,
+			Types: map[veil.Type]veil.TypePolicy{
+				veil.TypeEmail: {Operator: veil.OperatorIgnore},
 			},
 		},
 	}
 
-	e, err := opencloak.New(opencloak.Config{
+	e, err := veil.New(veil.Config{
 		KeyPath: keyPath,
 		Policy:  ignoreEmailPolicy,
 	})
@@ -663,7 +663,7 @@ func TestIgnorePolicyLeaveTypeUnchanged(t *testing.T) {
 	// Keep the email address well away from any entropy context keywords so the
 	// entropy detector does not independently flag it as a SECRET.
 	text := "contact user@example.com — then use AKIAIOSFODNN7EXAMPLE"
-	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, _, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -690,39 +690,39 @@ func TestUnsupportedOperatorFailsClosed(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		policy opencloak.Policy
+		policy veil.Policy
 	}{
 		{
 			name: "deferred format preserving",
-			policy: opencloak.Policy{
-				DefaultOperator: opencloak.OperatorToken,
-				Types: map[opencloak.Type]opencloak.TypePolicy{
-					opencloak.TypeSecret: {Operator: opencloak.OperatorFormatPreserving},
+			policy: veil.Policy{
+				DefaultOperator: veil.OperatorToken,
+				Types: map[veil.Type]veil.TypePolicy{
+					veil.TypeSecret: {Operator: veil.OperatorFormatPreserving},
 				},
 			},
 		},
 		{
 			name: "unknown default",
-			policy: opencloak.Policy{
-				DefaultOperator: opencloak.TransformOperator("surrogate"),
+			policy: veil.Policy{
+				DefaultOperator: veil.TransformOperator("surrogate"),
 			},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			e, err := opencloak.New(opencloak.Config{
+			e, err := veil.New(veil.Config{
 				KeyPath: keyPath,
 				Policy:  &staticPolicy{p: tc.policy},
 			})
 			if err != nil {
 				t.Fatalf("New: %v", err)
 			}
-			masked, st, err := e.Mask(ctx, opencloak.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
+			masked, st, err := e.Mask(ctx, veil.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
 			if err == nil {
 				t.Fatalf("Mask returned nil error; masked=%q state=%v", masked, st)
 			}
-			if !errors.Is(err, opencloak.ErrUnsupportedOperator) {
+			if !errors.Is(err, veil.ErrUnsupportedOperator) {
 				t.Fatalf("expected ErrUnsupportedOperator, got %T: %v", err, err)
 			}
 			if masked != "" || st != nil {
@@ -743,10 +743,10 @@ func TestUnsupportedRuleSetsFailClosed(t *testing.T) {
 		t.Fatalf("write test key: %v", err)
 	}
 
-	e, err := opencloak.New(opencloak.Config{
+	e, err := veil.New(veil.Config{
 		KeyPath: keyPath,
-		Policy: &staticPolicy{p: opencloak.Policy{
-			DefaultOperator: opencloak.OperatorToken,
+		Policy: &staticPolicy{p: veil.Policy{
+			DefaultOperator: veil.OperatorToken,
 			RuleSets:        []string{"strict-secrets"},
 		}},
 	})
@@ -754,11 +754,11 @@ func TestUnsupportedRuleSetsFailClosed(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, "hello world")
+	masked, st, err := e.Mask(ctx, veil.Scope{}, "hello world")
 	if err == nil {
 		t.Fatalf("Mask returned nil error; masked=%q state=%v", masked, st)
 	}
-	if !errors.Is(err, opencloak.ErrUnsupportedPolicyFeature) {
+	if !errors.Is(err, veil.ErrUnsupportedPolicyFeature) {
 		t.Fatalf("expected ErrUnsupportedPolicyFeature, got %T: %v", err, err)
 	}
 	if masked != "" || st != nil {
@@ -770,8 +770,8 @@ func TestUnsupportedRuleSetsFailClosed(t *testing.T) {
 
 func TestScopeIsolation(t *testing.T) {
 	e := newTestEngine(t)
-	scopeA := opencloak.Scope{Tenant: "alice"}
-	scopeB := opencloak.Scope{Tenant: "bob"}
+	scopeA := veil.Scope{Tenant: "alice"}
+	scopeB := veil.Scope{Tenant: "bob"}
 
 	text := "key: AKIAIOSFODNN7EXAMPLE"
 
@@ -808,7 +808,7 @@ func TestScopeIsolation(t *testing.T) {
 func TestMaskRestoreURL(t *testing.T) {
 	e := newTestEngine(t)
 	text := "see https://api.example.com/v1/secret?token=abc123 for details"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -829,7 +829,7 @@ func TestMaskRestoreURL(t *testing.T) {
 func TestPlainTextUnchanged(t *testing.T) {
 	e := newTestEngine(t)
 	text := "hello world this is plain text"
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -863,11 +863,11 @@ func TestIgnoredTypeDoesNotSuppressMaskableOverlap(t *testing.T) {
 	end := start + len(secretValue)
 
 	// syntheticDetector emits the two overlapping findings for every Detect call.
-	syn := &syntheticDetector{findings: []opencloak.Finding{
+	syn := &syntheticDetector{findings: []veil.Finding{
 		// EMAIL at higher score, same span — would win cross-type resolution.
-		{Start: start, End: end, Type: opencloak.TypeEmail, Score: 1.0, Source: "test:email"},
+		{Start: start, End: end, Type: veil.TypeEmail, Score: 1.0, Source: "test:email"},
 		// SECRET at lower score, same span — must survive after EMAIL is filtered.
-		{Start: start, End: end, Type: opencloak.TypeSecret, Score: 0.99, Source: "test:secret"},
+		{Start: start, End: end, Type: veil.TypeSecret, Score: 0.99, Source: "test:secret"},
 	}}
 
 	key := make([]byte, 32)
@@ -880,15 +880,15 @@ func TestIgnoredTypeDoesNotSuppressMaskableOverlap(t *testing.T) {
 		t.Fatalf("write test key: %v", err)
 	}
 
-	policy := &staticPolicy{p: opencloak.Policy{
-		DefaultOperator: opencloak.OperatorToken,
-		Types: map[opencloak.Type]opencloak.TypePolicy{
+	policy := &staticPolicy{p: veil.Policy{
+		DefaultOperator: veil.OperatorToken,
+		Types: map[veil.Type]veil.TypePolicy{
 			// EMAIL is ignored — it must not suppress the SECRET.
-			opencloak.TypeEmail: {Operator: opencloak.OperatorIgnore},
+			veil.TypeEmail: {Operator: veil.OperatorIgnore},
 		},
 	}}
 
-	e, err := opencloak.New(opencloak.Config{
+	e, err := veil.New(veil.Config{
 		KeyPath:  keyPath,
 		Detector: syn,
 		Policy:   policy,
@@ -897,15 +897,15 @@ func TestIgnoredTypeDoesNotSuppressMaskableOverlap(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 
-	masked, st, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
 	if strings.Contains(masked, secretValue) {
 		t.Fatalf("secret value not masked (ignored-type suppression bug): %q", masked)
 	}
-	if !strings.Contains(masked, "OpenCloak_SECRET_") {
-		t.Fatalf("expected OpenCloak_SECRET_ token in masked text: %q", masked)
+	if !strings.Contains(masked, "PAIArtVeil_SECRET_") {
+		t.Fatalf("expected PAIArtVeil_SECRET_ token in masked text: %q", masked)
 	}
 
 	restored, err := e.Restore(ctx, st, masked)
@@ -919,22 +919,22 @@ func TestIgnoredTypeDoesNotSuppressMaskableOverlap(t *testing.T) {
 
 // syntheticDetector is a test Detector that returns a fixed finding list.
 type syntheticDetector struct {
-	findings []opencloak.Finding
+	findings []veil.Finding
 }
 
-func (s *syntheticDetector) Detect(_ context.Context, _ string) ([]opencloak.Finding, error) {
+func (s *syntheticDetector) Detect(_ context.Context, _ string) ([]veil.Finding, error) {
 	// Return a copy so callers cannot mutate the fixture.
-	out := make([]opencloak.Finding, len(s.findings))
+	out := make([]veil.Finding, len(s.findings))
 	copy(out, s.findings)
 	return out, nil
 }
 
 // staticPolicy implements PolicyProvider for testing.
 type staticPolicy struct {
-	p opencloak.Policy
+	p veil.Policy
 }
 
-func (s *staticPolicy) Policy(_ context.Context, _ opencloak.Scope) (opencloak.Policy, error) {
+func (s *staticPolicy) Policy(_ context.Context, _ veil.Scope) (veil.Policy, error) {
 	return s.p, nil
 }
 
@@ -945,7 +945,7 @@ func (s *staticPolicy) Policy(_ context.Context, _ opencloak.Scope) (opencloak.P
 func TestDateNotMaskedByDefault(t *testing.T) {
 	e := newTestEngine(t)
 	text := "deploy on 2026-06-16 with key AKIAIOSFODNN7EXAMPLE"
-	masked, _, err := e.Mask(ctx, opencloak.Scope{}, text)
+	masked, _, err := e.Mask(ctx, veil.Scope{}, text)
 	if err != nil {
 		t.Fatal(err)
 	}

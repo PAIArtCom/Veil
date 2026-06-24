@@ -1,4 +1,4 @@
-module github.com/cloakia/opencloak
+module github.com/PAIArtCom/Veil
 
 go 1.26.4
 

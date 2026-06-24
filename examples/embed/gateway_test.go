@@ -11,12 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 const throwawayKey = "AKIAIOSFODNN7EXAMPLE"
 
-var tokenRE = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
+var tokenRE = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 func newTestGateway(t *testing.T) *Gateway {
 	t.Helper()
@@ -29,9 +29,9 @@ func newTestGateway(t *testing.T) *Gateway {
 	if err := os.WriteFile(keyPath, key, 0o600); err != nil {
 		t.Fatalf("write test key: %v", err)
 	}
-	engine, err := opencloak.New(opencloak.Config{KeyPath: keyPath})
+	engine, err := veil.New(veil.Config{KeyPath: keyPath})
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	gw, err := NewGateway(engine)
 	if err != nil {
@@ -49,7 +49,7 @@ func jsonString(s string) string {
 	return string(b)
 }
 
-func maskOne(t *testing.T, gw *Gateway, scope opencloak.Scope, text string) ([]byte, *Exchange, string) {
+func maskOne(t *testing.T, gw *Gateway, scope veil.Scope, text string) ([]byte, *Exchange, string) {
 	t.Helper()
 	masked, ex, err := gw.MaskOutbound(context.Background(), scope, anthropicRequest(text))
 	if err != nil {
@@ -67,10 +67,10 @@ func maskOne(t *testing.T, gw *Gateway, scope opencloak.Scope, text string) ([]b
 
 func TestGatewayMasksOutboundAndRestoresBufferedToolIO(t *testing.T) {
 	gw := newTestGateway(t)
-	scope := opencloak.Scope{Tenant: "local", Session: "buffered", Project: "demo"}
+	scope := veil.Scope{Tenant: "local", Session: "buffered", Project: "demo"}
 
 	masked, ex, tok := maskOne(t, gw, scope, "run with key "+throwawayKey)
-	if !bytes.Contains(masked, []byte("OpenCloak_SECRET_")) {
+	if !bytes.Contains(masked, []byte("PAIArtVeil_SECRET_")) {
 		t.Fatalf("masked body missing secret token: %s", masked)
 	}
 
@@ -83,7 +83,7 @@ func TestGatewayMasksOutboundAndRestoresBufferedToolIO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreBuffered: %v", err)
 	}
-	if bytes.Contains(restored, []byte("OpenCloak_")) {
+	if bytes.Contains(restored, []byte("PAIArtVeil_")) {
 		t.Fatalf("buffered restore left residual token: %s", restored)
 	}
 	if !bytes.Contains(restored, []byte(throwawayKey)) {
@@ -93,7 +93,7 @@ func TestGatewayMasksOutboundAndRestoresBufferedToolIO(t *testing.T) {
 
 func TestGatewayRawStreamRestoresArbitraryByteSplitsAndFlushesTail(t *testing.T) {
 	gw := newTestGateway(t)
-	_, ex, tok := maskOne(t, gw, opencloak.Scope{Session: "raw-stream"}, "key "+throwawayKey)
+	_, ex, tok := maskOne(t, gw, veil.Scope{Session: "raw-stream"}, "key "+throwawayKey)
 
 	streamed := []byte("prefix " + tok + " suffix")
 	var out bytes.Buffer
@@ -107,14 +107,14 @@ func TestGatewayRawStreamRestoresArbitraryByteSplitsAndFlushesTail(t *testing.T)
 	if got != want {
 		t.Fatalf("raw stream restore mismatch:\n got %q\nwant %q", got, want)
 	}
-	if strings.Contains(got, "OpenCloak_") {
+	if strings.Contains(got, "PAIArtVeil_") {
 		t.Fatalf("raw stream restore left residual token: %q", got)
 	}
 }
 
 func TestGatewayParsedSSEEventRestoresProviderPayload(t *testing.T) {
 	gw := newTestGateway(t)
-	_, ex, tok := maskOne(t, gw, opencloak.Scope{Session: "sse-event"}, "key "+throwawayKey)
+	_, ex, tok := maskOne(t, gw, veil.Scope{Session: "sse-event"}, "key "+throwawayKey)
 
 	event := []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"value ` + tok + ` done"}}`)
 	restored, err := gw.RestoreSSEEvent(context.Background(), ex, event)
@@ -124,7 +124,7 @@ func TestGatewayParsedSSEEventRestoresProviderPayload(t *testing.T) {
 	if !json.Valid(restored) {
 		t.Fatalf("restored SSE payload is not valid JSON: %s", restored)
 	}
-	if bytes.Contains(restored, []byte("OpenCloak_")) {
+	if bytes.Contains(restored, []byte("PAIArtVeil_")) {
 		t.Fatalf("SSE restore left residual token: %s", restored)
 	}
 	if !bytes.Contains(restored, []byte(throwawayKey)) {
@@ -134,9 +134,9 @@ func TestGatewayParsedSSEEventRestoresProviderPayload(t *testing.T) {
 
 func TestGatewayCrossScopeRestoreLeavesResidualToken(t *testing.T) {
 	gw := newTestGateway(t)
-	_, _, tokA := maskOne(t, gw, opencloak.Scope{Session: "scope-a"}, "key "+throwawayKey)
+	_, _, tokA := maskOne(t, gw, veil.Scope{Session: "scope-a"}, "key "+throwawayKey)
 
-	_, exB, err := gw.MaskOutbound(context.Background(), opencloak.Scope{Session: "scope-b"}, anthropicRequest("plain request"))
+	_, exB, err := gw.MaskOutbound(context.Background(), veil.Scope{Session: "scope-b"}, anthropicRequest("plain request"))
 	if err != nil {
 		t.Fatalf("MaskOutbound scope-b: %v", err)
 	}
@@ -160,14 +160,14 @@ func TestGatewayOutboundUnsupportedProviderFailsClosed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewGatewayForProvider: %v", err)
 	}
-	masked, ex, err := bad.MaskOutbound(context.Background(), opencloak.Scope{}, anthropicRequest("key "+throwawayKey))
+	masked, ex, err := bad.MaskOutbound(context.Background(), veil.Scope{}, anthropicRequest("key "+throwawayKey))
 	if err == nil {
 		t.Fatal("MaskOutbound with unsupported provider returned nil error")
 	}
 	if masked != nil || ex != nil {
 		t.Fatalf("unsupported provider should not return forwardable output: masked=%s ex=%v", masked, ex)
 	}
-	if errors.Is(err, opencloak.ErrInvalidState) {
+	if errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("unexpected invalid state error for unsupported provider: %v", err)
 	}
 }

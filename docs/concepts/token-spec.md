@@ -3,22 +3,22 @@
 **Status:** Accepted (normative). Decision rationale:
 [ADR-0003](../architecture/decisions/0003-deterministic-reversible-token-spec.md),
 with the namespace prefix updated by
-[ADR-0014](../architecture/decisions/0014-opencloak-token-prefix.md).
+[ADR-0014](../architecture/decisions/0014-veil-token-prefix.md).
 
 ## Format
 
 ```
-OpenCloak_<TYPE>_<id>
+PAIArtVeil_<TYPE>_<id>
 ```
 
 | Part | Meaning |
 |---|---|
-| `OpenCloak_` | Namespace prefix — greppable, collision-resistant, brand-specific, unmistakable. |
+| `PAIArtVeil_` | Namespace prefix — greppable, collision-resistant, brand-specific, unmistakable. |
 | `<TYPE>` | Uppercase category code (see enum). Lets handling branch and restore classify. |
 | `<id>` | First **12** hex chars of `HMAC-SHA256(normalize(value), local_key)`. |
 
-Restore pattern: `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`. Implementations should scan for the
-fixed `OpenCloak_` structure and validate type/id segments; do not rely solely on
+Restore pattern: `PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`. Implementations should scan for the
+fixed `PAIArtVeil_` structure and validate type/id segments; do not rely solely on
 word-boundary regex matching, because a token may sit next to identifier characters.
 Because the id suffix is hex and collision extension can lengthen it, restore
 implementations also check the local reverse map for the longest known token prefix. If a
@@ -27,10 +27,10 @@ restored as a token; the suffix remains ordinary text and is eligible for maskin
 later outbound pass.
 Unknown token-shaped text is not trusted as store-resident beyond the minimal residual
 prefix on outbound masking. A substantial lowercase-hex suffix after an unknown
-`OpenCloak_`-shaped prefix is treated as candidate `SECRET` text rather than as protected
+`PAIArtVeil_`-shaped prefix is treated as candidate `SECRET` text rather than as protected
 token id space.
 
-Example: `sk-live-9f8a7b6c…` → `OpenCloak_SECRET_7f3a9c2e1b8d`
+Example: `sk-live-9f8a7b6c…` → `PAIArtVeil_SECRET_7f3a9c2e1b8d`
 
 ## Type enum (initial)
 
@@ -64,7 +64,7 @@ of an email). Normalization must never be aggressive enough to merge *distinct* 
 ## The local key
 
 `<id>` is keyed by a **local secret** (`local_key`), generated once per install and stored
-locally (e.g. `~/.opencloak/key`). It is:
+locally (e.g. `~/.veil/key`). It is:
 
 - the **root of determinism** — it must be stable across restarts, or tokens would change;
 - **defense in depth** — an observer of tokens alone cannot recover values without it
@@ -74,10 +74,10 @@ locally (e.g. `~/.opencloak/key`). It is:
 
 For structured types where the model benefits from a realistic shape (e.g. validating a
 phone or email format), a per-type *format-preserving* replacement (a valid-looking but
-fake value, deterministically derived) may be used instead of the opaque `OpenCloak_…`
+fake value, deterministically derived) may be used instead of the opaque `PAIArtVeil_…`
 form.
 This is an opt-in refinement, not the default, because it complicates a single uniform
-restore scanner. The `OpenCloak_` scanner only covers `OperatorToken`; format-preserving
+restore scanner. The `PAIArtVeil_` scanner only covers `OperatorToken`; format-preserving
 operators need type-specific reverse strategies and fixtures.
 
 `OperatorRedact` is intentionally irreversible and must not write a reversible mapping.

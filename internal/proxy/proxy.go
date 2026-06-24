@@ -11,45 +11,45 @@ import (
 	"net/url"
 	"strings"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
-// engineAPI is the slice of *opencloak.Engine the proxy depends on. Depending on
+// engineAPI is the slice of *veil.Engine the proxy depends on. Depending on
 // an interface rather than the concrete type lets tests substitute a restorer
 // that deterministically fails on a chosen SSE event so the "restore errors are
 // surfaced, never swallowed" guarantee (exit criterion #5) can be exercised —
 // the real gjson/sjson restore path is too lenient to error on demand. New
-// accepts the concrete *opencloak.Engine, so production wiring is unaffected.
+// accepts the concrete *veil.Engine, so production wiring is unaffected.
 //
 // NewSSEStreamRestorer returns an sseRestorer (an interface, not the concrete
-// *opencloak.SSEStream) so the streaming-restore error path stays injectable.
+// *veil.SSEStream) so the streaming-restore error path stays injectable.
 type engineAPI interface {
-	MaskRequest(ctx context.Context, scope opencloak.Scope, provider, op string, body []byte) ([]byte, *opencloak.State, error)
-	RestoreResponse(ctx context.Context, st *opencloak.State, body []byte) ([]byte, error)
-	NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error)
+	MaskRequest(ctx context.Context, scope veil.Scope, provider, op string, body []byte) ([]byte, *veil.State, error)
+	RestoreResponse(ctx context.Context, st *veil.State, body []byte) ([]byte, error)
+	NewSSEStreamRestorer(st *veil.State) (sseRestorer, error)
 }
 
 // sseRestorer is the per-stream stateful SSE restorer the proxy drives: it
 // consumes one complete event payload at a time (Event) and drains held
-// cross-event state at end of stream (Flush). *opencloak.SSEStream satisfies it;
+// cross-event state at end of stream (Flush). *veil.SSEStream satisfies it;
 // tests substitute a failing implementation to exercise exit criterion #5.
 type sseRestorer interface {
 	Event(ctx context.Context, eventData []byte) ([][]byte, error)
 	Flush(ctx context.Context) ([][]byte, error)
 }
 
-// engineAdapter adapts a concrete *opencloak.Engine to engineAPI: the engine's
-// NewSSEStreamRestorer returns the concrete *opencloak.SSEStream, but engineAPI
+// engineAdapter adapts a concrete *veil.Engine to engineAPI: the engine's
+// NewSSEStreamRestorer returns the concrete *veil.SSEStream, but engineAPI
 // needs it widened to the sseRestorer interface so the seam stays testable.
 type engineAdapter struct {
-	*opencloak.Engine
+	*veil.Engine
 }
 
-// NewSSEStreamRestorer widens the engine's concrete *opencloak.SSEStream return
-// to the sseRestorer interface. A nil *opencloak.SSEStream is returned as a nil
+// NewSSEStreamRestorer widens the engine's concrete *veil.SSEStream return
+// to the sseRestorer interface. A nil *veil.SSEStream is returned as a nil
 // interface (not a non-nil interface wrapping a nil pointer) so an error result
 // carries a usable nil restorer.
-func (a engineAdapter) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, error) {
+func (a engineAdapter) NewSSEStreamRestorer(st *veil.State) (sseRestorer, error) {
 	s, err := a.Engine.NewSSEStreamRestorer(st)
 	if err != nil {
 		return nil, err
@@ -60,9 +60,9 @@ func (a engineAdapter) NewSSEStreamRestorer(st *opencloak.State) (sseRestorer, e
 // Proxy is the reference base-URL proxy http.Handler.
 type Proxy struct {
 	engine   engineAPI
-	upstream *url.URL        // e.g. https://api.anthropic.com
-	client   *http.Client    // streaming-friendly: no overall Timeout
-	scope    opencloak.Scope // Phase 0: a fixed default scope (the zero value)
+	upstream *url.URL     // e.g. https://api.anthropic.com
+	client   *http.Client // streaming-friendly: no overall Timeout
+	scope    veil.Scope   // Phase 0: a fixed default scope (the zero value)
 	log      *slog.Logger
 }
 
@@ -71,7 +71,7 @@ type Proxy struct {
 // If log is nil a default text logger to stderr is used. The returned client has
 // no overall timeout so it does not abort long-lived SSE streams; transport-level
 // dial/TLS timeouts come from http.DefaultTransport.
-func New(engine *opencloak.Engine, upstream string, log *slog.Logger) (*Proxy, error) {
+func New(engine *veil.Engine, upstream string, log *slog.Logger) (*Proxy, error) {
 	if engine == nil {
 		return nil, errors.New("proxy: nil engine")
 	}
@@ -84,14 +84,14 @@ func New(engine *opencloak.Engine, upstream string, log *slog.Logger) (*Proxy, e
 	}
 	return &Proxy{
 		// Wrap the concrete engine so its NewSSEStreamRestorer (which returns the
-		// concrete *opencloak.SSEStream) satisfies engineAPI's interface return.
+		// concrete *veil.SSEStream) satisfies engineAPI's interface return.
 		engine:   engineAdapter{Engine: engine},
 		upstream: u,
 		// A dedicated client (not http.DefaultClient) with no Timeout: an SSE
 		// response body may stay open for minutes. Per-attempt dial/TLS
 		// timeouts are inherited from http.DefaultTransport.
 		client: &http.Client{Transport: http.DefaultTransport},
-		scope:  opencloak.Scope{},
+		scope:  veil.Scope{},
 		log:    log,
 	}, nil
 }
@@ -118,7 +118,7 @@ func parseUpstream(raw string) (*url.URL, error) {
 // across a proxy hop (RFC 7230 §6.1). Content-Length is handled separately
 // because the masked/restored body length differs from the original.
 var hopByHopHeaders = map[string]struct{}{
-	// OpenCloak rewrites response bodies. Do not forward the client's
+	// Veil rewrites response bodies. Do not forward the client's
 	// compression preferences upstream: net/http can transparently manage gzip
 	// only when it owns Accept-Encoding, and restore must see decoded bytes.
 	"Accept-Encoding":     {},
@@ -145,7 +145,7 @@ func isHopByHop(canonKey string) bool {
 // ServeHTTP routes the request. Provider-native release paths are masked and
 // restored; everything else fails closed. v0.1.0 does not provide a transparent
 // provider proxy because unsupported endpoints can carry plaintext request
-// bodies that OpenCloak has not verified how to mask.
+// bodies that Veil has not verified how to mask.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
 		p.serveProvider(w, r, providerRoute{
@@ -163,7 +163,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	writeAnthropicError(w, http.StatusNotFound, "unsupported_endpoint", "unsupported OpenCloak proxy endpoint")
+	writeAnthropicError(w, http.StatusNotFound, "unsupported_endpoint", "unsupported Veil proxy endpoint")
 }
 
 type providerRoute struct {
@@ -187,7 +187,7 @@ func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, route prov
 		// Fail-closed: on ANY masking error the plaintext request is never
 		// forwarded upstream. A policy block maps to 403; any other error maps
 		// to 502. Both return before a single upstream byte is sent.
-		var blocked *opencloak.BlockedError
+		var blocked *veil.BlockedError
 		if errors.As(err, &blocked) {
 			p.log.Warn("proxy: request blocked by policy", "types", typeNames(blocked.Types))
 			route.writeErr(w, http.StatusForbidden, "blocked_by_policy",
@@ -249,7 +249,7 @@ func (p *Proxy) newUpstreamRequest(r *http.Request, body []byte) (*http.Request,
 // upstream body is written so the trusted local user still gets a response
 // (residual tokens are audited by the engine); the error is logged, never
 // swallowed (exit criterion #5).
-func (p *Proxy) relayBuffered(w http.ResponseWriter, r *http.Request, resp *http.Response, state *opencloak.State) {
+func (p *Proxy) relayBuffered(w http.ResponseWriter, r *http.Request, resp *http.Response, state *veil.State) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		p.log.Error("proxy: read upstream response body", "err", err)
@@ -297,7 +297,7 @@ func isEventStream(contentType string) bool {
 }
 
 // typeNames renders blocked types as their string names for error messages.
-func typeNames(types []opencloak.Type) []string {
+func typeNames(types []veil.Type) []string {
 	out := make([]string, len(types))
 	for i, t := range types {
 		out[i] = string(t)

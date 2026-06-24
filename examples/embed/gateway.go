@@ -1,12 +1,12 @@
 // Package embedexample demonstrates the minimal gateway-style seams needed to
-// embed OpenCloak without using the standalone proxy.
+// embed Veil without using the standalone proxy.
 package embedexample
 
 import (
 	"context"
 	"errors"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 // credentials, retries, and upstream I/O; this type owns only the SDK calls at
 // the outbound and inbound seams.
 type Gateway struct {
-	engine   *opencloak.Engine
+	engine   *veil.Engine
 	provider string
 	op       string
 }
@@ -26,11 +26,11 @@ type Gateway struct {
 // Exchange carries the State returned by the outbound mask call into the
 // matching response lifecycle.
 type Exchange struct {
-	state *opencloak.State
+	state *veil.State
 }
 
 // NewGateway returns a reference integration for Anthropic Messages.
-func NewGateway(engine *opencloak.Engine) (*Gateway, error) {
+func NewGateway(engine *veil.Engine) (*Gateway, error) {
 	if engine == nil {
 		return nil, errors.New("embedexample: nil engine")
 	}
@@ -44,7 +44,7 @@ func NewGateway(engine *opencloak.Engine) (*Gateway, error) {
 // NewGatewayForProvider returns a reference integration for an explicit
 // provider/op pair. It is used by tests to prove unsupported providers fail
 // closed at the outbound seam.
-func NewGatewayForProvider(engine *opencloak.Engine, provider, op string) (*Gateway, error) {
+func NewGatewayForProvider(engine *veil.Engine, provider, op string) (*Gateway, error) {
 	if engine == nil {
 		return nil, errors.New("embedexample: nil engine")
 	}
@@ -54,7 +54,7 @@ func NewGatewayForProvider(engine *opencloak.Engine, provider, op string) (*Gate
 // MaskOutbound is the gateway's outbound choke point: it receives native
 // provider JSON after routing/auth decisions and before the upstream request is
 // built. On error the caller must not forward the original body.
-func (g *Gateway) MaskOutbound(ctx context.Context, scope opencloak.Scope, body []byte) ([]byte, *Exchange, error) {
+func (g *Gateway) MaskOutbound(ctx context.Context, scope veil.Scope, body []byte) ([]byte, *Exchange, error) {
 	masked, st, err := g.engine.MaskRequest(ctx, scope, g.provider, g.op, body)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +66,7 @@ func (g *Gateway) MaskOutbound(ctx context.Context, scope opencloak.Scope, body 
 // exchange.
 func (g *Gateway) RestoreBuffered(ctx context.Context, ex *Exchange, body []byte) ([]byte, error) {
 	if ex == nil {
-		return nil, opencloak.ErrInvalidState
+		return nil, veil.ErrInvalidState
 	}
 	return g.engine.RestoreResponse(ctx, ex.state, body)
 }
@@ -91,7 +91,7 @@ func (g *Gateway) FlushRawStream(ex *Exchange) []byte {
 // RestoreSSEEvent restores one parsed provider SSE event payload.
 func (g *Gateway) RestoreSSEEvent(ctx context.Context, ex *Exchange, eventData []byte) ([]byte, error) {
 	if ex == nil {
-		return nil, opencloak.ErrInvalidState
+		return nil, veil.ErrInvalidState
 	}
 	return g.engine.RestoreSSEEvent(ctx, ex.state, eventData)
 }

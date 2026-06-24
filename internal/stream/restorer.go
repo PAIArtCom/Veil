@@ -3,15 +3,15 @@ package stream
 import (
 	"regexp"
 
-	"github.com/cloakia/opencloak/internal/token"
+	"github.com/PAIArtCom/Veil/internal/token"
 )
 
-// tokenRe matches a complete OpenCloak_… token. It is compiled from the canonical
+// tokenRe matches a complete PAIArtVeil_… token. It is compiled from the canonical
 // token.TokenPattern so the streaming scanner and the rest of the engine agree
 // on exactly what a token looks like.
 var tokenRe = regexp.MustCompile(token.TokenPattern)
 
-// Restorer restores OpenCloak_… tokens in a streamed byte relay where tokens may be
+// Restorer restores PAIArtVeil_… tokens in a streamed byte relay where tokens may be
 // split across arbitrary chunk boundaries. It buffers a trailing "dangerous"
 // suffix — the longest tail that could still be (or grow into) a token — and
 // only emits bytes it can prove are not part of a token that future bytes might
@@ -60,7 +60,7 @@ func (r *Restorer) Write(chunk []byte) []byte {
 	danger := token.PartialSuffixStart(r.buf)
 
 	// Growth guard: a dangerous suffix longer than any real token is garbage
-	// (e.g. a long "OpenCloak_AAAA…" run that can never complete because it has no
+	// (e.g. a long "PAIArtVeil_AAAA…" run that can never complete because it has no
 	// "_<hex>" id). Emit the excess so the buffer cannot grow without bound.
 	// Restoring across the forced cut point is safe: such an over-long run
 	// contains no complete real token there, so no match spans the cut.
@@ -100,9 +100,9 @@ func (r *Restorer) ResidualCounts() map[string]int {
 	return out
 }
 
-// restore replaces every complete OpenCloak_… token in b with its looked-up value.
+// restore replaces every complete PAIArtVeil_… token in b with its looked-up value.
 // Unknown tokens (validly shaped but absent from lookup) are emitted unchanged
-// and counted as residuals by TYPE. Strings that merely look OpenCloak-ish but do not
+// and counted as residuals by TYPE. Strings that merely look Veil-ish but do not
 // match TokenPattern are left untouched and not counted, because tokenRe never
 // matches them.
 func (r *Restorer) restore(b []byte) []byte {

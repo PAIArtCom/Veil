@@ -1,4 +1,4 @@
-package opencloak_test
+package veil_test
 
 import (
 	"bytes"
@@ -11,12 +11,12 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 // newTestEngineWithDetector builds an Engine with a fixed key and the given L2
 // detector so tokens are deterministic and a test can flag arbitrary values.
-func newTestEngineWithDetector(t *testing.T, det opencloak.Detector) *opencloak.Engine {
+func newTestEngineWithDetector(t *testing.T, det veil.Detector) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -27,15 +27,15 @@ func newTestEngineWithDetector(t *testing.T, det opencloak.Detector) *opencloak.
 	if err := os.WriteFile(keyPath, key, 0o600); err != nil {
 		t.Fatalf("write test key: %v", err)
 	}
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath, Detector: det})
+	e, err := veil.New(veil.Config{KeyPath: keyPath, Detector: det})
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	return e
 }
 
 // ADR-0011 §4 test matrix for the stateful, cross-event SSE restorer
-// (Engine.NewSSEStreamRestorer / *opencloak.SSEStream). These tests split OpenCloak_
+// (Engine.NewSSEStreamRestorer / *veil.SSEStream). These tests split PAIArtVeil_
 // tokens across logical SSE events (not just TCP byte boundaries) at every
 // dangerous position and assert the client-reassembled output restores fully.
 //
@@ -50,7 +50,7 @@ func newTestEngineWithDetector(t *testing.T, det opencloak.Detector) *opencloak.
 // State resolves tokens minted by the text Mask in the same scope. It fails the
 // test unless exactly one token is produced, giving callers a single
 // deterministic token to split across events.
-func maskOneToken(t *testing.T, e *opencloak.Engine, scope opencloak.Scope, text string) (*opencloak.State, string) {
+func maskOneToken(t *testing.T, e *veil.Engine, scope veil.Scope, text string) (*veil.State, string) {
 	t.Helper()
 	masked, _, err := e.Mask(context.Background(), scope, text)
 	if err != nil {
@@ -66,7 +66,7 @@ func maskOneToken(t *testing.T, e *opencloak.Engine, scope opencloak.Scope, text
 // sseStreamCollect feeds each event payload to the restorer in order and returns
 // the flat, ordered list of emitted payloads (Event outputs followed by Flush
 // outputs). It fails on any Event/Flush error.
-func sseStreamCollect(t *testing.T, s *opencloak.SSEStream, events [][]byte) [][]byte {
+func sseStreamCollect(t *testing.T, s *veil.SSEStream, events [][]byte) [][]byte {
 	t.Helper()
 	var out [][]byte
 	for i, ev := range events {
@@ -128,7 +128,7 @@ func reassembleText(t *testing.T, payloads [][]byte) string {
 
 // newSSE builds an SSEStream from a wire State (via MaskRequest so provider/op
 // are set). The returned State is bound to scope.
-func newSSE(t *testing.T, e *opencloak.Engine, st *opencloak.State) *opencloak.SSEStream {
+func newSSE(t *testing.T, e *veil.Engine, st *veil.State) *veil.SSEStream {
 	t.Helper()
 	s, err := e.NewSSEStreamRestorer(st)
 	if err != nil {
@@ -139,7 +139,7 @@ func newSSE(t *testing.T, e *opencloak.Engine, st *opencloak.State) *opencloak.S
 
 // wireState mints a wire State (provider/op set) for scope so the SSE restorer
 // can dispatch. The request masks nothing relevant; tests add their own tokens.
-func wireState(t *testing.T, e *opencloak.Engine, scope opencloak.Scope) *opencloak.State {
+func wireState(t *testing.T, e *veil.Engine, scope veil.Scope) *veil.State {
 	t.Helper()
 	_, st, err := e.MaskRequest(context.Background(), scope, "anthropic", "messages",
 		[]byte(`{"model":"m","max_tokens":8,"messages":[{"role":"user","content":"hi"}]}`))
@@ -165,17 +165,17 @@ func splitToken(tok string, cuts ...int) []string {
 // ---- A: text token split across 2 and 3 text_delta events --------------------
 
 func TestSSETextTokenSplitAcrossEvents(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-A"}
+	scope := veil.Scope{Session: "sse-A"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
-	// Dangerous split positions: mid-"OpenCloak_", mid-TYPE, mid-hex. Derive concrete
+	// Dangerous split positions: mid-"PAIArtVeil_", mid-TYPE, mid-hex. Derive concrete
 	// offsets from the token shape so the test is deterministic for any token.
-	underscore := strings.Index(tok, "_") // after "OpenCloak"
+	underscore := strings.Index(tok, "_") // after "Veil"
 	typeEnd := strings.Index(tok[underscore+1:], "_") + underscore + 1
 	splitPoints := []int{
-		2,              // mid-"OpenCloak_"
-		underscore + 1, // just after "OpenCloak_" (TYPE boundary)
+		2,              // mid-"PAIArtVeil_"
+		underscore + 1, // just after "PAIArtVeil_" (TYPE boundary)
 		typeEnd,        // end of TYPE (before "_<hex>")
 		typeEnd + 3,    // mid-hex
 		len(tok) - 1,   // last hex char split off
@@ -197,8 +197,8 @@ func TestSSETextTokenSplitAcrossEvents(t *testing.T) {
 		if got != want {
 			t.Fatalf("split@%d: got %q want %q", sp, got, want)
 		}
-		if strings.Contains(got, "OpenCloak_") {
-			t.Fatalf("split@%d: residual OpenCloak_ in %q", sp, got)
+		if strings.Contains(got, "PAIArtVeil_") {
+			t.Fatalf("split@%d: residual PAIArtVeil_ in %q", sp, got)
 		}
 	}
 
@@ -219,7 +219,7 @@ func TestSSETextTokenSplitAcrossEvents(t *testing.T) {
 
 // Token at the very end of the stream, flushed at content_block_stop.
 func TestSSETextTokenAtEndFlushedAtStop(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-A-end"}
+	scope := veil.Scope{Session: "sse-A-end"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
@@ -245,7 +245,7 @@ func TestSSETextTokenAtEndFlushedAtStop(t *testing.T) {
 
 // Two tokens with a boundary between them and a split inside the second.
 func TestSSETwoTokensBoundaryAndInnerSplit(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-A-two"}
+	scope := veil.Scope{Session: "sse-A-two"}
 	e := newTestEngineWithAudit(t, nil)
 	masked, _, err := e.Mask(context.Background(), scope, "k1 AKIAIOSFODNN7EXAMPLE k2 user@example.com")
 	if err != nil {
@@ -279,7 +279,7 @@ func TestSSETwoTokensBoundaryAndInnerSplit(t *testing.T) {
 // ---- B: tool_use token split across input_json_delta fragments ---------------
 
 func TestSSEToolUseTokenSplitConsolidated(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-B"}
+	scope := veil.Scope{Session: "sse-B"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "dsn AKIAIOSFODNN7EXAMPLE")
 
@@ -329,7 +329,7 @@ func TestSSEToolUseTokenSplitConsolidated(t *testing.T) {
 
 // B3: restored tool value containing JSON-special chars round-trips.
 func TestSSEToolUseSpecialCharsRoundTrip(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-B3"}
+	scope := veil.Scope{Session: "sse-B3"}
 	// A restored value containing quotes/backslash/newline must re-serialize as
 	// valid escaped JSON. mintSpecial builds an engine whose detector flags the
 	// special value so the token's stored value IS those exact bytes.
@@ -371,7 +371,7 @@ func TestSSEToolUseSpecialCharsRoundTrip(t *testing.T) {
 // ---- C: text value with JSON-special chars + split token ---------------------
 
 func TestSSETextSpecialCharsValidJSON(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-C"}
+	scope := veil.Scope{Session: "sse-C"}
 	special := `a"b\c` + "\n" + `d`
 	e, st, tok := mintSpecial(t, scope, special)
 
@@ -395,7 +395,7 @@ func TestSSETextSpecialCharsValidJSON(t *testing.T) {
 // ---- D: multi-index isolation (text idx0 split, tool idx1 split, thinking) ---
 
 func TestSSEMultiIndexIsolation(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-D"}
+	scope := veil.Scope{Session: "sse-D"}
 	e := newTestEngineWithAudit(t, nil)
 	// Both tokens are minted in the same scope so the one State knows both. The
 	// IPv4 and the AWS key are independently L1-detectable.
@@ -416,7 +416,7 @@ func TestSSEMultiIndexIsolation(t *testing.T) {
 		blockStart(2, "thinking"),
 		textDeltaEvent(0, "addr "+textFrags[0]),
 		inputJSONDeltaEvent(1, toolFrags[0]),
-		// A thinking_delta carrying an OpenCloak_-looking token: must be untouched.
+		// A thinking_delta carrying a PAIArtVeil_-looking token: must be untouched.
 		thinkingDeltaEvent(2, "reasoning "+textTok),
 		textDeltaEvent(0, textFrags[1]+" done"),
 		inputJSONDeltaEvent(1, toolFrags[1]),
@@ -443,7 +443,7 @@ func TestSSEMultiIndexIsolation(t *testing.T) {
 	if toolDeltaIndex != 1 {
 		t.Fatalf("consolidated tool delta keyed to index %d, want 1", toolDeltaIndex)
 	}
-	if !strings.Contains(toolJSON, "AKIAIOSFODNN7EXAMPLE") || strings.Contains(toolJSON, "OpenCloak_") {
+	if !strings.Contains(toolJSON, "AKIAIOSFODNN7EXAMPLE") || strings.Contains(toolJSON, "PAIArtVeil_") {
 		t.Fatalf("tool input not restored/isolated: %q", toolJSON)
 	}
 	// Thinking on index 2 passes through UNRESTORED (token still present).
@@ -476,7 +476,7 @@ func reassembleTextForIndex(payloads [][]byte, index int64) string {
 // ---- E: ping injected between halves of a split token ------------------------
 
 func TestSSEPingMidTokenForwardedAndTokenRestored(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-E"}
+	scope := veil.Scope{Session: "sse-E"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
@@ -515,7 +515,7 @@ func TestSSEPingMidTokenForwardedAndTokenRestored(t *testing.T) {
 // per-block content_block_stop (malformed but possible). The restored tail must
 // be emitted as a synthetic delta BEFORE the message_stop.
 func TestSSEMessageStopDrainsHeldTail(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-msgstop"}
+	scope := veil.Scope{Session: "sse-msgstop"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
@@ -550,7 +550,7 @@ func TestSSEMessageStopDrainsHeldTail(t *testing.T) {
 // ---- G: flush edges (stream ends mid-token, no stop) -------------------------
 
 func TestSSEFlushDrainsTailNoStop(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-G"}
+	scope := veil.Scope{Session: "sse-G"}
 	e := newTestEngineWithAudit(t, nil)
 	st, tok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
@@ -574,14 +574,14 @@ func TestSSEFlushDrainsTailNoStop(t *testing.T) {
 // G2: stream ends mid-token with a token that never completes -> residual +
 // exactly one audit event at Flush.
 func TestSSEFlushResidualAuditsOnce(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-G2"}
+	scope := veil.Scope{Session: "sse-G2"}
 	audit := &recordingAudit{}
 	e := newTestEngineWithAudit(t, audit)
 	st := wireState(t, e, scope)
 
 	// A validly-shaped token never minted in this scope (residual). Deliver it
 	// whole then end the stream; the held tail flushes it as residual.
-	const residual = "OpenCloak_IPV4_00aa11bb22cc"
+	const residual = "PAIArtVeil_IPV4_00aa11bb22cc"
 	s := newSSE(t, e, st)
 	_, _ = s.Event(context.Background(), blockStart(0, "text"))
 	_, _ = s.Event(context.Background(), textDeltaEvent(0, "x "+residual[:6]))
@@ -598,7 +598,7 @@ func TestSSEFlushResidualAuditsOnce(t *testing.T) {
 		t.Fatalf("residual token should survive in flushed output: %s", joined)
 	}
 	evs := audit.snapshot()
-	if len(evs) != 1 || evs[0].Kind != "residual_token" || evs[0].Counts[opencloak.TypeIPv4] != 1 {
+	if len(evs) != 1 || evs[0].Kind != "residual_token" || evs[0].Counts[veil.TypeIPv4] != 1 {
 		t.Fatalf("want exactly one residual_token{IPV4:1} at Flush, got %v", evs)
 	}
 }
@@ -607,7 +607,7 @@ func TestSSEFlushResidualAuditsOnce(t *testing.T) {
 
 // No-token stream passes through with zero audits.
 func TestSSENoTokenPassThroughNoAudit(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-I"}
+	scope := veil.Scope{Session: "sse-I"}
 	audit := &recordingAudit{}
 	e := newTestEngineWithAudit(t, audit)
 	st := wireState(t, e, scope)
@@ -629,16 +629,16 @@ func TestSSENoTokenPassThroughNoAudit(t *testing.T) {
 	}
 }
 
-// A OpenCloak_-shaped non-token (fails TokenPattern: too-short id) split across events
+// A PAIArtVeil_-shaped non-token (fails TokenPattern: too-short id) split across events
 // is left untouched and not counted.
-func TestSSEOpenCloakShapedNonTokenUntouched(t *testing.T) {
-	scope := opencloak.Scope{Session: "sse-I2"}
+func TestSSEVeilShapedNonTokenUntouched(t *testing.T) {
+	scope := veil.Scope{Session: "sse-I2"}
 	audit := &recordingAudit{}
 	e := newTestEngineWithAudit(t, audit)
 	st := wireState(t, e, scope)
 
-	// 4 hex chars (< 12) → not a token per OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}.
-	const fake = "OpenCloak_SECRET_dead"
+	// 4 hex chars (< 12) → not a token per PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}.
+	const fake = "PAIArtVeil_SECRET_dead"
 	frags := splitToken(fake, 6)
 	s := newSSE(t, e, st)
 	events := [][]byte{
@@ -649,7 +649,7 @@ func TestSSEOpenCloakShapedNonTokenUntouched(t *testing.T) {
 	}
 	got := reassembleText(t, sseStreamCollect(t, s, events))
 	if got != "x "+fake+" y" {
-		t.Fatalf("OpenCloak-shaped non-token altered: got %q want %q", got, "x "+fake+" y")
+		t.Fatalf("Veil-shaped non-token altered: got %q want %q", got, "x "+fake+" y")
 	}
 	if len(audit.snapshot()) != 0 {
 		t.Fatalf("non-token must not be counted as residual: %v", audit.snapshot())
@@ -665,7 +665,7 @@ func TestNewSSEStreamRestorerFailClosed(t *testing.T) {
 		t.Fatal("NewSSEStreamRestorer(nil) = nil error, want ErrInvalidState")
 	}
 	// State without provider/op (from text Mask).
-	_, st, err := e.Mask(context.Background(), opencloak.Scope{}, "text")
+	_, st, err := e.Mask(context.Background(), veil.Scope{}, "text")
 	if err != nil {
 		t.Fatalf("Mask: %v", err)
 	}
@@ -710,18 +710,18 @@ func assertStopLast(t *testing.T, payloads [][]byte, index int64) {
 // value the masker would otherwise never produce.
 type fixedDetector struct {
 	needle string
-	typ    opencloak.Type
+	typ    veil.Type
 }
 
-func (d fixedDetector) Detect(_ context.Context, text string) ([]opencloak.Finding, error) {
-	var out []opencloak.Finding
+func (d fixedDetector) Detect(_ context.Context, text string) ([]veil.Finding, error) {
+	var out []veil.Finding
 	for i := 0; ; {
 		j := strings.Index(text[i:], d.needle)
 		if j < 0 {
 			break
 		}
 		start := i + j
-		out = append(out, opencloak.Finding{
+		out = append(out, veil.Finding{
 			Start: start, End: start + len(d.needle),
 			Type: d.typ, Score: 1, Source: "test:fixed",
 		})
@@ -733,9 +733,9 @@ func (d fixedDetector) Detect(_ context.Context, text string) ([]opencloak.Findi
 // mintSpecial builds an engine whose detector flags value, masks a request that
 // embeds value, and returns the engine, a wire State for scope, and the minted
 // token whose stored value is exactly value (specials included).
-func mintSpecial(t *testing.T, scope opencloak.Scope, value string) (*opencloak.Engine, *opencloak.State, string) {
+func mintSpecial(t *testing.T, scope veil.Scope, value string) (*veil.Engine, *veil.State, string) {
 	t.Helper()
-	e := newTestEngineWithDetector(t, fixedDetector{needle: value, typ: opencloak.TypeSecret})
+	e := newTestEngineWithDetector(t, fixedDetector{needle: value, typ: veil.TypeSecret})
 	esc, _ := json.Marshal(value)
 	body := []byte(`{"model":"m","max_tokens":8,"messages":[{"role":"assistant","content":[{"type":"tool_use","id":"t","name":"n","input":{"v":` + string(esc) + `}}]}]}`)
 	masked, st, err := e.MaskRequest(context.Background(), scope, "anthropic", "messages", body)

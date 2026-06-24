@@ -1,6 +1,6 @@
-# Contributing to OpenCloak
+# Contributing to Veil
 
-Thanks for your interest. OpenCloak is the open-source privacy engine for AI coding
+Thanks for your interest. Veil is the open-source privacy engine for AI coding
 tools. The Phase 0 Claude Code proxy path is accepted, and the repository is now in
 v0.1.0 release-candidate hardening. Please read this before opening an issue or PR.
 
@@ -22,7 +22,7 @@ out of the shipped v0.1.0 claim unless the formal release plan is updated.
   are immutable once accepted — supersede, don't rewrite.
 - **Docs and code stay in sync.** A change in behavior updates the relevant concept/spec
   doc in the same PR. Don't let docs drift.
-- **Security first.** OpenCloak's whole job is to *not* leak data. Any change touching
+- **Security first.** Veil's whole job is to *not* leak data. Any change touching
   detection, masking, restore, or egress must keep the invariants in the
   [threat model](docs/architecture/threat-model.md) — especially **fail-closed** and
   **localhost-only** binding. Never commit real secrets, tokens, or the local key store.

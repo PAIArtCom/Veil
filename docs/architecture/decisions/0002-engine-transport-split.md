@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenCloak needs to be usable two ways: as a **standalone gateway** (for users with no
+Veil needs to be usable two ways: as a **standalone gateway** (for users with no
 gateway of their own) and as an **embeddable library** that other gateways integrate.
 These are not two products — masking/restoring is the same logic regardless of how bytes
 arrive. We also require the embeddable form to be **general-purpose**, not tailored to any

@@ -14,7 +14,7 @@ coverage.html
 
 # Local secrets / runtime state (NEVER commit)
 *.key
-.opencloak/
+.veil/
 *.local.yaml
 *.local.toml
 .env

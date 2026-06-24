@@ -1,7 +1,7 @@
 # examples/embed
 
 `examples/embed` is the maintained reference integration for embedding the
-OpenCloak SDK in a gateway-style request/response path.
+Veil SDK in a gateway-style request/response path.
 
 ## Purpose
 
@@ -12,7 +12,7 @@ parsed SSE event relay.
 
 ## Principles
 
-- MUST: Use only the public `github.com/cloakia/opencloak` package.
+- MUST: Use only the public `github.com/PAIArtCom/Veil` package.
 - MUST: Mask the protected text/tool-I/O surface exactly once before provider egress and keep the returned `State` with the matching response lifecycle.
 - MUST: Fail closed on outbound mask errors; callers must not forward the original request body.
 - MUST: Restore buffered responses, raw stream chunks, and parsed SSE events only with the matching `State`.

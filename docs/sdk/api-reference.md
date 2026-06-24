@@ -11,7 +11,7 @@ transform operators are reserved.
 import (
     "context"
 
-    "github.com/cloakia/opencloak"
+    "github.com/PAIArtCom/Veil"
 )
 ```
 
@@ -19,9 +19,9 @@ import (
 
 ```go
 // Config controls detection and tokenization. Zero value is usable (L1 defaults, key
-// loaded from ~/.opencloak/key, generated on first use).
+// loaded from ~/.veil/key, generated on first use).
 type Config struct {
-    KeyPath  string         // HMAC key location; default ~/.opencloak/key
+    KeyPath  string         // HMAC key location; default ~/.veil/key
     Detector Detector       // optional L2 detector; nil = L1 only
     Policy   PolicyProvider // nil = built-in local policy
     Audit    AuditSink      // nil = no-op
@@ -65,14 +65,14 @@ const (
 
 The zero-value SDK config uses the built-in local policy: `token` by default, with
 `PERSON`, `ADDR`, and `DATE` ignored. The standalone CLI can also load a local JSON
-policy from `--policy`, `OPENCLOAK_POLICY`, or `~/.opencloak/policy.json` if present.
+policy from `--policy`, `VEIL_POLICY`, or `~/.veil/policy.json` if present.
 Embedders can provide any `PolicyProvider` that returns the public `Policy` shape below.
 
 ```go
 type TransformOperator string
 
 const (
-    OperatorToken            TransformOperator = "token"             // default reversible OpenCloak token
+    OperatorToken            TransformOperator = "token"             // default reversible Veil token
     OperatorFormatPreserving TransformOperator = "format_preserving" // Phase 1; type-specific reverse strategy
     OperatorRedact           TransformOperator = "redact"            // Phase 1; irreversible
     OperatorBlock            TransformOperator = "block"

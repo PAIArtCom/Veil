@@ -10,7 +10,7 @@ the network egress of an AI coding tool.** That is the entire job.
 ## Trust boundary
 
 - **Trusted:** the user's local machine. Secrets already live there (`.env` files,
-  configs, shell history, source). OpenCloak does not expand where secrets exist.
+  configs, shell history, source). Veil does not expand where secrets exist.
 - **Untrusted:** any network egress that crosses to a third party — primarily the LLM
   provider API, and also **remote MCP / remote tools** (a separate egress channel, handled
   later; see [roadmap](../product/roadmap.md)).
@@ -21,7 +21,7 @@ The precise boundary is *local vs. any network egress*. In the common case that 
 ## Out of scope (explicit non-goals)
 
 - A **compromised local machine** or a malicious local process. An attacker who can read
-  OpenCloak's process memory can already read the user's `.env`, environment, and files —
+  Veil's process memory can already read the user's `.env`, environment, and files —
   the reverse-map is not a new attack surface relative to that.
 - General-purpose network DLP unrelated to LLM traffic.
 - Defending against the model *retaining* what it legitimately needs — we ensure it only
@@ -52,7 +52,7 @@ These must hold for every change touching detection, masking, restore, or egress
 ## Residual risks (acknowledged)
 
 - **Orphan tokens.** If the model mangles a token (splits, re-encodes), restore may miss
-  it and an `OpenCloak_…` literal could land in output. Mitigations: an identifier-safe token
+  it and an `PAIArtVeil_…` literal could land in output. Mitigations: an identifier-safe token
   form that survives in code without breaking syntax, and residual-token scans owned by
   `internal/stream` for raw streams and `internal/mask` for final text/wire buffers. Hits
   are audited as `AuditEvent{Kind:"residual_token"}` without sensitive values. ([Token

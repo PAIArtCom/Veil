@@ -37,7 +37,7 @@ high-entropy strings are not flagged; strict bare high-entropy fallback is Phase
   parsing is Phase 1 because it needs locale policy and a richer numbering library rather
   than one broad regex.
 - **DATE** is detected but **ignored by the default policy** — most dates are not sensitive and
-  masking them all hurts model utility. A caller/Cloakia policy can opt in per type (the same
+  masking them all hurts model utility. A caller/PAIArt policy can opt in per type (the same
   way `PERSON`/`ADDR` are off by default).
 
 Every L1 detector emits `Finding{Start, End, Type, Score, Source}`. Candidates that require

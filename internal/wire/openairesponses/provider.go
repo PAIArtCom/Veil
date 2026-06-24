@@ -10,7 +10,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/cloakia/opencloak/internal/wire"
+	"github.com/PAIArtCom/Veil/internal/wire"
 )
 
 const responsesOp = "responses"

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 var benchmarkCtx = context.Background()

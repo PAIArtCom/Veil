@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/token"
+	"github.com/PAIArtCom/Veil/internal/token"
 )
 
 // staticLookup builds a lookup closure over a fixed token→value table. Tokens
@@ -51,10 +51,10 @@ func feedSplit(table map[string]string, input string, splits []int) string {
 // Hand-written tokens with 12+ hex ids (valid TokenPattern shape). Using real
 // TYPE strings from internal/types keeps the residual TYPE accounting honest.
 const (
-	tokSecret = "OpenCloak_SECRET_0a1b2c3d4e5f"     // 12 hex
-	tokEmail  = "OpenCloak_EMAIL_aabbccddeeff00"    // 12 hex
-	tokIPv4   = "OpenCloak_IPV4_001122334455"       // 12 hex
-	tokExtend = "OpenCloak_SECRET_0a1b2c3d4e5fabcd" // 16 hex (collision-extended)
+	tokSecret = "PAIArtVeil_SECRET_0a1b2c3d4e5f"     // 12 hex
+	tokEmail  = "PAIArtVeil_EMAIL_aabbccddeeff00"    // 12 hex
+	tokIPv4   = "PAIArtVeil_IPV4_001122334455"       // 12 hex
+	tokExtend = "PAIArtVeil_SECRET_0a1b2c3d4e5fabcd" // 16 hex (collision-extended)
 )
 
 var fixtureTable = map[string]string{
@@ -80,8 +80,8 @@ func TestEquivalenceAllSplitBoundaries(t *testing.T) {
 		"a" + tokIPv4 + "b" + tokExtend, // tight wrapping, extended id
 		"trailing token at end " + tokEmail,
 		"leading " + tokSecret + " then text",
-		"OpenCloak_FOO_zzzzzzzzzzzz and " + tokSecret, // a non-hex OpenCloak-ish then a real token
-		strings.Repeat(tokSecret+" ", 5),              // repeated tokens
+		"PAIArtVeil_FOO_zzzzzzzzzzzz and " + tokSecret, // a non-hex Veil-ish then a real token
+		strings.Repeat(tokSecret+" ", 5),               // repeated tokens
 	}
 
 	for ti, input := range inputs {
@@ -159,19 +159,19 @@ func pseudoRandomSplits(n int, seed uint32) []int {
 
 func TestSplitMidPrefix(t *testing.T) {
 	input := "x " + tokSecret + " y"
-	// Split right after "OpenCloak_" (mid-prefix, before TYPE).
-	cut := strings.Index(input, tokSecret) + len("OpenCloak_")
+	// Split right after "PAIArtVeil_" (mid-prefix, before TYPE).
+	cut := strings.Index(input, tokSecret) + len("PAIArtVeil_")
 	got := feedSplit(fixtureTable, input, []int{cut})
 	want := "x AKIAIOSFODNN7EXAMPLE y"
 	if got != want {
-		t.Fatalf("mid-OpenCloak_ split: want %q got %q", want, got)
+		t.Fatalf("mid-PAIArtVeil_ split: want %q got %q", want, got)
 	}
 }
 
 func TestSplitMidHex(t *testing.T) {
 	input := "x " + tokEmail + " y"
 	// Split in the middle of the hex id.
-	cut := strings.Index(input, tokEmail) + len("OpenCloak_EMAIL_") + 6
+	cut := strings.Index(input, tokEmail) + len("PAIArtVeil_EMAIL_") + 6
 	got := feedSplit(fixtureTable, input, []int{cut})
 	want := "x user@example.com y"
 	if got != want {
@@ -180,9 +180,9 @@ func TestSplitMidHex(t *testing.T) {
 }
 
 func TestThreeWaySplit(t *testing.T) {
-	// "OpenCloak_SEC" | "RET_a1b2c3d4..." | tail — the token straddles three chunks.
+	// "PAIArtVeil_SEC" | "RET_a1b2c3d4..." | tail — the token straddles three chunks.
 	full := tokSecret
-	a := "OpenCloak_SEC"
+	a := "PAIArtVeil_SEC"
 	rest := strings.TrimPrefix(full, a)
 	// Split rest into a middle and a final byte so there are three writes total.
 	b := rest[:len(rest)-1]
@@ -212,7 +212,7 @@ func TestCompleteTokenMidBufferRestoredImmediately(t *testing.T) {
 	if !bytes.Contains(out, []byte("AKIAIOSFODNN7EXAMPLE")) {
 		t.Fatalf("complete token mid-buffer not restored on Write: %q", out)
 	}
-	if bytes.Contains(out, []byte("OpenCloak_SECRET_")) {
+	if bytes.Contains(out, []byte("PAIArtVeil_SECRET_")) {
 		t.Fatalf("token still present after Write: %q", out)
 	}
 }
@@ -243,7 +243,7 @@ func TestTwoTokensSecondPartialAtBoundary(t *testing.T) {
 	second := tokEmail
 	input := first + " gap " + second
 	// Cut inside the second token's hex id.
-	cut := strings.Index(input, second) + len("OpenCloak_EMAIL_") + 4
+	cut := strings.Index(input, second) + len("PAIArtVeil_EMAIL_") + 4
 	r := NewRestorer(staticLookup(fixtureTable))
 	var out bytes.Buffer
 	w1 := r.Write([]byte(input[:cut]))
@@ -307,14 +307,14 @@ func TestKnownTokenPrefixWithAdjacentHexSuffixRestores(t *testing.T) {
 	}
 }
 
-// ---- Test 6: non-token OpenCloak-ish strings pass through, not counted -------------
+// ---- Test 6: non-token Veil-ish strings pass through, not counted -------------
 
-func TestNonTokenOpenCloakishUntouched(t *testing.T) {
+func TestNonTokenVeilishUntouched(t *testing.T) {
 	cases := []string{
-		"OpenCloak_FOO_zzzzzzzzzzzz", // non-hex id
-		"OpenCloak_BAR_0a1b",         // <12 hex
-		"OpenCloaksomething",         // no separators
-		"prefix OpenCloak_BAZ_ ",     // empty id then space
+		"PAIArtVeil_FOO_zzzzzzzzzzzz", // non-hex id
+		"PAIArtVeil_BAR_0a1b",         // <12 hex
+		"Veilsomething",               // no separators
+		"prefix PAIArtVeil_BAZ_ ",     // empty id then space
 	}
 	for _, input := range cases {
 		r := NewRestorer(staticLookup(fixtureTable))
@@ -322,23 +322,23 @@ func TestNonTokenOpenCloakishUntouched(t *testing.T) {
 		out.Write(r.Write([]byte(input)))
 		out.Write(r.Flush())
 		if out.String() != input {
-			t.Fatalf("non-token OpenCloak-ish string altered: input %q got %q", input, out.String())
+			t.Fatalf("non-token Veil-ish string altered: input %q got %q", input, out.String())
 		}
 		if len(r.ResidualCounts()) != 0 {
-			t.Fatalf("non-token OpenCloak-ish string counted as residual: %q -> %v", input, r.ResidualCounts())
+			t.Fatalf("non-token Veil-ish string counted as residual: %q -> %v", input, r.ResidualCounts())
 		}
 	}
 }
 
 // ---- Test 7: growth guard bounds the buffer ----------------------------------
 
-// TestGrowthGuardBoundsBuffer feeds a long adversarial run of "OpenCloak_" + many 'A'
+// TestGrowthGuardBoundsBuffer feeds a long adversarial run of "PAIArtVeil_" + many 'A'
 // (valid TYPE chars) that never completes into a token, across many Writes, and
 // asserts the held-back buffer never exceeds MaxTokenLen after any Write. This
 // is an in-package test so it can read the unexported buf field directly.
 func TestGrowthGuardBoundsBuffer(t *testing.T) {
 	r := NewRestorer(staticLookup(fixtureTable))
-	chunk := []byte("OpenCloak_" + strings.Repeat("A", 500))
+	chunk := []byte("PAIArtVeil_" + strings.Repeat("A", 500))
 	for i := 0; i < 50; i++ {
 		r.Write(chunk)
 		if len(r.buf) > token.MaxTokenLen {
@@ -348,7 +348,7 @@ func TestGrowthGuardBoundsBuffer(t *testing.T) {
 	}
 	// And a single huge chunk in one Write.
 	r2 := NewRestorer(staticLookup(fixtureTable))
-	huge := []byte("text OpenCloak_" + strings.Repeat("A", 100000))
+	huge := []byte("text PAIArtVeil_" + strings.Repeat("A", 100000))
 	r2.Write(huge)
 	if len(r2.buf) > token.MaxTokenLen {
 		t.Fatalf("buffer grew past MaxTokenLen (%d) after huge Write: len=%d",
@@ -363,7 +363,7 @@ func TestGrowthGuardDoesNotCorruptRealToken(t *testing.T) {
 	r := NewRestorer(staticLookup(fixtureTable))
 	var out bytes.Buffer
 	// A long uncompletable run, then a real token, then text.
-	out.Write(r.Write([]byte("OpenCloak_" + strings.Repeat("A", 1000))))
+	out.Write(r.Write([]byte("PAIArtVeil_" + strings.Repeat("A", 1000))))
 	out.Write(r.Write([]byte(" then " + tokSecret + " done")))
 	out.Write(r.Flush())
 	got := out.String()
@@ -371,7 +371,7 @@ func TestGrowthGuardDoesNotCorruptRealToken(t *testing.T) {
 		t.Fatalf("real token after adversarial run not restored: %q", got)
 	}
 	// The adversarial run is emitted verbatim (it is not a token).
-	if !strings.Contains(got, "OpenCloak_"+strings.Repeat("A", 1000)) {
+	if !strings.Contains(got, "PAIArtVeil_"+strings.Repeat("A", 1000)) {
 		t.Fatalf("adversarial run was corrupted: %q", got[:60])
 	}
 }
@@ -392,7 +392,7 @@ func TestRealTokenAbuttingLongRun(t *testing.T) {
 	if !strings.Contains(got, "AKIAIOSFODNN7EXAMPLE") {
 		t.Fatalf("real token at start of danger suffix not restored: %.80q", got)
 	}
-	if strings.Contains(got, "OpenCloak_SECRET_") {
+	if strings.Contains(got, "PAIArtVeil_SECRET_") {
 		t.Fatalf("real token bytes leaked unrestored (possibly bisected): %.80q", got)
 	}
 	// Equivalence: same as whole-buffer restore.
@@ -417,10 +417,10 @@ func TestResidualCountsReturnsCopy(t *testing.T) {
 
 // Example documents the basic relay shape for readers.
 func ExampleRestorer() {
-	table := map[string]string{"OpenCloak_EMAIL_aabbccddeeff00": "a@b.com"}
+	table := map[string]string{"PAIArtVeil_EMAIL_aabbccddeeff00": "a@b.com"}
 	r := NewRestorer(func(tok string) (string, bool) { v, ok := table[tok]; return v, ok })
 	var out []byte
-	out = append(out, r.Write([]byte("hello OpenCloak_EMAIL_aabb"))...)
+	out = append(out, r.Write([]byte("hello PAIArtVeil_EMAIL_aabb"))...)
 	out = append(out, r.Write([]byte("ccddeeff00!"))...)
 	out = append(out, r.Flush()...)
 	fmt.Println(string(out))

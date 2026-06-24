@@ -11,13 +11,13 @@ import (
 
 	"github.com/tidwall/gjson"
 
-	opencloak "github.com/cloakia/opencloak"
-	"github.com/cloakia/opencloak/internal/wire/openairesponses"
+	veil "github.com/PAIArtCom/Veil"
+	"github.com/PAIArtCom/Veil/internal/wire/openairesponses"
 )
 
 var (
 	ctx     = context.Background()
-	tokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
+	tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
 )
 
 const (
@@ -26,7 +26,7 @@ const (
 	dsn    = "https://db.example.com/prod"
 )
 
-func newTestEngine(t *testing.T) *opencloak.Engine {
+func newTestEngine(t *testing.T) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -36,9 +36,9 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 	if err := os.WriteFile(keyPath, key, 0o600); err != nil {
 		t.Fatalf("write key: %v", err)
 	}
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath})
+	e, err := veil.New(veil.Config{KeyPath: keyPath})
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	return e
 }
@@ -86,7 +86,7 @@ func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {
 		"stream":true
 	}`)
 
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", body)
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestMaskRequestCoversCodexResponsesInputAndToolOutput(t *testing.T) {
 		}
 	}
 	if !tokenRe.Match(masked) {
-		t.Fatalf("expected OpenCloak_ token in masked body: %s", masked)
+		t.Fatalf("expected PAIArtVeil_ token in masked body: %s", masked)
 	}
 	if !bytes.Contains(masked, []byte(`static `+awsKey+` must stay`)) {
 		t.Fatalf("static tools definition was altered: %s", masked)
@@ -125,7 +125,7 @@ func TestPromptVariableBackslashKeyMasksInPlace(t *testing.T) {
 		t.Fatalf("json marshal: %v", err)
 	}
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestPromptVariableBackslashKeyMasksInPlace(t *testing.T) {
 
 func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 	e := newTestEngine(t)
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{
 		"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"connect `+dsn+` and email `+email+`"}]}]
 	}`))
 	if err != nil {
@@ -173,8 +173,8 @@ func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RestoreResponse: %v", err)
 	}
-	if bytes.Contains(restored, []byte("OpenCloak_")) {
-		t.Fatalf("residual OpenCloak_ in restored response: %s", restored)
+	if bytes.Contains(restored, []byte("PAIArtVeil_")) {
+		t.Fatalf("residual PAIArtVeil_ in restored response: %s", restored)
 	}
 	for _, plain := range [][]byte{[]byte(dsn), []byte(email)} {
 		if !bytes.Contains(restored, plain) {
@@ -185,7 +185,7 @@ func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 
 func TestUnsupportedResponsesInputItemFailsClosed(t *testing.T) {
 	e := newTestEngine(t)
-	_, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{
+	_, _, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{
 		"input":[{"type":"future_tool_result","payload":"`+dsn+`"}]
 	}`))
 	if err == nil {
@@ -239,7 +239,7 @@ func TestUnsupportedResponsesPlaintextFieldShapesFailClosed(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := newTestEngine(t)
-			masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(tt.body))
+			masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(tt.body))
 			if err == nil {
 				t.Fatalf("MaskRequest succeeded for unsupported plaintext-bearing shape: masked=%s state=%v", masked, st)
 			}
@@ -252,7 +252,7 @@ func TestUnsupportedResponsesPlaintextFieldShapesFailClosed(t *testing.T) {
 
 func TestMalformedResponsesJSONFailsClosed(t *testing.T) {
 	e := newTestEngine(t)
-	_, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{"input":[`))
+	_, _, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{"input":[`))
 	if err == nil {
 		t.Fatal("MaskRequest succeeded for malformed JSON")
 	}
@@ -260,7 +260,7 @@ func TestMalformedResponsesJSONFailsClosed(t *testing.T) {
 
 func TestRestoreSSEEventRestoresParsedResponsesEvents(t *testing.T) {
 	e := newTestEngine(t)
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "openai-responses", "responses", []byte(`{
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "openai-responses", "responses", []byte(`{
 		"input":"run `+dsn+`"
 	}`))
 	if err != nil {

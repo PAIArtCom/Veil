@@ -2,7 +2,7 @@
 
 **Status:** Accepted (normative)
 
-This is the conceptual contract for *what* OpenCloak transforms and *where*. It follows
+This is the conceptual contract for *what* Veil transforms and *where*. It follows
 directly from the [threat model](../architecture/threat-model.md): the protected text and
 tool-I/O surface crosses network egress to the LLM, while everything local is trusted.
 Opaque media/document payloads and provider thinking/control traces preserve
@@ -67,11 +67,11 @@ scope to make restoration succeed ([ADR-0009](../architecture/decisions/0009-sta
 ## Orphan tokens
 
 If the model mangles a token (splits it, re-encodes it) restore may miss it, leaving an
-`OpenCloak_…` literal in output. Two mitigations: the [token form](token-spec.md) is
+`PAIArtVeil_…` literal in output. Two mitigations: the [token form](token-spec.md) is
 identifier-safe (it does not break code syntax if it lands), and residual-token scans flag
 missed restores so the failure is visible, not silent.
 
-Outbound masking is idempotent for valid OpenCloak token spans: if an `OpenCloak_…` literal
+Outbound masking is idempotent for valid Veil token spans: if an `PAIArtVeil_…` literal
 from an earlier turn is fed back into a later protected text/tool-I/O field, the masker
 preserves that token instead of wrapping it in a second token. If the token is still known
 in the current scope, restore can resolve it to the original value; if it is unknown or
@@ -80,7 +80,7 @@ When a known token is immediately followed by additional lowercase hex, restore 
 store-resident prefix as the token and leaves the suffix as ordinary text. On a later
 outbound mask pass, a substantial hex suffix after a known token is detected as new
 `SECRET` text rather than being hidden inside the token idempotency guard.
-For fabricated or unknown token-shaped prefixes, OpenCloak preserves the minimal residual
+For fabricated or unknown token-shaped prefixes, Veil preserves the minimal residual
 token prefix but masks substantial adjacent hex as `SECRET` text. This keeps residual
-tokens visible while preventing an `OpenCloak_`-shaped prefix from becoming a shield for a
+tokens visible while preventing an `PAIArtVeil_`-shaped prefix from becoming a shield for a
 bare hex secret.

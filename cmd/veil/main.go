@@ -1,9 +1,9 @@
-// Command opencloak is the entry point for running the OpenCloak engine through
+// Command veil is the entry point for running the Veil engine through
 // one of its transports.
 //
 // Usage:
 //
-//	opencloak <command> [flags]
+//	veil <command> [flags]
 //
 // Commands:
 //
@@ -30,9 +30,9 @@ import (
 	"syscall"
 	"time"
 
-	opencloak "github.com/cloakia/opencloak"
-	localconfig "github.com/cloakia/opencloak/internal/config"
-	"github.com/cloakia/opencloak/internal/proxy"
+	veil "github.com/PAIArtCom/Veil"
+	localconfig "github.com/PAIArtCom/Veil/internal/config"
+	"github.com/PAIArtCom/Veil/internal/proxy"
 )
 
 var (
@@ -49,18 +49,18 @@ func main() {
 	switch os.Args[1] {
 	case "proxy":
 		if err := runProxy(os.Args[2:], os.Stderr); err != nil {
-			fmt.Fprintf(os.Stderr, "opencloak proxy: %v\n", err)
+			fmt.Fprintf(os.Stderr, "veil proxy: %v\n", err)
 			os.Exit(1)
 		}
 	case "version", "-v", "--version":
 		printVersion(os.Stdout)
 	case "serve", "console", "mask":
-		fmt.Fprintf(os.Stderr, "opencloak %s: not implemented yet\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "veil %s: not implemented yet\n", os.Args[1])
 		os.Exit(1)
 	case "-h", "--help", "help":
 		usage()
 	default:
-		fmt.Fprintf(os.Stderr, "opencloak: unknown command %q\n\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "veil: unknown command %q\n\n", os.Args[1])
 		usage()
 		os.Exit(2)
 	}
@@ -71,7 +71,7 @@ func printVersion(w io.Writer) {
 }
 
 func versionString() string {
-	return fmt.Sprintf("opencloak %s (commit %s, built %s)", version, commit, buildDate)
+	return fmt.Sprintf("veil %s (commit %s, built %s)", version, commit, buildDate)
 }
 
 // runProxy parses the proxy subcommand flags, enforces the loopback-only bind
@@ -84,7 +84,7 @@ func runProxy(args []string, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 	addr := fs.String("addr", "127.0.0.1:8787", "loopback address to listen on (host must be a loopback address)")
 	upstream := fs.String("upstream", "https://api.anthropic.com", "upstream provider base URL")
-	policyPath := fs.String("policy", "", "local policy JSON path (default: OPENCLOAK_POLICY or ~/.opencloak/policy.json if present)")
+	policyPath := fs.String("policy", "", "local policy JSON path (default: VEIL_POLICY or ~/.veil/policy.json if present)")
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return nil
@@ -107,7 +107,7 @@ func runProxy(args []string, stderr io.Writer) error {
 		return fmt.Errorf("load policy: %w", err)
 	}
 
-	engine, err := opencloak.New(opencloak.Config{Policy: enginePolicyProvider(policyProvider)})
+	engine, err := veil.New(veil.Config{Policy: enginePolicyProvider(policyProvider)})
 	if err != nil {
 		return fmt.Errorf("init engine: %w", err)
 	}
@@ -126,7 +126,7 @@ func runProxy(args []string, stderr io.Writer) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	fmt.Fprintf(stderr, "opencloak proxy listening on http://%s\n", *addr)
+	fmt.Fprintf(stderr, "veil proxy listening on http://%s\n", *addr)
 	fmt.Fprintf(stderr, "  upstream: %s\n", *upstream)
 	if policySource.Loaded {
 		fmt.Fprintf(stderr, "  policy: loaded from %s\n", policySource.From)
@@ -152,7 +152,7 @@ func runProxy(args []string, stderr io.Writer) error {
 		}
 		return nil
 	case <-ctx.Done():
-		fmt.Fprintln(stderr, "opencloak proxy: shutting down")
+		fmt.Fprintln(stderr, "veil proxy: shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := server.Shutdown(shutdownCtx); err != nil {
@@ -162,7 +162,7 @@ func runProxy(args []string, stderr io.Writer) error {
 	}
 }
 
-func enginePolicyProvider(provider *localconfig.Provider) opencloak.PolicyProvider {
+func enginePolicyProvider(provider *localconfig.Provider) veil.PolicyProvider {
 	if provider == nil {
 		return nil
 	}
@@ -194,9 +194,9 @@ func isLoopbackAddr(addr string) bool {
 }
 
 func usage() {
-	fmt.Fprint(os.Stderr, `opencloak — de-identification engine for AI coding tools
+	fmt.Fprint(os.Stderr, `veil — de-identification engine for AI coding tools
 
-usage: opencloak <command> [flags]
+usage: veil <command> [flags]
 
 commands:
   proxy     run the base-URL local proxy (Claude Code and Codex Responses)
@@ -208,6 +208,6 @@ commands:
 proxy flags:
   --addr      loopback listen address (default 127.0.0.1:8787)
   --upstream  upstream provider base URL (default https://api.anthropic.com)
-  --policy    local policy JSON path (default OPENCLOAK_POLICY or ~/.opencloak/policy.json)
+  --policy    local policy JSON path (default VEIL_POLICY or ~/.veil/policy.json)
 `)
 }

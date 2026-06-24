@@ -1,12 +1,12 @@
 # Architecture Decision Records (ADRs)
 
-This directory holds the record of *why* OpenCloak is built the way it is. Each ADR
+This directory holds the record of *why* Veil is built the way it is. Each ADR
 captures one decision: its context, the choice, the alternatives rejected, and the
 consequences.
 
 ## Purpose
 
-Architecture Decision Records preserve the reasoning behind OpenCloak's core product,
+Architecture Decision Records preserve the reasoning behind Veil's core product,
 security, API, and implementation choices.
 
 ## Principles
@@ -59,4 +59,4 @@ security, API, and implementation choices.
 | [0011](0011-streaming-restore-cross-event-holdback.md) | Streaming restore across SSE event boundaries | Accepted |
 | [0012](0012-phase-0-l1-rule-sourcing.md) | Phase 0 L1 rule sourcing and RuleSets behavior | Accepted |
 | [0013](0013-openai-responses-provider.md) | OpenAI Responses provider for Codex CLI | Accepted |
-| [0014](0014-opencloak-token-prefix.md) | Use OpenCloak token namespace prefix | Accepted |
+| [0014](0014-veil-token-prefix.md) | Use Veil token namespace prefix | Accepted |

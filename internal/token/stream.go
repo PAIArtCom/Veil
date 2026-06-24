@@ -7,16 +7,16 @@ import (
 
 // PartialSuffixPattern documents the anchored shape of a suffix after the full
 // namespace prefix is present. PartialSuffixStart owns the exact token-prefix
-// scan, including partial namespace prefixes such as "Open" or "OpenCloak", so
+// scan, including partial namespace prefixes such as "P" or "PAIArtVeil", so
 // the implementation follows Prefix without hand-written nested regex for the
 // brand string.
 //
-// A token is OpenCloak_<TYPE>_<hex12+>. A buffer tail must be held back when it
+// A token is PAIArtVeil_<TYPE>_<hex12+>. A buffer tail must be held back when it
 // could still grow into — or already is, and could keep growing into — a token.
 // The meaningful suffixes are prefixes of:
 //
-//	OpenCloak, OpenCloak_, OpenCloak_<TYPE>,
-//	OpenCloak_<TYPE>_, and OpenCloak_<TYPE>_<partial-or-complete-hex>.
+//	P, PAIArtVeil, PAIArtVeil_, PAIArtVeil_<TYPE>,
+//	PAIArtVeil_<TYPE>_, and PAIArtVeil_<TYPE>_<partial-or-complete-hex>.
 //
 // Because the id is {12,} hex (collision-extend can append more hex), even a
 // complete 12-hex token sitting at the very end of the buffer is extendable:
@@ -25,7 +25,7 @@ import (
 //
 // The expression is not used as the source of truth; PartialSuffixStart performs
 // the exact grammar check.
-const PartialSuffixPattern = `OpenCloak_[A-Z0-9]+_[0-9a-f]*$`
+const PartialSuffixPattern = `PAIArtVeil_[A-Z0-9]+_[0-9a-f]*$`
 
 // PartialSuffixStart returns the byte index at which the longest token-prefix
 // suffix of b begins — i.e. the first index of the trailing bytes that a
@@ -95,7 +95,7 @@ func isLowerHexByte(b byte) bool {
 	return (b >= '0' && b <= '9') || (b >= 'a' && b <= 'f')
 }
 
-// tokenRe matches a complete OpenCloak_… token. It mirrors TokenPattern and is
+// tokenRe matches a complete PAIArtVeil_… token. It mirrors TokenPattern and is
 // used by ParseType and (indirectly, via the same source) by the restorer's
 // scanner.
 var tokenRe = regexp.MustCompile(TokenPattern)
@@ -108,7 +108,7 @@ var tokenRe = regexp.MustCompile(TokenPattern)
 // many collision extensions, so 128 leaves ample headroom.
 const MaxTokenLen = 128
 
-// ParseType returns the TYPE field of an OpenCloak_<TYPE>_<id> token — the
+// ParseType returns the TYPE field of a PAIArtVeil_<TYPE>_<id> token — the
 // segment between Prefix and the first underscore after it. ok is false when tok
 // does not match TokenPattern. Token-grammar parsing is centralized here so
 // callers (e.g. the streaming restorer's residual accounting) do not re-implement

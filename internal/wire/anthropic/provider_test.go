@@ -11,13 +11,13 @@ import (
 	"strings"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
+	veil "github.com/PAIArtCom/Veil"
 )
 
 // ---- helpers ----------------------------------------------------------------
 
 // newTestEngine builds an Engine backed by a fixed, deterministic key.
-func newTestEngine(t *testing.T) *opencloak.Engine {
+func newTestEngine(t *testing.T) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -28,16 +28,16 @@ func newTestEngine(t *testing.T) *opencloak.Engine {
 	if err := os.WriteFile(keyPath, key, 0600); err != nil {
 		t.Fatalf("write test key: %v", err)
 	}
-	e, err := opencloak.New(opencloak.Config{KeyPath: keyPath})
+	e, err := veil.New(veil.Config{KeyPath: keyPath})
 	if err != nil {
-		t.Fatalf("opencloak.New: %v", err)
+		t.Fatalf("veil.New: %v", err)
 	}
 	return e
 }
 
 var ctx = context.Background()
 
-var tokenRe = regexp.MustCompile(`OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`)
+var tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
 
 // ---- ExtractRequest / ApplyRequest unit tests --------------------------------
 
@@ -49,7 +49,7 @@ func TestExtractSystemString(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"system":"Use key AKIAIOSFODNN7EXAMPLE for auth","messages":[]}`)
 
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestExtractSystemString(t *testing.T) {
 		t.Fatalf("AWS key not masked in system string: %s", masked)
 	}
 	if !tokenRe.Match(masked) {
-		t.Fatalf("expected OpenCloak_ token in masked body: %s", masked)
+		t.Fatalf("expected PAIArtVeil_ token in masked body: %s", masked)
 	}
 	// Non-text fields must be byte-identical.
 	if !bytes.Contains(masked, []byte(`"model":"claude-opus-4-5"`)) {
@@ -85,7 +85,7 @@ func TestExtractSystemArray(t *testing.T) {
 		"messages": []
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestExtractMessageStringContent(t *testing.T) {
 		]
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestExtractMessageBlockContent(t *testing.T) {
 		]
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -207,7 +207,7 @@ func TestToolUseInputBackslashKeyMasksInPlace(t *testing.T) {
 		t.Fatalf("json marshal: %v", err)
 	}
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -257,7 +257,7 @@ func TestToolResultArrayContent(t *testing.T) {
 		]
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -296,7 +296,7 @@ func TestToolsArrayUnchanged(t *testing.T) {
 		]
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestImageThinkingBlocksSkipped(t *testing.T) {
 		]
 	}`)
 
-	masked, _, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, _, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -346,13 +346,13 @@ func TestImageThinkingBlocksSkipped(t *testing.T) {
 // ---- MaskRequest end-to-end --------------------------------------------------
 
 // TestMaskRequestEndToEnd tests a realistic multi-field request: secrets in
-// system, user message, and tool_use arg. Asserts model sees only OpenCloak_ tokens,
+// system, user message, and tool_use arg. Asserts model sees only PAIArtVeil_ tokens,
 // State carries provider/op, and non-secret JSON keys/order is preserved.
 func TestMaskRequestEndToEnd(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{"model":"claude-opus-4-5","max_tokens":2048,"system":"Connect using AKIAIOSFODNN7EXAMPLE for AWS","messages":[{"role":"user","content":"my email is user@example.com"},{"role":"assistant","content":[{"type":"tool_use","id":"tu_99","name":"run_sql","input":{"connection":"postgres://admin:hunter2@db.example.com/prod"}}]}],"extra_field":"must-survive"}`)
 
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestMaskRequestMalformedJSONFailsClosed(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{"model":"claude-opus-4-5","messages":[{"role":"user","content":"AKIAIOSFODNN7EXAMPLE"}`)
 
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", body)
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", body)
 	if err == nil {
 		t.Fatalf("MaskRequest returned nil error; masked=%s st=%v", masked, st)
 	}
@@ -400,7 +400,7 @@ func TestMaskRequestUnsupportedOperationFailsClosed(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{"model":"claude-opus-4-5","max_tokens":16,"messages":[{"role":"user","content":"AKIAIOSFODNN7EXAMPLE"}]}`)
 
-	masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "responses", body)
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "responses", body)
 	if err == nil {
 		t.Fatalf("MaskRequest returned nil error for unsupported op; masked=%s st=%v", masked, st)
 	}
@@ -458,7 +458,7 @@ func TestMaskRequestUnsupportedRequestShapesFailClosed(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			masked, st, err := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages", []byte(tc.body))
+			masked, st, err := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages", []byte(tc.body))
 			if err == nil {
 				t.Fatalf("MaskRequest returned nil error for unsupported shape; masked=%s st=%v", masked, st)
 			}
@@ -478,7 +478,7 @@ func TestMaskRequestDeterminism(t *testing.T) {
 	e := newTestEngine(t)
 	body := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"system":"key AKIAIOSFODNN7EXAMPLE","messages":[{"role":"user","content":"email user@example.com"}]}`)
 
-	scope := opencloak.Scope{Session: "cache-test"}
+	scope := veil.Scope{Session: "cache-test"}
 	masked1, _, err := e.MaskRequest(ctx, scope, "anthropic", "messages", body)
 	if err != nil {
 		t.Fatalf("MaskRequest 1: %v", err)
@@ -499,7 +499,7 @@ func TestRestoreResponseTextBlock(t *testing.T) {
 	e := newTestEngine(t)
 	reqBody := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"system":"key AKIAIOSFODNN7EXAMPLE","messages":[{"role":"user","content":"hello"}]}`)
 
-	scope := opencloak.Scope{Session: "resp-test"}
+	scope := veil.Scope{Session: "resp-test"}
 	_, st, err := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
@@ -537,7 +537,7 @@ func TestRestoreResponseToolUseInput(t *testing.T) {
 	e := newTestEngine(t)
 	reqBody := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"messages":[{"role":"user","content":"connect to postgres://admin:hunter2@db.example.com/prod"}]}`)
 
-	scope := opencloak.Scope{Session: "tool-resp-test"}
+	scope := veil.Scope{Session: "tool-resp-test"}
 	_, st, err := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
@@ -574,14 +574,14 @@ func TestRestoreResponseErrInvalidState(t *testing.T) {
 
 	// nil state
 	_, err := e.RestoreResponse(ctx, nil, body)
-	if !errors.Is(err, opencloak.ErrInvalidState) {
+	if !errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("nil State: expected ErrInvalidState, got %v", err)
 	}
 
 	// state without provider/op (from text Mask, not MaskRequest)
-	_, st, _ := e.Mask(ctx, opencloak.Scope{}, "some text")
+	_, st, _ := e.Mask(ctx, veil.Scope{}, "some text")
 	_, err = e.RestoreResponse(ctx, st, body)
-	if !errors.Is(err, opencloak.ErrInvalidState) {
+	if !errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("text-only State: expected ErrInvalidState, got %v", err)
 	}
 }
@@ -593,7 +593,7 @@ func TestRestoreSSETextDelta(t *testing.T) {
 	e := newTestEngine(t)
 	reqBody := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"system":"key AKIAIOSFODNN7EXAMPLE","messages":[{"role":"user","content":"tell me"}]}`)
 
-	scope := opencloak.Scope{Session: "sse-text-test"}
+	scope := veil.Scope{Session: "sse-text-test"}
 	_, st, err := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
@@ -628,7 +628,7 @@ func TestRestoreSSEInputJsonDelta(t *testing.T) {
 	e := newTestEngine(t)
 	reqBody := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"messages":[{"role":"user","content":"email user@example.com"}]}`)
 
-	scope := opencloak.Scope{Session: "sse-json-test"}
+	scope := veil.Scope{Session: "sse-json-test"}
 	_, st, err := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
@@ -658,7 +658,7 @@ func TestRestoreSSEInputJsonDelta(t *testing.T) {
 // returned byte-identical (not touched).
 func TestRestoreSSEMessageStartUnchanged(t *testing.T) {
 	e := newTestEngine(t)
-	_, st, _ := e.MaskRequest(ctx, opencloak.Scope{}, "anthropic", "messages",
+	_, st, _ := e.MaskRequest(ctx, veil.Scope{}, "anthropic", "messages",
 		[]byte(`{"model":"claude-opus-4-5","max_tokens":100,"messages":[{"role":"user","content":"hi"}]}`))
 
 	original := []byte(`{"type":"message_start","message":{"id":"msg_01","type":"message","role":"assistant","content":[],"model":"claude-opus-4-5","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":5,"output_tokens":1}}}`)
@@ -679,14 +679,14 @@ func TestRestoreSSEErrInvalidState(t *testing.T) {
 
 	// nil State
 	_, err := e.RestoreSSEEvent(ctx, nil, eventData)
-	if !errors.Is(err, opencloak.ErrInvalidState) {
+	if !errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("nil State: expected ErrInvalidState, got %v", err)
 	}
 
 	// State from text Mask (no provider/op)
-	_, st, _ := e.Mask(ctx, opencloak.Scope{}, "text")
+	_, st, _ := e.Mask(ctx, veil.Scope{}, "text")
 	_, err = e.RestoreSSEEvent(ctx, st, eventData)
-	if !errors.Is(err, opencloak.ErrInvalidState) {
+	if !errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("text-only State: expected ErrInvalidState, got %v", err)
 	}
 }
@@ -703,7 +703,7 @@ func TestFullRoundTrip(t *testing.T) {
 
 	reqBody := []byte(`{"model":"claude-opus-4-5","max_tokens":1024,"system":"key ` + awsKey + `","messages":[{"role":"user","content":"email is ` + email + `"}]}`)
 
-	scope := opencloak.Scope{Session: "roundtrip"}
+	scope := veil.Scope{Session: "roundtrip"}
 	maskedReq, st, err := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
@@ -724,8 +724,8 @@ func TestFullRoundTrip(t *testing.T) {
 		t.Fatalf("RestoreResponse: %v", err)
 	}
 	restoredStr := string(restored)
-	if strings.Contains(restoredStr, "OpenCloak_") {
-		t.Fatalf("residual OpenCloak_ token in restored response: %s", restored)
+	if strings.Contains(restoredStr, "PAIArtVeil_") {
+		t.Fatalf("residual PAIArtVeil_ token in restored response: %s", restored)
 	}
 	if !strings.Contains(restoredStr, awsKey) {
 		t.Fatalf("AWS key not in restored response: %s", restored)
@@ -737,7 +737,7 @@ func TestFullRoundTrip(t *testing.T) {
 
 // ---- helpers -----------------------------------------------------------------
 
-// extractFirstToken finds the first OpenCloak_… token in s.
+// extractFirstToken finds the first PAIArtVeil_… token in s.
 func extractFirstToken(s string) string {
 	m := tokenRe.FindString(s)
 	return m

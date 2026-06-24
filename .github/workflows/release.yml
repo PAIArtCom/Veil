@@ -50,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          notes_file="${RUNNER_TEMP}/opencloak-release-notes.md"
+          notes_file="${RUNNER_TEMP}/veil-release-notes.md"
           awk -v version="${version}" '
             /^## \[/ {
               if (found) {
@@ -76,7 +76,7 @@ jobs:
             "${GITHUB_REF_NAME}"
             dist/release/*
             --title "${GITHUB_REF_NAME}"
-            --notes-file "${RUNNER_TEMP}/opencloak-release-notes.md"
+            --notes-file "${RUNNER_TEMP}/veil-release-notes.md"
           )
 
           if [[ "${GITHUB_REF_NAME}" == *-* ]]; then

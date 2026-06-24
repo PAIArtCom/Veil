@@ -10,7 +10,7 @@ adapter on top of it.
 
 ```
         ┌───────────────────────────────────────────────────────┐
-        │   OpenCloak engine  (open core · transport-agnostic)    │
+        │   Veil engine  (open core · transport-agnostic)    │
         │   detect (L1/L2) · deterministic token · mask/restore   │
         │   · state                                                │
         └───────────────────────────────────────────────────────┘
@@ -50,10 +50,10 @@ dev tool ◀──protected response fields(real)── [RESTORE inbound] ◀─
 |---|---|---|
 | **Detector** | Find sensitive findings | Layered: L1 patterns now, L2 NER later. Findings include confidence and source. [Spec](../concepts/detection-layers.md) |
 | **Resolver** | Merge and de-overlap findings | Same-type merge; cross-type precedence before any replacement. [ADR-0008](decisions/0008-finding-model-and-conflict-resolution.md) |
-| **Tokenizer** | Map value ↔ token, deterministically | `OpenCloak_<TYPE>_<id>`. [Spec](../concepts/token-spec.md) |
+| **Tokenizer** | Map value ↔ token, deterministically | `PAIArtVeil_<TYPE>_<id>`. [Spec](../concepts/token-spec.md) |
 | **Masker** | Apply token strategy to resolved findings | Offset-safe replacement and token→value mapping writes |
 | **State** | Hold token→value reverse mappings for restore | Explicit request/stream handle with scoped in-memory namespaces. [ADR-0009](decisions/0009-state-lifecycle-and-scope.md) |
-| **Wire adapters** | Walk each provider's request/response JSON | OpenCloak-maintained internal adapters at first: Anthropic Messages live-accepted; OpenAI Responses offline-verified and local Codex CLI live-accepted as the v0.1.0 OpenAI Responses protocol evidence. A separate direct `api.openai.com` official-service run is not part of the release gate. OpenAI Chat and Gemini are later. Native shapes, no unified IR; buffered/SSE restore is provider-aware. |
+| **Wire adapters** | Walk each provider's request/response JSON | Veil-maintained internal adapters at first: Anthropic Messages live-accepted; OpenAI Responses offline-verified and local Codex CLI live-accepted as the v0.1.0 OpenAI Responses protocol evidence. A separate direct `api.openai.com` official-service run is not part of the release gate. OpenAI Chat and Gemini are later. Native shapes, no unified IR; buffered/SSE restore is provider-aware. |
 | **Stream restorer** | Restore tokens in raw streaming responses | Provider-agnostic byte holdback for chunks split across token boundaries |
 | **Transports** | Expose the engine | Standalone proxy, embeddable library, HTTP/gRPC service, local web console |
 | **Seams** | Extension points the commercial control plane attaches to | `PolicyProvider` (config/rules), `AuditSink` (minimized audit) — local defaults in the OSS engine |

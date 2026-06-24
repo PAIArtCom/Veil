@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // keyLen is the number of bytes in a local key.
@@ -28,7 +28,7 @@ type Keyer struct {
 }
 
 // NewKeyer loads the local key from path. If path is empty it defaults to
-// ~/.opencloak/key. The file is created with mode 0600 and 32 random bytes if
+// ~/.veil/key. The file is created with mode 0600 and 32 random bytes if
 // it does not exist.
 func NewKeyer(path string) (*Keyer, error) {
 	if path == "" {
@@ -36,7 +36,7 @@ func NewKeyer(path string) (*Keyer, error) {
 		if err != nil {
 			return nil, fmt.Errorf("token: resolve home dir: %w", err)
 		}
-		path = filepath.Join(home, ".opencloak", "key")
+		path = filepath.Join(home, ".veil", "key")
 	}
 
 	data, err := os.ReadFile(path)
@@ -63,7 +63,7 @@ func NewKeyer(path string) (*Keyer, error) {
 	return &Keyer{key: data[:keyLen]}, nil
 }
 
-// Derive returns the OpenCloak_<TYPE>_<id> token for (typ, value). The collision
+// Derive returns the PAIArtVeil_<TYPE>_<id> token for (typ, value). The collision
 // avoidance map records which normalized values already own each id within a
 // single namespace; callers that need namespace isolation should pass a
 // dedicated collision map. collisions maps id → normalized value; it is
@@ -107,7 +107,7 @@ func (k *Keyer) hmacHex(data string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// format assembles the OpenCloak_<TYPE>_<id> string.
+// format assembles the PAIArtVeil_<TYPE>_<id> string.
 func format(typ types.Type, id string) string {
 	return Prefix + string(typ) + "_" + id
 }
@@ -126,14 +126,14 @@ func normalize(typ types.Type, value string) string {
 	return v
 }
 
-// TokenPattern is the regexp source that matches any OpenCloak_… token, used by
+// TokenPattern is the regexp source that matches any PAIArtVeil_… token, used by
 // the restore scanner. The id part is at least idBaseLen hex chars.
-const TokenPattern = `OpenCloak_[A-Z0-9]+_[0-9a-f]{12,}`
+const TokenPattern = `PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`
 
 // KnownPrefix splits a token-shaped string at the longest valid token prefix
 // that resolves through lookup. It handles ambiguous runs such as:
 //
-//	OpenCloak_SECRET_<12hex><adjacent-hex-secret>
+//	PAIArtVeil_SECRET_<12hex><adjacent-hex-secret>
 //
 // where the regex scanner sees one long hex id but the map store contains only
 // the real token prefix. The returned suffix must be emitted or detected as

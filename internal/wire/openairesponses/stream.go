@@ -8,8 +8,8 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	"github.com/cloakia/opencloak/internal/token"
-	"github.com/cloakia/opencloak/internal/wire"
+	"github.com/PAIArtCom/Veil/internal/token"
+	"github.com/PAIArtCom/Veil/internal/wire"
 )
 
 // NewStreamRestorer returns a fresh stateful SSE restorer for the OpenAI

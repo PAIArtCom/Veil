@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build OpenCloak release binaries for the supported v0.1.0 platform matrix.
+# Build Veil release binaries for the supported v0.1.0 platform matrix.
 #
 # Usage:
 #   VERSION=v0.1.0 ./scripts/build-release.sh
@@ -38,7 +38,7 @@ mkdir -p "${out_dir}"
 
 ldflags="-s -w -X main.version=${version} -X main.commit=${commit} -X main.buildDate=${build_date}"
 
-echo "Building opencloak ${version} (${commit})"
+echo "Building veil ${version} (${commit})"
 echo "Output: ${out_dir}"
 echo
 
@@ -51,7 +51,7 @@ for target in ${targets}; do
     exit 2
   fi
 
-  name="opencloak-${version}-${os}-${arch}"
+  name="veil-${version}-${os}-${arch}"
   if [[ "${os}" == "windows" ]]; then
     name="${name}.exe"
   fi
@@ -62,7 +62,7 @@ for target in ${targets}; do
     -trimpath \
     -ldflags "${ldflags}" \
     -o "${path}" \
-    ./cmd/opencloak
+    ./cmd/veil
 
   if [[ "${os}" != "windows" ]]; then
     chmod +x "${path}"
@@ -71,4 +71,4 @@ done
 
 echo
 echo "Release artifacts:"
-find "${out_dir}" -maxdepth 1 -type f -name 'opencloak-*' | sort
+find "${out_dir}" -maxdepth 1 -type f -name 'veil-*' | sort

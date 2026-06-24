@@ -9,7 +9,7 @@ in Go. The layout decision and its rationale are [ADR-0007](decisions/0007-code-
 ## Module tree (implemented vs planned)
 
 ```
-opencloak/                       module github.com/cloakia/opencloak
+veil/                       module github.com/PAIArtCom/Veil
 │
 ├── doc.go types.go interfaces.go engine.go    [implemented] PUBLIC API (root package)
 │
@@ -19,7 +19,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   │   ├── l1/            [implemented] regex + entropy + validators + context keywords
 │   │   └── resolver/      [implemented] Finding merge/de-overlap and precedence
 │   ├── mask/              [implemented] offset-safe replacement + token mapping writes
-│   ├── token/            [implemented] OpenCloak_<TYPE>_<id>, HMAC, normalize, local key
+│   ├── token/            [implemented] PAIArtVeil_<TYPE>_<id>, HMAC, normalize, local key
 │   ├── mapstore/         [implemented] token<->value reverse map (State), scoped in-mem
 │   ├── wire/             [implemented] internal provider-native JSON adapters
 │   │   ├── anthropic/    [implemented] /v1/messages  (Phase 0)
@@ -32,7 +32,7 @@ opencloak/                       module github.com/cloakia/opencloak
 │   ├── config/           [implemented] strict local policy file loader
 │   └── service/          [phase1 scaffold] HTTP/gRPC service (Phase 1)
 │
-├── cmd/opencloak/        [partial] proxy implemented; serve | console | mask are placeholders
+├── cmd/veil/        [partial] proxy implemented; serve | console | mask are placeholders
 └── examples/embed/       [implemented]      maintained SDK reference integration
 ```
 
@@ -45,13 +45,13 @@ in the roadmap pass against a real Claude Code flow.
 
 | Package | Responsibility |
 |---|---|
-| `opencloak` (root) | Public API: `Engine`, `New`, Text/Wire/Stream methods, `Scope`/`State`, `Finding`, policy operators, and extension interfaces. The only package external code imports. |
+| `veil` (root) | Public API: `Engine`, `New`, Text/Wire/Stream methods, `Scope`/`State`, `Finding`, policy operators, and extension interfaces. The only package external code imports. |
 | `internal/types` | Shared data types (`Finding`,`Scope`,`Type`,`Policy`,operators); the root package re-exports them as transparent aliases — breaks the root↔internal import cycle while keeping the public API byte-identical. |
 | `internal/detect` | Run the configured detector layers; emit `Finding` values; enforce fail-closed. |
 | `internal/detect/l1` | Pattern detection: built-in regex rules, Shannon entropy + context keywords, checksums/validators (Luhn, IBAN, date parsing). |
 | `internal/detect/resolver` | Merge same-type overlaps, resolve cross-type conflicts, and emit non-overlapping findings. |
 | `internal/mask` | Consume resolved findings, perform offset-safe replacement, call token strategy, write token mappings into `State`, and scan final text/wire buffers for residual tokens. |
-| `internal/token` | The `OpenCloak_<TYPE>_<id>` format, HMAC derivation, `normalize`, and the local key. |
+| `internal/token` | The `PAIArtVeil_<TYPE>_<id>` format, HMAC derivation, `normalize`, and the local key. |
 | `internal/mapstore` | The token↔value reverse map behind `State`; in-memory, scoped by request/stream and optional session/tenant namespace. |
 | `internal/wire` | Internal provider adapters that extract/apply text spans for each provider's native request/response JSON. No unified schema. |
 | `internal/stream` | Restore tokens in streaming responses (chunk-level + SSE-event-level) and scan raw streams for residual tokens at flush/end-of-stream. |
@@ -59,20 +59,20 @@ in the roadmap pass against a real Claude Code flow.
 | `internal/console` | Local single-user web console (localhost-only). |
 | `internal/config` | Default local `PolicyProvider`. |
 | `internal/service` | Network service (HTTP/gRPC) for non-Go hosts (Phase 1). |
-| `cmd/opencloak` | The CLI binary; wires transports. |
+| `cmd/veil` | The CLI binary; wires transports. |
 
 ## Dependency direction (one way)
 
 ```
-        cmd/opencloak  (proxy | serve | console | mask)
+        cmd/veil  (proxy | serve | console | mask)
                   │ wires
    internal/proxy · internal/console · internal/service
                   │ depend on
-        opencloak  (root: public façade + interfaces)
+        veil  (root: public façade + interfaces)
                   │ delegates to
    detect(+l1+resolver) · mask · token · mapstore · wire(+providers) · stream · config
                   ▲ implemented externally
-   Detector (L2, Phase 1)        PolicyProvider / AuditSink (Cloakia, separate repo)
+   Detector (L2, Phase 1)        PolicyProvider / AuditSink (PAIArt, separate repo)
 ```
 
 Rules: the **core** (`detect`/`mask`/`token`/`mapstore`/`wire`/`stream`) depends only on
@@ -86,12 +86,12 @@ package graph.
 The commercial control plane attaches through exactly two interfaces, both defined in the
 open root package with local defaults:
 
-| Interface | OSS default | Cloakia (separate repo) |
+| Interface | OSS default | PAIArt (separate repo) |
 |---|---|---|
 | `PolicyProvider` | local file (`internal/config`), scope may be ignored | fetch + hot-reload centrally pushed policy by tenant/session/project |
 | `AuditSink` | no-op / local counters | collect minimized audit data |
 
-**Console symmetry.** The local web console (`internal/console`, open) and Cloakia's
+**Console symmetry.** The local web console (`internal/console`, open) and PAIArt's
 multi-tenant console (commercial) consume the *same* two seams — local implementations
 versus remote ones. That is why a console can exist on both sides of the open-core boundary
 without crossing it.
@@ -111,7 +111,7 @@ not be conflated.
 ## Provider adapter boundary
 
 `internal/wire` is not a public plugin API in v0.1.0. It is an internal boundary that
-keeps provider-native JSON walking out of the root package while OpenCloak proves the loop
+keeps provider-native JSON walking out of the root package while Veil proves the loop
 with maintained Anthropic Messages and OpenAI Responses adapters. Phase 1+ may add
 OpenAI Chat and Gemini. A public third-party adapter registration API should be added only
 when there is a real external adapter use case; until then, the stable public contract is
@@ -122,7 +122,7 @@ when there is a real external adapter use case; until then, the stable public co
 **Implement:** `token`, scoped `mapstore`/`State`, `detect/l1` (with built-in starter
 rules), finding conflict resolution, per-type `token`/`block`/`ignore` operators, `mask`,
 `wire/anthropic`, provider-aware buffered/SSE restore, `stream` (raw chunk-level), the root
-façade methods, `internal/proxy` (Claude Code endpoint), and `opencloak proxy`.
+façade methods, `internal/proxy` (Claude Code endpoint), and `veil proxy`.
 Validate the standalone proxy against the end-to-end task in the
 [roadmap](../product/roadmap.md). The maintained SDK embed reference integration is
 covered in `examples/embed`.

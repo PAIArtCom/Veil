@@ -2,7 +2,7 @@
 
 **Status:** Reference (evidence trail). Captured 2026-06.
 
-This document records the source-code research behind OpenCloak's attach mechanism
+This document records the source-code research behind Veil's attach mechanism
 ([ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md)), the
 engine/transport split ([ADR-0002](../architecture/decisions/0002-engine-transport-split.md)),
 auth pass-through ([ADR-0004](../architecture/decisions/0004-auth-pass-through.md)), and the
@@ -84,13 +84,13 @@ Three gateways, spanning richest → barest insertion surface.
   buffer for cross-event state. Also a translator layer operating on raw JSON via
   gjson/sjson.
 - **SSE** is parsed line-by-line and re-emitted (mutable per event).
-- **In-tree precedent:** `internal/runtime/executor/helps/cloak_obfuscate.go` already walks
+- **In-tree precedent:** an existing obfuscation helper already walks
   `system` blocks + `messages[].content` and rewrites text — but with a *static word list*,
   *zero-width-space* obfuscation, and **outbound only** (no restore). This is exactly
-  OpenCloak's outbound shape, half-built; OpenCloak's delta is two-layer detection +
+  Veil's outbound shape, half-built; Veil's delta is two-layer detection +
   reversible deterministic tokens + inbound restore.
 - **Auth lesson:** it *substitutes* its own upstream credentials (holds OAuth/keys). Its
-  inbound auth is *open by default* if no key is set — a footgun OpenCloak avoids by
+  inbound auth is *open by default* if no key is set — a footgun Veil avoids by
   passing credentials through and binding localhost.
 
 ### PAIArt-Orbit (middle)

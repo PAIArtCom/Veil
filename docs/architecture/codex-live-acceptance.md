@@ -1,7 +1,7 @@
 # Codex CLI Live Acceptance
 
 **Status:** Passed for the local Codex CLI Responses path with a Responses-compatible
-upstream, including the 2026-06-20 `OpenCloak_` prefix refresh. This is the v0.1.0
+upstream, including the 2026-06-20 `PAIArtVeil_` prefix refresh. This is the v0.1.0
 OpenAI Responses protocol evidence. A separate direct `https://api.openai.com`
 official-service run is not part of the release gate and is not claimed.
 
@@ -11,7 +11,7 @@ official-service run is not part of the release gate and is not claimed.
 
 **Codex CLI:** `codex-cli 0.140.0`
 
-**Initial OpenCloak route:** `http://127.0.0.1:8788/v1/responses`
+**Initial Veil route:** `http://127.0.0.1:8788/v1/responses`
 
 **Latest prefix-refresh route:** `http://127.0.0.1:18888/v1/responses`
 
@@ -35,7 +35,7 @@ request or response bodies.
 
 | Observation | Result |
 |---|---|
-| Codex reached OpenCloak over `POST /v1/responses` | Passed |
+| Codex reached Veil over `POST /v1/responses` | Passed |
 | Upstream requests observed | 2 |
 | Upstream request path | `/clipal/v1/responses` |
 | Upstream response content type | `text/event-stream` |
@@ -50,9 +50,9 @@ request or response bodies.
 
 ## Prefix Refresh Run
 
-ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `OpenCloak_`. The
+ADR-0014 changed the current v0.1.0 token namespace from `CLK_` to `PAIArtVeil_`. The
 Codex CLI live run was rerun on 2026-06-20 using Codex CLI `0.140.0`, a temporary
-`model_providers` entry pointing at OpenCloak, and the same bounded Responses-compatible
+`model_providers` entry pointing at Veil, and the same bounded Responses-compatible
 `clipal` upstream class. The global `~/.codex/config.toml` was not edited.
 
 The temporary workspace contained a throwaway database URL and throwaway email address.
@@ -61,25 +61,25 @@ the two fixture lines. The capture proxy recorded only booleans and byte counts.
 
 | Observation | Result |
 |---|---|
-| Codex reached OpenCloak over `POST /v1/responses` | Passed |
+| Codex reached Veil over `POST /v1/responses` | Passed |
 | Upstream requests observed | 2 |
 | Upstream request path | `/clipal/v1/responses` |
 | Upstream response status/content type | `200`, `text/event-stream` |
-| Upstream request 1 contained `OpenCloak_` tokens | Yes (`10` token-prefix occurrences) |
+| Upstream request 1 contained `PAIArtVeil_` tokens | Yes (`10` token-prefix occurrences) |
 | Upstream request 1 contained old `CLK_` tokens | No |
 | Upstream request 1 contained the throwaway plaintext values | No |
-| Upstream request 2 contained `OpenCloak_` tokens | Yes (`12` token-prefix occurrences) |
+| Upstream request 2 contained `PAIArtVeil_` tokens | Yes (`12` token-prefix occurrences) |
 | Upstream request 2 contained old `CLK_` tokens | No |
 | Upstream request 2 contained the throwaway plaintext values | No |
 | Codex local command execution completed | Yes |
 | Local final output contained the expected restored throwaway values | Yes |
-| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local final output contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Codex event stream completed | Yes |
 
 The first attempt found a real release-blocking CLI wiring bug: when no policy file was
-configured, `cmd/opencloak` printed `policy: built-in defaults` but passed a typed nil
+configured, `cmd/veil` printed `policy: built-in defaults` but passed a typed nil
 `*config.Provider` into the engine as a non-nil `PolicyProvider` interface. Runtime masking
-therefore failed closed with `opencloak config: nil policy provider` before any upstream
+therefore failed closed with `veil config: nil policy provider` before any upstream
 egress. This was repaired before the passing live run; the failed attempt forwarded zero
 upstream requests.
 
@@ -92,11 +92,11 @@ adapter now records JSON string-literal ranges and applies changed spans with a 
 range rewrite when possible, falling back to structural `sjson` updates when not. The
 local Codex CLI live run was rerun after that code change.
 
-**Code under test:** local `opencloak` binary built from the current working tree after the
+**Code under test:** local `veil` binary built from the current working tree after the
 provider batch-apply optimization.
 
 Codex CLI `0.140.0` was run with temporary `codex exec -c ...` provider configuration
-pointing at `http://127.0.0.1:18888/v1`. OpenCloak forwarded to a sanitized pass-through
+pointing at `http://127.0.0.1:18888/v1`. Veil forwarded to a sanitized pass-through
 capture proxy at `127.0.0.1:18889/clipal`, which forwarded to the local
 Responses-compatible `clipal` upstream. The global `~/.codex/config.toml` was not edited.
 The capture proxy recorded only booleans, byte counts, paths, status codes, and content
@@ -104,29 +104,29 @@ types; raw temporary outputs were inspected for boolean checks and deleted.
 
 | Observation | Result |
 |---|---|
-| Codex reached OpenCloak over `POST /v1/responses` | Passed |
+| Codex reached Veil over `POST /v1/responses` | Passed |
 | Upstream requests observed | 2 |
 | Upstream request path | `/clipal/v1/responses` |
 | Upstream response status/content type | `200`, `text/event-stream` |
-| Upstream request 1 contained `OpenCloak_` tokens | Yes (`12` token-prefix occurrences) |
+| Upstream request 1 contained `PAIArtVeil_` tokens | Yes (`12` token-prefix occurrences) |
 | Upstream request 1 contained old `CLK_` tokens | No |
 | Upstream request 1 contained the throwaway plaintext values | No |
-| Upstream request 2 contained `OpenCloak_` tokens | Yes (`16` token-prefix occurrences) |
+| Upstream request 2 contained `PAIArtVeil_` tokens | Yes (`16` token-prefix occurrences) |
 | Upstream request 2 contained old `CLK_` tokens | No |
 | Upstream request 2 contained the throwaway plaintext values | No |
 | Codex local command execution completed | Yes |
 | Local final output contained the expected restored throwaway values | Yes |
-| Local final output contained residual `OpenCloak_` or `CLK_` tokens | No |
+| Local final output contained residual `PAIArtVeil_` or `CLK_` tokens | No |
 | Codex event stream completed | Yes |
 
-OpenCloak logged one non-restore `context canceled` upstream stream-read event after Codex
+Veil logged one non-restore `context canceled` upstream stream-read event after Codex
 closed the SSE stream. The Codex command exited successfully, local shell execution
 completed, and the provider-bound plaintext checks passed.
 
 ## OpenAI Protocol Boundary
 
 Codex CLI speaks the OpenAI Responses API over the custom provider's HTTP+SSE transport.
-The controlled Codex live runs therefore validate OpenCloak's OpenAI Responses protocol
+The controlled Codex live runs therefore validate Veil's OpenAI Responses protocol
 path for v0.1.0. The report does not separately claim an official `https://api.openai.com`
 service end-to-end run; that separate run is outside the v0.1.0 release gate.
 

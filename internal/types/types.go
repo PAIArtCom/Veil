@@ -1,15 +1,15 @@
-// Package types holds the shared data types used by both the public opencloak
+// Package types holds the shared data types used by both the public veil
 // package and the internal implementation packages. Having them here breaks
 // the import cycle that would otherwise arise between the root package and its
 // internal sub-packages.
 //
-// The root opencloak package re-exports these as type aliases so callers see
-// them as opencloak.Finding, opencloak.Scope, etc. — the public API is
+// The root veil package re-exports these as type aliases so callers see
+// them as veil.Finding, veil.Scope, etc. — the public API is
 // unchanged.
 package types
 
 // Type is a category of sensitive data. It is embedded in every token as
-// OpenCloak_<TYPE>_<id> so that handling and restore can branch on the category.
+// PAIArtVeil_<TYPE>_<id> so that handling and restore can branch on the category.
 type Type string
 
 const (

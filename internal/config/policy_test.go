@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	opencloak "github.com/cloakia/opencloak"
-	"github.com/cloakia/opencloak/internal/types"
+	veil "github.com/PAIArtCom/Veil"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 func TestLoadProviderValidConfig(t *testing.T) {
@@ -125,7 +125,7 @@ func TestLoadProviderAllowsDefaultIgnoreWithExplicitMaskingCoverage(t *testing.T
 func TestLoadProviderPathPrecedence(t *testing.T) {
 	flagPath := writePolicy(t, `{"types":{"EMAIL":{"operator":"ignore"}}}`)
 	envPath := writePolicy(t, `{"types":{"EMAIL":{"operator":"block"}}}`)
-	t.Setenv("OPENCLOAK_POLICY", envPath)
+	t.Setenv("VEIL_POLICY", envPath)
 
 	provider, source, err := LoadProvider(LoadOptions{Path: flagPath})
 	if err != nil {
@@ -145,13 +145,13 @@ func TestLoadProviderPathPrecedence(t *testing.T) {
 
 func TestLoadProviderUsesEnvWhenFlagMissing(t *testing.T) {
 	envPath := writePolicy(t, `{"types":{"SECRET":{"operator":"block"}}}`)
-	t.Setenv("OPENCLOAK_POLICY", envPath)
+	t.Setenv("VEIL_POLICY", envPath)
 
 	provider, source, err := LoadProvider(LoadOptions{})
 	if err != nil {
 		t.Fatalf("LoadProvider returned error: %v", err)
 	}
-	if source.Path != envPath || source.From != "env:OPENCLOAK_POLICY" {
+	if source.Path != envPath || source.From != "env:VEIL_POLICY" {
 		t.Fatalf("source = %+v, want env path", source)
 	}
 	policy, err := provider.Policy(context.Background(), types.Scope{})
@@ -165,7 +165,7 @@ func TestLoadProviderUsesEnvWhenFlagMissing(t *testing.T) {
 
 func TestLoadProviderUsesDefaultPathWhenPresent(t *testing.T) {
 	home := t.TempDir()
-	defaultDir := filepath.Join(home, ".opencloak")
+	defaultDir := filepath.Join(home, ".veil")
 	if err := os.MkdirAll(defaultDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +283,7 @@ func TestLoadedPolicyDrivesEngineMasking(t *testing.T) {
 	}
 	engine := newTestEngine(t, provider)
 
-	masked, _, err := engine.Mask(context.Background(), opencloak.Scope{}, "contact user@example.com")
+	masked, _, err := engine.Mask(context.Background(), veil.Scope{}, "contact user@example.com")
 	if err != nil {
 		t.Fatalf("Mask returned error: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestLoadedPolicyDrivesEngineMasking(t *testing.T) {
 		t.Fatalf("EMAIL should be ignored by loaded policy; got %q", masked)
 	}
 
-	masked, _, err = engine.Mask(context.Background(), opencloak.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
+	masked, _, err = engine.Mask(context.Background(), veil.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
 	if err != nil {
 		t.Fatalf("Mask returned error for default-token SECRET: %v", err)
 	}
@@ -313,11 +313,11 @@ func TestLoadedBlockPolicyDrivesEngineFailure(t *testing.T) {
 	}
 	engine := newTestEngine(t, provider)
 
-	_, _, err = engine.Mask(context.Background(), opencloak.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
+	_, _, err = engine.Mask(context.Background(), veil.Scope{}, "key=AKIAIOSFODNN7EXAMPLE")
 	if err == nil {
 		t.Fatal("Mask returned nil error for block policy")
 	}
-	if !errors.Is(err, opencloak.ErrBlocked) {
+	if !errors.Is(err, veil.ErrBlocked) {
 		t.Fatalf("Mask error = %T %v, want ErrBlocked", err, err)
 	}
 }
@@ -364,7 +364,7 @@ func writePolicy(t *testing.T, body string) string {
 	return path
 }
 
-func newTestEngine(t *testing.T, provider *Provider) *opencloak.Engine {
+func newTestEngine(t *testing.T, provider *Provider) *veil.Engine {
 	t.Helper()
 	key := make([]byte, 32)
 	for i := range key {
@@ -374,7 +374,7 @@ func newTestEngine(t *testing.T, provider *Provider) *opencloak.Engine {
 	if err := os.WriteFile(keyPath, key, 0o600); err != nil {
 		t.Fatalf("write test key: %v", err)
 	}
-	engine, err := opencloak.New(opencloak.Config{
+	engine, err := veil.New(veil.Config{
 		KeyPath: keyPath,
 		Policy:  provider,
 	})

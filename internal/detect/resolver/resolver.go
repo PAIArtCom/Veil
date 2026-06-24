@@ -3,7 +3,7 @@ package resolver
 import (
 	"sort"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 // Resolve applies ADR-0008 conflict resolution to findings:

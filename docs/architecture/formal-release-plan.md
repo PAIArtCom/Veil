@@ -7,35 +7,35 @@
 
 ## Release target
 
-The first formal OpenCloak release is **OpenCloak OSS v0.1.0**, a public developer
+The first formal Veil release is **Veil OSS v0.1.0**, a public developer
 release for one-person local use.
 
-The release is successful when a developer can install OpenCloak, run it safely with
+The release is successful when a developer can install Veil, run it safely with
 Claude Code and Codex CLI, embed the SDK in one real gateway path or a maintained
 reference integration, configure local policy without a control plane, and reproduce the
 security evidence that sensitive values do not cross the LLM provider boundary.
 
-This is not a v1.0 API-freeze release and not the Cloakia commercial control plane.
+This is not a v1.0 API-freeze release and not the PAIArt commercial control plane.
 
 ## Release principles
 
 - **Prove each egress path live.** A provider adapter is not release-ready until a live
-  controlled task proves that the provider sees only `OpenCloak_` tokens while local tools and
+  controlled task proves that the provider sees only `PAIArtVeil_` tokens while local tools and
   files receive restored values.
 - **Keep the engine/transport split.** Provider walking, masking, state, and streaming
-  restore stay in the SDK path. `cmd/opencloak` and transports only wire them together.
+  restore stay in the SDK path. `cmd/veil` and transports only wire them together.
 - **Fail closed by default.** Unsupported provider operations, unsupported policy features,
   malformed provider JSON, key errors, and restore uncertainty must not forward plaintext.
 - **Ship individual value, defer organizational control.** Local config, local proxy, local
-  SDK, and local console/status belong in OpenCloak. Fleet policy, SSO, RBAC, and
-  cross-developer audit remain Cloakia.
+  SDK, and local console/status belong in Veil. Fleet policy, SSO, RBAC, and
+  cross-developer audit remain PAIArt.
 - **Use module contracts proportionally.** Add structured module READMEs before expanding a
   module's behavior or trust boundary; do not write speculative contracts for modules that
   are still deferred.
 
 ## Non-goals for v0.1.0
 
-- Cloakia SaaS, sold-license packaging, SSO/RBAC, central policy push, or fleet audit.
+- PAIArt SaaS, sold-license packaging, SSO/RBAC, central policy push, or fleet audit.
 - Full provider coverage for every AI coding tool.
 - Remote MCP / remote-tool egress classification.
 - A production multi-tenant network service.
@@ -52,7 +52,7 @@ This is not a v1.0 API-freeze release and not the Cloakia commercial control pla
 | Codex CLI | OpenAI Responses provider path works through the standalone proxy with live controlled traffic. |
 | SDK embed | One real gateway path or maintained reference integration proves the SDK contract outside the standalone proxy. |
 | Local policy | A documented local policy source supports safe per-type behavior for the operators that v0.1.0 claims. Unsupported policy features fail closed and are documented. |
-| CLI and packaging | `opencloak proxy`, help/version output, install path, and release artifact instructions are reproducible from a clean checkout. |
+| CLI and packaging | `veil proxy`, help/version output, install path, and release artifact instructions are reproducible from a clean checkout. |
 | Documentation | README, docs map, guides, API reference, and known limits distinguish shipped behavior from planned behavior. |
 | Security evidence | No credential capture, no plaintext protected text/tool-I/O egress, localhost-only proxy, scoped state, residual-token audit, and minimized logs are verified. |
 
@@ -94,12 +94,12 @@ feature work resumes.
 **Goal:** turn the accepted Phase 0 code into a releasable baseline before adding new
 provider behavior.
 
-**Packages/docs:** root package, `cmd/opencloak`, `internal/proxy`, `internal/stream`,
+**Packages/docs:** root package, `cmd/veil`, `internal/proxy`, `internal/stream`,
 `internal/mask`, `docs/guides/claude-code.md`, release docs.
 
 **Build:**
 
-- Add or update module READMEs for `cmd/opencloak` and `internal/proxy` because they are
+- Add or update module READMEs for `cmd/veil` and `internal/proxy` because they are
   user-facing trust-boundary modules.
 - Add `Adversarial Surfaces` sections to existing structured READMEs where they describe
   active security boundaries.
@@ -110,7 +110,7 @@ provider behavior.
 
 **DoD:**
 
-- Clean clone can build `opencloak` and run `opencloak proxy --help` and version output.
+- Clean clone can build `veil` and run `veil proxy --help` and version output.
 - Logs and errors contain no credentials, raw secrets, or captured provider bodies.
 - Claude Code Phase 0 acceptance can be rerun without changing the documented procedure.
 
@@ -166,7 +166,7 @@ gateway-style integration.
 **Goal:** support the second high-value AI coding path through the standalone proxy.
 
 **Packages/docs:** `internal/wire/openairesponses/`, `internal/wire`, `internal/proxy`,
-`cmd/opencloak`, `docs/guides/codex.md`, SDK API reference.
+`cmd/veil`, `docs/guides/codex.md`, SDK API reference.
 
 **Build:**
 
@@ -183,12 +183,12 @@ gateway-style integration.
 **DoD:**
 
 - A controlled Codex CLI task with a throwaway DSN proves:
-  1. provider-bound payloads contain `OpenCloak_` tokens and no real DSN;
+  1. provider-bound payloads contain `PAIArtVeil_` tokens and no real DSN;
   2. overlapping findings produce one correct token;
   3. tool-call arguments and tool results restore locally;
   4. streamed tokens survive arbitrary byte and event splits;
   5. errors are visible and fail closed;
-  6. files on disk contain no `OpenCloak_`;
+  6. files on disk contain no `PAIArtVeil_`;
   7. a repeated turn keeps deterministic masked prefixes where provider caching exposes it.
 - Unsupported Responses shapes fail closed rather than being forwarded as plaintext.
 - Claude Code acceptance still passes after proxy routing changes.
@@ -205,7 +205,7 @@ gateway-style integration.
 **Goal:** make local single-user policy real enough for a public release without adding
 central management.
 
-**Packages/docs:** `internal/config`, root policy types, `cmd/opencloak`, API reference,
+**Packages/docs:** `internal/config`, root policy types, `cmd/veil`, API reference,
 deployment guide.
 
 **Build:**
@@ -338,7 +338,7 @@ Required before v0.1.0 implementation continues:
 
 | Module | README timing | Why |
 |---|---|---|
-| `cmd/opencloak` | R1 | User-visible CLI and release surface. |
+| `cmd/veil` | R1 | User-visible CLI and release surface. |
 | `internal/proxy` | R1 | Local network boundary, credential pass-through, fail-closed transport. |
 | `internal/wire` | R3 | Provider adapter boundary expands beyond Anthropic. |
 | `internal/wire/openairesponses` | R3 | New provider-native JSON walker and tool I/O coverage. |
@@ -368,7 +368,7 @@ is pulled into the v0.1.0 release scope.
 | 2 | Codex CLI path is safe | Live controlled Codex run with sanitized capture and fixtures. |
 | 3 | SDK contract is embeddable | Real gateway path or maintained reference integration passes outbound, buffered restore, and streaming restore checks. |
 | 4 | Provider never receives real sensitive values | Upstream captures for live runs show tokens only; no real DSN/secret/PII. |
-| 5 | Local tools and files receive restored real values | Controlled tool task writes real values locally and no `OpenCloak_` tokens. |
+| 5 | Local tools and files receive restored real values | Controlled tool task writes real values locally and no `PAIArtVeil_` tokens. |
 | 6 | Fail-closed behavior is preserved | Tests cover bad key, bad config, malformed JSON, unsupported provider/op, unsupported policy feature, and detector errors. |
 | 7 | Scope isolation holds | Same token/value cannot restore across tenant/session/project scopes. |
 | 8 | Logs and audit are minimized | Logs contain no credential headers, raw secrets, or provider bodies; residual-token audit records token metadata only. |

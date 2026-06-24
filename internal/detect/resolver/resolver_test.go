@@ -3,7 +3,7 @@ package resolver
 import (
 	"testing"
 
-	"github.com/cloakia/opencloak/internal/types"
+	"github.com/PAIArtCom/Veil/internal/types"
 )
 
 func f(start, end int, typ types.Type, score float64, source string) types.Finding {

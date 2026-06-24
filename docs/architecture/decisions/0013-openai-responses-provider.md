@@ -4,7 +4,7 @@
 
 ## Context
 
-OpenCloak v0.1.0 must support a second high-value AI coding egress path after the
+Veil v0.1.0 must support a second high-value AI coding egress path after the
 accepted Claude Code / Anthropic Messages baseline. Codex CLI speaks the OpenAI
 Responses API through configurable `model_providers` entries. A local controlled
 Codex CLI 0.140.0 capture against a loopback fake upstream confirmed `POST
@@ -19,7 +19,7 @@ output-item/completed events.
 
 ## Decision
 
-OpenCloak adds an internal provider named `openai-responses` for the Responses
+Veil adds an internal provider named `openai-responses` for the Responses
 operation only.
 
 The provider masks:

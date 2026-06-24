@@ -4,7 +4,7 @@
 OpenAI Responses/Codex provider path is implemented in the standalone proxy and covered by
 sanitized fixtures, proxy tests, a loopback Codex CLI 0.140.0 capture, and controlled
 Codex CLI 0.140.0 live runs through a Responses-compatible upstream, including the
-2026-06-20 `OpenCloak_` prefix refresh
+2026-06-20 `PAIArtVeil_` prefix refresh
 ([acceptance report](../architecture/codex-live-acceptance.md)). This is the v0.1.0
 OpenAI Responses protocol evidence. A separate direct `https://api.openai.com`
 official-service run is not part of the release gate and is not claimed.
@@ -17,24 +17,24 @@ Grounded in verified Codex behavior
 ## How it works
 
 Codex speaks the OpenAI **Responses API** and is pointed at an endpoint via a provider
-entry in `~/.codex/config.toml`. OpenCloak runs a local proxy that masks the outbound
+entry in `~/.codex/config.toml`. Veil runs a local proxy that masks the outbound
 `/v1/responses` body, forwards upstream with your credential unchanged, and restores
 tokens in buffered and SSE responses, including streamed tool-call arguments.
 
 ## Setup
 
 ```sh
-go build -o opencloak ./cmd/opencloak
-./opencloak proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+go build -o veil ./cmd/veil
+./veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 # Optional: add --policy /path/to/policy.json for local per-type token/ignore/block policy.
 ```
 
 ```toml
 # ~/.codex/config.toml
-model_provider = "opencloak"
+model_provider = "veil"
 
-[model_providers.opencloak]
-name     = "OpenCloak"
+[model_providers.veil]
+name     = "Veil"
 base_url = "http://127.0.0.1:8788/v1"
 wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
@@ -66,7 +66,7 @@ provider's WebSocket capability, which can bypass an HTTP proxy. (Verified;
   tool output.
 - Unsupported Responses input item shapes fail closed before upstream egress.
 - The local Codex CLI Responses path is live-accepted, including the 2026-06-20
-  `OpenCloak_` prefix refresh. This is the v0.1.0 OpenAI Responses protocol evidence; a
+  `PAIArtVeil_` prefix refresh. This is the v0.1.0 OpenAI Responses protocol evidence; a
   separate direct `https://api.openai.com` official-service run is not claimed.
 - **AWS Bedrock** (SigV4 signs body+host) cannot be served by a rewrite proxy — out of
   scope for the MVP.
