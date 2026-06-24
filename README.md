@@ -2,24 +2,168 @@
 
 English | [简体中文](README.zh-CN.md)
 
-> The de-identification layer for the LLM era — use AI coding agents without leaking secrets or PII to model providers.
+Use AI coding agents without sending real secrets or structured PII to model providers.
 
-Veil sits between your dev tool (Claude Code, Codex, Copilot, Cursor, …) and the
-LLM. Before a protected text or tool-I/O payload leaves your machine it
-**deterministically replaces sensitive values with reversible tokens**; when the response
-comes back it **restores them**. The model never sees the real values in the supported
-text/tool surfaces — but your terminal, your files, and the agent's tool calls all run
-with the real values.
+Veil is a local de-identification engine and loopback proxy for tools such as Claude
+Code and Codex. It replaces supported sensitive text and tool-I/O fields with
+deterministic reversible tokens before provider egress, then restores the real values
+locally before your terminal, files, or tool calls see the response.
 
-> **Status: v0.1.0 release.** The text engine, Anthropic Messages wire masking/restore,
-> streaming restore, loopback Claude Code proxy, maintained SDK embed reference
-> integration, OpenAI Responses wire adapter, and local policy file are implemented and
-> test-verified. Claude Code is live-accepted; the local Codex CLI Responses path is
-> live-accepted with sanitized evidence and is the v0.1.0 OpenAI Responses protocol
-> evidence. A separate direct `api.openai.com` official-service run is not part of the
-> v0.1.0 release gate and is not claimed.
+| Status | License | Best for |
+|---|---|---|
+| v0.1.0 release | [Apache-2.0](LICENSE) | Individual developers and gateway integrators |
 
----
+## Start Here
+
+| I want to... | Go to |
+|---|---|
+| Run Claude Code through Veil | [Claude Code setup](docs/guides/claude-code.md) |
+| Run Codex through Veil | [Codex CLI setup](docs/guides/codex.md) |
+| Install, upgrade, or operate the proxy | [Deployment guide](docs/guides/deployment.md) |
+| Embed Veil in a Go gateway | [SDK integration guide](docs/sdk/integration-guide.md) |
+| Understand the security boundary | [Threat model](docs/architecture/threat-model.md) |
+| Report a bug or vulnerability | [Support](SUPPORT.md) / [Security policy](SECURITY.md) |
+
+## Quickstart
+
+Build the proxy from a clean checkout:
+
+```sh
+git clone https://github.com/PAIArtCom/Veil.git
+cd Veil
+go build -o ./bin/veil ./cmd/veil
+./bin/veil version
+./bin/veil proxy --help
+```
+
+Run Claude Code through Veil:
+
+```sh
+./bin/veil proxy --addr 127.0.0.1:8788
+```
+
+In another shell:
+
+```sh
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
+claude
+```
+
+Run Codex through Veil:
+
+```sh
+./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+```
+
+Then configure `~/.codex/config.toml`:
+
+```toml
+model_provider = "veil"
+
+[model_providers.veil]
+name     = "Veil"
+base_url = "http://127.0.0.1:8788/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
+
+```sh
+export OPENAI_API_KEY=...
+codex
+```
+
+## What Veil Protects
+
+Veil v0.1.0 protects supported provider-native text fields, prompt text, tool-call
+arguments, tool results, and streaming text/tool argument restoration for:
+
+- Claude Code through Anthropic Messages (`/v1/messages`)
+- Codex CLI through OpenAI Responses (`/v1/responses`)
+- Go SDK integrations using the public `github.com/PAIArtCom/Veil` package
+
+It does not protect every possible provider surface. v0.1.0 does **not** handle OpenAI
+Chat Completions, Gemini, remote MCP egress classification, OCR, document parsing,
+attachment rewriting, regenerated media/document payloads, provider thinking/control
+traces, or protection against a compromised local machine.
+
+## How It Works
+
+```text
+your coding tool
+  -> Veil masks supported sensitive fields
+  -> provider sees PAIArtVeil_<TYPE>_<id> tokens
+  -> provider response returns tokens
+  -> Veil restores real values locally
+  -> your terminal, files, and tool calls use real values
+```
+
+The core properties are:
+
+- **Local only**: the standalone proxy binds to loopback and stores no provider
+  credentials.
+- **Fail closed**: parsing, detection, masking, policy, or unsupported provider errors
+  block egress instead of forwarding plaintext.
+- **Deterministic tokens**: the same value maps to the same `PAIArtVeil_<TYPE>_<id>`
+  token inside its scope, preserving multi-turn context and prompt-cache behavior.
+- **Reversible locally**: the model sees tokens; local tools and files receive restored
+  values.
+
+## Local Policy
+
+A local policy file can choose per-type behavior:
+
+```json
+{
+  "default_operator": "token",
+  "types": {
+    "EMAIL": {"operator": "ignore"},
+    "SECRET": {"operator": "block"}
+  }
+}
+```
+
+Load it with `--policy /path/to/policy.json`, `VEIL_POLICY`, or
+`~/.veil/policy.json`. v0.1.0 supports `token`, `ignore`, and `block`; `redact`,
+`format_preserving`, unknown keys, and non-empty `rule_sets` fail closed.
+
+## Verify Your Setup
+
+Use a throwaway value, never a real secret. For example, ask the agent to use
+`postgresql://app:s3cr3t@localhost:5432/mydb` in a local task, then confirm:
+
+- provider-bound text contains `PAIArtVeil_...` tokens, not the throwaway value;
+- local tool calls receive the restored value;
+- files written by the agent do not contain unresolved `PAIArtVeil_` tokens;
+- the proxy stays on `127.0.0.1`.
+
+See the tool-specific guides for deeper checks:
+[Claude Code](docs/guides/claude-code.md) and [Codex CLI](docs/guides/codex.md).
+
+## Documentation
+
+| Area | Docs |
+|---|---|
+| User guides | [Deployment](docs/guides/deployment.md), [Claude Code](docs/guides/claude-code.md), [Codex CLI](docs/guides/codex.md) |
+| Concepts | [Redaction model](docs/concepts/redaction-model.md), [Token spec](docs/concepts/token-spec.md), [Detection layers](docs/concepts/detection-layers.md) |
+| SDK | [Contract](docs/sdk/contract.md), [API reference](docs/sdk/api-reference.md), [Integration guide](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
+| Architecture | [Overview](docs/architecture/overview.md), [Threat model](docs/architecture/threat-model.md), [ADRs](docs/architecture/decisions/README.md) |
+| Project | [Roadmap](docs/product/roadmap.md), [Open-core boundary](docs/product/open-core-boundary.md), [Support](SUPPORT.md), [Security](SECURITY.md), [Changelog](CHANGELOG.md) |
+
+## Veil vs PAIArt
+
+| | Veil (this repo) | PAIArt |
+|---|---|---|
+| What | Local engine, SDK, and reference proxy | Organization control plane |
+| For | Individual developers and gateway integrators | Security and compliance teams |
+| License | Apache-2.0 | Commercial |
+
+Open-core principle: individual value is open; organizational control is paid. See the
+[open-core boundary](docs/product/open-core-boundary.md).
+
+## Project Contract
+
+The sections below are the repository-level Specability contract. They keep the public
+claim, implementation boundary, and documentation aligned.
 
 ## Purpose
 
@@ -53,126 +197,3 @@ egress and restores reversible tokens on the trusted local side.
 
 - [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)
 - [ ] What exact behavior should `redact` and `format_preserving` operators use in Phase 1? (open since: 2026-06)
-
-## Quickstart
-
-Build and inspect the local proxy:
-
-```sh
-go build -o ./bin/veil ./cmd/veil
-./bin/veil version
-./bin/veil proxy --help
-```
-
-Run Claude Code through Veil:
-
-```sh
-./bin/veil proxy --addr 127.0.0.1:8788
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-claude
-```
-
-Optional local policy file:
-
-```json
-{
-  "default_operator": "token",
-  "types": {
-    "EMAIL": {"operator": "ignore"},
-    "SECRET": {"operator": "block"}
-  }
-}
-```
-
-Use `--policy /path/to/policy.json`, `VEIL_POLICY`, or
-`~/.veil/policy.json`. v0.1.0 policy files support `token`, `ignore`, and `block`;
-`redact`, `format_preserving`, and non-empty `rule_sets` fail closed.
-
-## The problem
-
-AI coding agents stream your code, configuration, and shell context to third-party
-LLMs. API keys, tokens, connection strings, and personal data routinely ride along.
-Faced with this, organizations either ban the tools or quietly accept the leak.
-
-Veil removes the trade-off: keep the productivity, stop the leak — locally,
-with no perceptible latency, and without breaking the agent.
-
-## How it works (one glance)
-
-```
-  your dev tool  (Claude Code / Codex / …)
-       │  protected text/tool fields with real secrets & PII
-       ▼
-  ┌────────────────────────────────────────────────────────┐
-  │  Veil   (local proxy OR embedded library)         │
-  │  ① detect  → ② mask → reversible token                 │
-  │     e.g.  sk-live-abc…  →  PAIArtVeil_SECRET_7f3a…      │
-  └────────────────────────────────────────────────────────┘
-       │  protected fields contain tokens — opaque payloads keep native shape
-       ▼
-  LLM provider  (Anthropic / OpenAI / …)
-       │  response & tool-calls reference PAIArtVeil_SECRET_7f3a…
-       ▼
-  ┌────────────────────────────────────────────────────────┐
-  │  Veil   ③ restore tokens → real values            │
-  └────────────────────────────────────────────────────────┘
-       │  real values — tools, files, terminal all work
-       ▼
-  your dev tool
-```
-
-Three properties make this safe and seamless:
-
-- **Two transformation points only** — mask protected text/tool fields on the way *to* the
-  LLM, restore on the way *back*. Everything local (tool execution, file writes, terminal
-  display) is untouched.
-  See [redaction model](docs/concepts/redaction-model.md).
-- **Deterministic, reversible, type-aware tokens** (`PAIArtVeil_<TYPE>_<id>`) — the same value
-  always maps to the same token, so prompt caches stay warm and multi-turn context stays
-  coherent. See [token spec](docs/concepts/token-spec.md).
-- **Layered detection** — L1 pattern matching (secrets, structured PII) ships first; an
-  optional L2 local NER model (names, addresses) comes later. See
-  [detection layers](docs/concepts/detection-layers.md).
-
-## Two ways to run it
-
-Veil is **one engine with different shells** (see
-[architecture overview](docs/architecture/overview.md)):
-
-1. **Standalone local proxy** — point your CLI's base URL at it
-   (`ANTHROPIC_BASE_URL` for Claude Code; a custom `model_providers` entry for Codex
-   Responses).
-   Credentials pass straight through; only the request body is rewritten.
-2. **Embeddable Go library** — drop the engine into your own gateway and call it at your
-   request/response seams. The SDK is **general-purpose** and validated by the maintained
-   in-repo reference integration; it is not built for any single gateway. See the
-   [SDK contract](docs/sdk/contract.md) and [`examples/embed`](examples/embed/).
-
-## Veil vs PAIArt
-
-| | **Veil** (this repo · Apache-2.0) | **PAIArt** (commercial) |
-|---|---|---|
-| What | The local engine + SDK + reference proxy | The organization control plane |
-| For | Individual developers — free, embeddable everywhere | Security & compliance teams |
-
-Open-core principle: **individual value is open; organizational control is paid.**
-Full breakdown in [open-core boundary](docs/product/open-core-boundary.md).
-
-## Documentation
-
-Start at the **[documentation map](docs/README.md)**. Highlights:
-
-- [Product strategy](docs/product/strategy.md) · [Roadmap](docs/product/roadmap.md)
-- [Architecture overview](docs/architecture/overview.md) ·
-  [Threat model](docs/architecture/threat-model.md) ·
-  [Decision records](docs/architecture/decisions/README.md)
-- [Deployment guide](docs/guides/deployment.md) ·
-  [Release checklist](docs/guides/release-checklist.md) ·
-  [Security policy](SECURITY.md) · [Changelog](CHANGELOG.md)
-- [SDK contract](docs/sdk/contract.md) ·
-  [Gateway integration survey](docs/research/gateway-integration-survey.md)
-- [Claude Code guide](docs/guides/claude-code.md) · [Codex CLI guide](docs/guides/codex.md)
-
-## License
-
-[Apache-2.0](LICENSE).

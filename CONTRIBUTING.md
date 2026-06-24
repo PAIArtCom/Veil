@@ -1,8 +1,7 @@
 # Contributing to Veil
 
 Thanks for your interest. Veil is the open-source privacy engine for AI coding
-tools. The Phase 0 Claude Code proxy path is accepted, and the repository is now in
-v0.1.0 release-candidate hardening. Please read this before opening an issue or PR.
+tools. Please read this before opening an issue or PR.
 
 ## Project status
 
@@ -38,9 +37,9 @@ out of the shipped v0.1.0 claim unless the formal release plan is updated.
 
 ## Reporting security issues
 
-Do **not** open a public issue for vulnerabilities. A private disclosure channel will be
-listed in [SECURITY.md](SECURITY.md). Until a dedicated security mailbox is published,
-report suspected vulnerabilities privately to the repository maintainers.
+Do **not** open a public issue for vulnerabilities or suspected plaintext egress. Follow
+[SECURITY.md](SECURITY.md). If the private GitHub vulnerability-reporting path is not
+available, open a public `Security contact request` issue with no technical details.
 
 ## License
 

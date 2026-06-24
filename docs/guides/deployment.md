@@ -1,8 +1,8 @@
 # Guide: Deployment & Operations
 
-**Status: Baseline for v0.1.0 release hardening.** The standalone proxy ships from
-source for Claude Code and local Codex CLI Responses paths; package-manager distribution
-and service manager units remain planned.
+**Status: v0.1.0 operations baseline.** The standalone proxy ships from source and
+release binaries for Claude Code and local Codex CLI Responses paths; package-manager
+distribution and service manager units remain planned.
 
 ## Run model
 
@@ -11,17 +11,58 @@ scoped token↔value maps for tools pointed at it; each proxied request/stream g
 explicit `State`, with optional longer-lived session/project namespaces for multi-turn
 self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scope.md)).
 
-## Install from a clean checkout
+## Install
+
+v0.1.0 supports source builds and release binaries. Package-manager distribution and
+service-manager units are planned but not shipped yet.
+
+| Method | Use when | Steps |
+|---|---|---|
+| Source build | You have Go installed or want to verify from source | Clone, build `./cmd/veil`, run `veil version`. |
+| Release binary | You want the smallest end-user install path | Download the asset for your OS/architecture, verify its checksum, put it on `PATH`. |
+
+### Source build
 
 ```sh
 git clone https://github.com/PAIArtCom/Veil.git
-cd veil
+cd Veil
 go build -o ./bin/veil ./cmd/veil
 ./bin/veil version
 ./bin/veil proxy --help
 ```
 
-For release artifacts, use the multi-platform release builder:
+### Release binary
+
+Download the asset that matches your platform from the GitHub Release:
+
+| Platform | Asset |
+|---|---|
+| macOS Intel | `veil-<version>-darwin-amd64` |
+| macOS Apple Silicon | `veil-<version>-darwin-arm64` |
+| Linux x86_64 | `veil-<version>-linux-amd64` |
+| Linux ARM64 | `veil-<version>-linux-arm64` |
+| Windows x86_64 | `veil-<version>-windows-amd64.exe` |
+| Windows ARM64 | `veil-<version>-windows-arm64.exe` |
+
+Verify the checksum before running it:
+
+```sh
+shasum -a 256 veil-<version>-darwin-arm64
+grep veil-<version>-darwin-arm64 checksums.txt
+```
+
+Then install it somewhere on your `PATH`, for example:
+
+```sh
+mkdir -p ~/.local/bin
+mv veil-<version>-darwin-arm64 ~/.local/bin/veil
+chmod 0755 ~/.local/bin/veil
+veil version
+```
+
+### Build release artifacts
+
+Maintainers can build multi-platform release artifacts locally:
 
 ```sh
 VERSION=v0.1.0 ./scripts/build-release.sh
@@ -39,6 +80,24 @@ Expected release asset names:
 | Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64` |
 | Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe` |
 | Checksums | `dist/release/checksums.txt` |
+
+## Upgrade
+
+Stop any running proxy, replace the `veil` binary, then start the proxy again. The local
+HMAC key at `~/.veil/key` is not regenerated during a normal upgrade.
+
+```sh
+veil version
+pkill -f "veil proxy" || true
+# replace the binary using your install method
+veil version
+```
+
+## Uninstall
+
+Remove the binary from your `PATH`. If you also want to remove local Veil state, delete
+`~/.veil/key` and any local policy file you created. Deleting the key prevents old tokens
+from being restored.
 
 ## Run the Claude Code proxy
 
@@ -113,8 +172,9 @@ specability reconcile docs/architecture/decisions --json
 ```
 
 `gofmt -l .` must print no file names. Live Claude Code acceptance remains the manual
-regression gate for the shipped proxy path; use the runbook in
-[Guide: Claude Code](claude-code.md) and record only sanitized summaries.
+regression gate for the shipped proxy path; use the criteria in
+[the Phase 0 acceptance report](../architecture/phase-0-acceptance.md) and record only
+sanitized summaries.
 
 ## Configuration
 
@@ -124,6 +184,16 @@ regression gate for the shipped proxy path; use the runbook in
 - Per-type `token`, `ignore`, and `block` operators (implemented); `redact`, `format_preserving`, and rule-set selection are planned and fail closed.
 - Optional local map cache (off by default; in-memory is the default).
 - Key path (default `~/.veil/key`, generated on first run).
+
+## Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| Proxy refuses to bind | Use a loopback address such as `127.0.0.1:8788`; non-loopback addresses are rejected. |
+| Tool bypasses Veil | Confirm the tool-specific base URL points at Veil: `ANTHROPIC_BASE_URL` for Claude Code or custom `model_providers` for Codex. |
+| Policy file blocks startup | Remove unknown keys and unsupported operators; v0.1.0 supports only `token`, `ignore`, and `block`. |
+| Requests are blocked | The request may use an unsupported endpoint or unsupported provider JSON shape. This is fail-closed behavior. |
+| Tokens appear in local files | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |
 
 ## Observability (planned)
 

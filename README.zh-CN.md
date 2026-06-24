@@ -2,118 +2,154 @@
 
 [English](README.md) | 简体中文
 
-> LLM 时代的去标识化层 —— 在不向模型厂商泄露密钥与隐私的前提下，放心使用 AI 编码工具。
+在使用 AI 编码 agent 时，避免把真实密钥和结构化 PII 发送给模型厂商。
 
-Veil 位于你的开发工具（Claude Code、Codex、Copilot、Cursor……）与 LLM 之间。受保护
-的文本和工具 I/O payload 离开本机前，它把敏感值**确定性地替换为可逆 token**；响应回来
-时再**还原**。在已声明支持的文本/工具面上，模型看不到真实值 —— 但你的终端、文件、以及
-agent 的工具调用，全部使用真实值运行。
+Veil 是一个本地去标识化引擎和 loopback 代理，面向 Claude Code、Codex 等
+AI 编码工具。它会在受支持的文本和工具 I/O 字段离开本机前，把敏感值替换成
+确定性、可逆的 token；响应回到本地后，再把 token 还原成真实值。
 
-> **状态：v0.1.0 release。** 文本引擎、Anthropic Messages wire 掩码/还原、流式还原、
-> 本地 Claude Code 代理、SDK 内嵌参考集成、OpenAI Responses wire adapter、以及本地
-> policy 文件均已实现并通过测试。Claude Code 路径已通过真实流量验收；本机 Codex CLI
-> Responses 路径已通过带脱敏证据的 live run，这就是 v0.1.0 的 OpenAI Responses 协议
-> 验收。direct `api.openai.com` 官方服务端到端验收不是本次 release gate，也不单独声明。
+| 状态 | 许可证 | 适合谁 |
+|---|---|---|
+| v0.1.0 release | [Apache-2.0](LICENSE) | 个人开发者和网关集成者 |
 
----
+## 从这里开始
 
-## 痛点
-
-AI 编码 agent 会把你的代码、配置和 shell 上下文流式发送给第三方 LLM。API key、token、
-连接串、个人数据默认随之外泄。面对它，组织要么封禁工具（损失生产力），要么默许泄露。
-
-Veil 取消这个取舍：保住生产力、堵住泄露 —— 本地完成、无可感知延迟、且不破坏 agent。
+| 我想要... | 阅读 |
+|---|---|
+| 让 Claude Code 通过 Veil 运行 | [Claude Code 设置](docs/guides/claude-code.md) |
+| 让 Codex 通过 Veil 运行 | [Codex CLI 设置](docs/guides/codex.md) |
+| 安装、升级或运维代理 | [部署指南](docs/guides/deployment.md) |
+| 把 Veil 嵌入 Go 网关 | [SDK 集成指南](docs/sdk/integration-guide.md) |
+| 理解安全边界 | [威胁模型](docs/architecture/threat-model.md) |
+| 报告 bug 或漏洞 | [支持说明](SUPPORT.md) / [安全策略](SECURITY.md) |
 
 ## 快速开始
 
+从干净 checkout 构建代理：
+
 ```sh
+git clone https://github.com/PAIArtCom/Veil.git
+cd Veil
 go build -o ./bin/veil ./cmd/veil
 ./bin/veil version
 ./bin/veil proxy --help
+```
+
+让 Claude Code 通过 Veil：
+
+```sh
 ./bin/veil proxy --addr 127.0.0.1:8788
 ```
 
-Claude Code:
+另开一个 shell：
 
 ```sh
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
 
-可选本地 policy 文件支持 `token`、`ignore`、`block`，通过
-`--policy /path/to/policy.json`、`VEIL_POLICY` 或 `~/.veil/policy.json`
-加载。`redact`、`format_preserving` 和非空 `rule_sets` 在 v0.1.0 中仍会 fail closed。
+让 Codex 通过 Veil：
 
-## 工作原理（一图）
-
-```
-  你的开发工具  (Claude Code / Codex / …)
-       │  含真实密钥与 PII 的受保护文本/工具字段
-       ▼
-  ┌────────────────────────────────────────────────────────┐
-  │  Veil   (独立代理 或 内嵌库)                       │
-  │  ① 检测  → ② 掩码 → 可逆 token                         │
-  │     例如  sk-live-abc…  →  PAIArtVeil_SECRET_7f3a…      │
-  └────────────────────────────────────────────────────────┘
-       │  受保护字段已脱敏 —— 厂商在这些字段里只看到 token
-       ▼
-  LLM 厂商  (Anthropic / OpenAI / …)
-       │  响应与工具调用引用 PAIArtVeil_SECRET_7f3a…
-       ▼
-  ┌────────────────────────────────────────────────────────┐
-  │  Veil   ③ 还原 token → 真实值                     │
-  └────────────────────────────────────────────────────────┘
-       │  真实值 —— 工具、文件、终端均正常工作
-       ▼
-  你的开发工具
+```sh
+./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 ```
 
-v0.1.0 的保护面是文本 prompt、provider-native 文本字段、工具调用参数、工具结果和流式文本/
-工具参数还原。它不做 OCR、文档解析、附件重生成，也不改写 provider 的 thinking/control
-trace；这些 opaque payload 或协议轨迹保持 provider 原生语义。
+然后配置 `~/.codex/config.toml`：
 
-三个性质让它既安全又无感：
+```toml
+model_provider = "veil"
 
-- **只有两个转换点** —— 去往 LLM 的方向掩码，返回的方向还原。本地的一切（工具执行、
-  写文件、终端显示）都不动。见[脱敏模型](docs/concepts/redaction-model.md)。
-- **确定性、可逆、类型感知的 token**（`PAIArtVeil_<TYPE>_<id>`）—— 同一个值永远映射到同一个
-  token，因此 prompt 缓存保持命中、多轮上下文保持连贯。见 [token 规范](docs/concepts/token-spec.md)。
-- **分层检测** —— L1 模式匹配（密钥、结构化 PII）先行；可选的 L2 本地 NER 模型
-  （人名、地址）后续。见[检测层](docs/concepts/detection-layers.md)。
+[model_providers.veil]
+name     = "Veil"
+base_url = "http://127.0.0.1:8788/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
 
-## 两种运行方式
+```sh
+export OPENAI_API_KEY=...
+codex
+```
 
-Veil 是**一套引擎、不同外壳**（见[架构总览](docs/architecture/overview.md)）：
+## Veil 保护什么
 
-1. **独立本地代理** —— 把 CLI 的 base URL 指向它（Claude Code 用 `ANTHROPIC_BASE_URL`；
-   Codex 通过自定义 `model_providers` 条目走 OpenAI Responses；本机 Codex CLI Responses
-   路径已通过 live acceptance，作为 v0.1.0 的 OpenAI Responses 协议证据；direct
-   `api.openai.com` 官方服务端到端 run 不属于本次 release gate）。凭证原样透传，只改写请求体。
-2. **可嵌入 Go 库** —— 把引擎放进你自己的网关，在你的请求/响应接缝处调用。SDK 是
-   **通用的**，并由仓库内维护的参考集成验证 —— 不为任何单一网关定制。见
-   [SDK 契约](docs/sdk/contract.md) 与 [`examples/embed`](examples/embed/)。
+Veil v0.1.0 保护受支持的 provider-native 文本字段、prompt 文本、工具调用参数、
+工具结果，以及流式文本/工具参数还原：
 
-## Veil vs PAIArt
+- Claude Code 通过 Anthropic Messages (`/v1/messages`)
+- Codex CLI 通过 OpenAI Responses (`/v1/responses`)
+- 使用公共 `github.com/PAIArtCom/Veil` 包的 Go SDK 集成
 
-| | **Veil**（本仓库 · Apache-2.0） | **PAIArt**（商业） |
-|---|---|---|
-| 是什么 | 本地引擎 + SDK + 参考代理 | 组织管控平面 |
-| 给谁 | 个人开发者 —— 免费、到处可嵌 | 安全与合规团队 |
+它不覆盖所有 provider surface。v0.1.0 不支持 OpenAI Chat Completions、Gemini、
+remote MCP egress classification、OCR、文档解析、附件改写、媒体/文档 payload
+重生成、provider thinking/control trace，也不能防护已被攻破的本机。
 
-开源原则：**个人价值开源；组织管控收费。** 完整拆分见
-[开源切割线](docs/product/open-core-boundary.md)。
+## 工作原理
+
+```text
+你的编码工具
+  -> Veil 掩码受支持的敏感字段
+  -> 模型厂商看到 PAIArtVeil_<TYPE>_<id> token
+  -> 模型响应中继续引用 token
+  -> Veil 在本地还原真实值
+  -> 终端、文件和工具调用使用真实值
+```
+
+核心性质：
+
+- **本地运行**：独立代理只绑定 loopback，不保存 provider 凭证。
+- **Fail closed**：解析、检测、掩码、policy 或不支持的 provider 出错时，阻止明文出站。
+- **确定性 token**：同一 scope 内，同一值映射到同一个 `PAIArtVeil_<TYPE>_<id>` token。
+- **本地可逆**：模型看到 token；本地工具和文件拿到还原后的真实值。
+
+## 本地 Policy
+
+本地 policy 文件可以按类型选择行为：
+
+```json
+{
+  "default_operator": "token",
+  "types": {
+    "EMAIL": {"operator": "ignore"},
+    "SECRET": {"operator": "block"}
+  }
+}
+```
+
+通过 `--policy /path/to/policy.json`、`VEIL_POLICY` 或 `~/.veil/policy.json`
+加载。v0.1.0 支持 `token`、`ignore`、`block`；`redact`、`format_preserving`、
+未知字段和非空 `rule_sets` 都会 fail closed。
+
+## 验证你的设置
+
+只使用一次性测试值，不要使用真实密钥。例如让 agent 在本地任务中使用
+`postgresql://app:s3cr3t@localhost:5432/mydb`，然后确认：
+
+- 发往 provider 的文本里是 `PAIArtVeil_...` token，而不是测试值；
+- 本地工具调用收到的是还原后的真实值；
+- agent 写入的文件里没有未还原的 `PAIArtVeil_` token；
+- 代理仍然只监听 `127.0.0.1`。
+
+更完整的检查见：[Claude Code](docs/guides/claude-code.md) 和
+[Codex CLI](docs/guides/codex.md)。
 
 ## 文档
 
-从**[文档地图](docs/README.md)**开始。重点：
+| 主题 | 文档 |
+|---|---|
+| 用户指南 | [部署](docs/guides/deployment.md), [Claude Code](docs/guides/claude-code.md), [Codex CLI](docs/guides/codex.md) |
+| 概念 | [脱敏模型](docs/concepts/redaction-model.md), [Token 规范](docs/concepts/token-spec.md), [检测层](docs/concepts/detection-layers.md) |
+| SDK | [契约](docs/sdk/contract.md), [API 参考](docs/sdk/api-reference.md), [集成指南](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
+| 架构 | [总览](docs/architecture/overview.md), [威胁模型](docs/architecture/threat-model.md), [ADR](docs/architecture/decisions/README.md) |
+| 项目 | [路线图](docs/product/roadmap.md), [开源边界](docs/product/open-core-boundary.md), [支持](SUPPORT.md), [安全](SECURITY.md), [Changelog](CHANGELOG.md) |
 
-- [产品策略](docs/product/strategy.md) · [路线图](docs/product/roadmap.md)
-- [架构总览](docs/architecture/overview.md) · [威胁模型](docs/architecture/threat-model.md) ·
-  [决策记录](docs/architecture/decisions/README.md)
-- [SDK 契约](docs/sdk/contract.md) · [网关集成调研](docs/research/gateway-integration-survey.md)
-- [Claude Code 指南](docs/guides/claude-code.md) · [Codex CLI 指南](docs/guides/codex.md) ·
-  [部署指南](docs/guides/deployment.md)
+## Veil vs PAIArt
 
-## 许可证
+| | Veil（本仓库） | PAIArt |
+|---|---|---|
+| 是什么 | 本地引擎、SDK、参考代理 | 组织管控平面 |
+| 给谁 | 个人开发者和网关集成者 | 安全与合规团队 |
+| 许可证 | Apache-2.0 | 商业 |
 
-[Apache-2.0](LICENSE)。
+开源原则：个人价值开源；组织管控收费。见
+[开源边界](docs/product/open-core-boundary.md)。

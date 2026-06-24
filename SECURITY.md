@@ -16,8 +16,18 @@ supported text and tool-I/O provider egress while preserving local tool behavior
 Do not open a public issue for vulnerabilities, suspected plaintext egress, credential
 logging, local key disclosure, policy fail-open behavior, or restore-state isolation bugs.
 
-Until a dedicated security address is published, contact the repository maintainers
-privately and include:
+Preferred private channel:
+
+1. Open the repository on GitHub.
+2. Go to **Security**.
+3. Choose **Report a vulnerability**.
+4. Include only sanitized reproduction details.
+
+If private vulnerability reporting is not available on the repository, open a public issue
+titled `Security contact request` with no technical details or exploit information. A
+maintainer should then arrange a private channel before any details are shared.
+
+Include the following in the private report:
 
 - A concise description of the issue and affected path.
 - Minimal reproduction steps using throwaway values only.

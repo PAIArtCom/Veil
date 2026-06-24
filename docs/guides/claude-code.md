@@ -1,89 +1,102 @@
 # Guide: Claude Code
 
-**Status: Ships in Phase 0.** The standalone proxy exists (`veil proxy`). The engine
-loop (mask → forward → restore, buffered and streaming) is implemented and covered by tests;
-this guide is also the **Phase 0 acceptance runbook** — the manual end-to-end check against
-real Claude Code that confirms the eight exit criteria on live traffic.
+Use this guide when you want Claude Code traffic to pass through Veil's local
+de-identification proxy.
 
-Grounded in verified Claude Code behavior
-([survey](../research/gateway-integration-survey.md),
-[ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md)).
+**Supported path:** Claude Code using Anthropic Messages (`/v1/messages`) through
+`ANTHROPIC_BASE_URL`. Credentials pass through unchanged; Veil rewrites supported
+request/response body fields only.
 
-## How it works
+## Prerequisites
 
-Claude Code reads `ANTHROPIC_BASE_URL` through the Anthropic SDK and sends standard
-`/v1/messages` requests there. Veil runs a local proxy on `127.0.0.1`; you point Claude
-Code at it. The proxy masks the outbound body, forwards to `api.anthropic.com` with your
-credentials **unchanged**, and restores tokens in the response — including tokens the model
-regenerates split across streaming events ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)).
+- Go installed for source builds.
+- Claude Code already installed and authenticated.
+- A local shell where you can set `ANTHROPIC_BASE_URL`.
 
-## Setup
+## 1. Build Veil
+
+From the repository root:
 
 ```sh
-# 1. build the proxy
-go build -o veil ./cmd/veil
-./veil version
-./veil proxy --help
+go build -o ./bin/veil ./cmd/veil
+./bin/veil version
+./bin/veil proxy --help
+```
 
-# 2. start it (binds 127.0.0.1 only; refuses non-loopback addresses)
-./veil proxy --addr 127.0.0.1:8788
-#   --upstream defaults to https://api.anthropic.com
-#   --policy may point to a strict local policy JSON file
-#   on first run it generates a local HMAC key at ~/.veil/key (0600)
+## 2. Start the local proxy
 
-# 3. point Claude Code at it, in the same or another shell
+```sh
+./bin/veil proxy --addr 127.0.0.1:8788
+```
+
+Notes:
+
+- `--upstream` defaults to `https://api.anthropic.com`.
+- The proxy refuses non-loopback listen addresses.
+- On first run, Veil creates a local HMAC key at `~/.veil/key` with restrictive file
+  permissions.
+- Add `--policy /path/to/policy.json` when you want local per-type `token`, `ignore`, or
+  `block` behavior.
+
+## 3. Point Claude Code at Veil
+
+In the shell where you start Claude Code:
+
+```sh
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
 
-Your authentication is untouched (the engine holds no credentials —
-[ADR-0004](../architecture/decisions/0004-auth-pass-through.md)):
+Authentication stays with Claude Code:
 
-- **API-key users** — `x-api-key` is forwarded as-is.
-- **Pro/Max/subscription (OAuth) users** — `Authorization: Bearer …` is forwarded as-is.
+- API-key users keep using the normal `x-api-key` flow.
+- Pro, Max, or subscription users keep using the normal `Authorization: Bearer ...`
+  OAuth flow.
 
-## Phase 0 acceptance checklist
+Veil forwards those headers without storing or interpreting them.
 
-Run a real task that puts a secret in front of the agent — the canonical one is **"use my
-local Postgres connection string `postgresql://app:s3cr3t@localhost:5432/mydb` to run a
-migration"** (use a throwaway value). Then confirm each criterion:
+## 4. Verify the path
 
-| # | Criterion | How to check |
-|---|---|---|
-| 1 | Protected text/tool fields contain only tokens | Watch the proxy stderr / a capture (below): the outbound `/v1/messages` protected text/tool fields carry `PAIArtVeil_…`, never the throwaway secret. |
-| 2 | Overlapping findings → one token | A value that matches two rules still yields a single consistent `PAIArtVeil_…`. (Unit-covered by the resolver; visible if you craft an overlapping secret.) |
-| 3 | Tool-call args + results restored | The tool the agent invokes receives the **real** connection string in its arguments, not an `PAIArtVeil_…`. |
-| 4 | Local command runs with the real value | The migration actually connects/runs (it would fail with an `PAIArtVeil_…` host). |
-| 5 | Restore errors are visible | Proxy logs any restore error at `ERROR`; the stream/response is not silently dropped. |
-| 6 | No tokens on disk | Files the agent writes contain real values, never `PAIArtVeil_…`. |
-| 7 | Streamed tokens survive splits | Streamed assistant text and tool input render as real values even though the model emits the token across deltas. |
-| 8 | Second turn hits prompt cache | A repeated identical prefix produces a byte-identical masked prefix (deterministic tokens); the provider reports a cache hit. |
+Use a throwaway secret, not a real credential. For example, ask Claude Code to perform a
+local task using:
 
-Latest accepted run: 2026-06-20 prefix refresh, recorded in the
-[Phase 0 acceptance report](../architecture/phase-0-acceptance.md).
+```text
+postgresql://app:s3cr3t@localhost:5432/mydb
+```
 
-### Capturing a real fixture (recommended, the Spike-A capture)
+Expected result:
 
-To harden the regression suite with a *real* Anthropic request/response/SSE (including a
-`tool_use` turn and its `tool_result` follow-up), capture traffic while running the task —
-e.g. point `--upstream` at a small logging pass-through, or tee the proxy's upstream
-request/response during a session. Commit only sanitized fixtures or sanitized summaries:
-strip credentials and headers, use throwaway values, remove local paths or customer data,
-and never commit raw provider captures. A sanitized fixture under `internal/wire/anthropic`
-can replace synthetic fixtures (built from documented wire shapes) with ground truth and
-pin the exact SSE event types Claude Code emits.
+- provider-bound protected text/tool fields contain `PAIArtVeil_...` tokens;
+- local tool calls receive the restored connection string;
+- files written locally do not contain unresolved `PAIArtVeil_` tokens;
+- proxy logs do not print credentials or raw request bodies.
 
-## Known Phase 0 limits
+## Troubleshooting
 
-- **Anthropic `/v1/messages` only for Claude Code.** Other Anthropic endpoints (e.g.
-  `count_tokens`) fail closed in the v0.1.0 proxy until they are wire-aware; OpenAI
-  Responses is documented separately for Codex, while OpenAI Chat/Gemini are Phase 1+.
-- **Text and tool I/O only.** v0.1.0 does not OCR, parse, rewrite, or regenerate
-  Anthropic image/document payloads. Provider thinking/control traces keep their native
-  semantics and are not treated as user prompt text.
-- **Thinking/control traces are provider-native control data.** v0.1.0 does not reinterpret
-  or restore them as user text; if a provider emits a visible `PAIArtVeil_` token there, the
-  residual-token audit can still report it ([ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md)).
-- **SSE framing assumes LF** (`\n\n`), which is what Anthropic emits; CRLF is Phase 1.
-- No TLS pinning or response-signature checks block a local HTTP proxy (verified).
-- Bedrock/Vertex egress paths are separate and out of scope for the MVP.
+| Symptom | Check |
+|---|---|
+| Claude Code bypasses Veil | Confirm `ANTHROPIC_BASE_URL=http://127.0.0.1:8788` is set in the same shell that launches `claude`. |
+| Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
+| Request is blocked | Check whether the request uses an unsupported endpoint or a strict local policy selected `block`. |
+| Tokens remain visible locally | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |
+| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.0. |
+
+## Known Limits
+
+- Claude Code support covers Anthropic Messages (`/v1/messages`) only.
+- Other Anthropic endpoints, such as `count_tokens`, fail closed until they are
+  wire-aware.
+- v0.1.0 protects text and tool I/O, not OCR, document parsing, attachment rewriting, or
+  regenerated media/document payloads.
+- Provider thinking/control traces keep provider-native semantics and are outside the
+  masking contract.
+- SSE framing assumes LF (`\n\n`), which matches Anthropic's emitted stream shape.
+- Bedrock and Vertex egress paths are separate and out of scope for v0.1.0.
+
+## Validation Evidence
+
+The Claude Code path is live-accepted for v0.1.0. Maintainers can review the release
+evidence in the [Phase 0 acceptance report](../architecture/phase-0-acceptance.md). The
+proxy behavior is grounded in [ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md),
+[ADR-0004](../architecture/decisions/0004-auth-pass-through.md), and
+[ADR-0011](../architecture/decisions/0011-streaming-restore-cross-event-holdback.md).

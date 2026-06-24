@@ -1,7 +1,7 @@
 # Veil Documentation
 
-This is the map of Veil's documentation. Docs are organized by audience and purpose;
-nothing is stored ad hoc.
+This is the map of Veil's documentation. Start with the path that matches what you are
+trying to do; architecture and release evidence are linked after the user guides.
 
 > **Repository status:** Phase 0 is accepted for the standalone Claude Code proxy path.
 > R2/R3 release hardening has added the maintained SDK embed reference integration and
@@ -10,6 +10,18 @@ nothing is stored ad hoc.
 > Responses protocol evidence. A separate direct `api.openai.com` official-service run is
 > not part of the v0.1.0 release gate and is not claimed. Documents that describe
 > interfaces or setup which do **not exist yet** are explicitly marked **Planned / Draft**.
+
+## Choose Your Path
+
+| Goal | Read |
+|---|---|
+| Run Claude Code through Veil | [Guide: Claude Code](guides/claude-code.md) |
+| Run Codex through Veil | [Guide: Codex CLI](guides/codex.md) |
+| Install, upgrade, or operate the proxy | [Deployment & operations](guides/deployment.md) |
+| Embed Veil into a Go gateway | [SDK integration guide](sdk/integration-guide.md) |
+| Learn exactly what is protected | [Redaction model](concepts/redaction-model.md), [token spec](concepts/token-spec.md), [detection layers](concepts/detection-layers.md) |
+| Understand the security boundary | [Threat model](architecture/threat-model.md) |
+| Contribute or review a release | [Contribution guide](../CONTRIBUTING.md), [release checklist](guides/release-checklist.md) |
 
 ## Purpose
 
@@ -57,7 +69,9 @@ Top-level release metadata:
 - [README](../README.md) / [README.zh-CN](../README.zh-CN.md)
 - [Changelog](../CHANGELOG.md)
 - [Security policy](../SECURITY.md)
+- [Support guide](../SUPPORT.md)
 - [Contribution guide](../CONTRIBUTING.md)
+- [Code of conduct](../CODE_OF_CONDUCT.md)
 - [Release checklist](guides/release-checklist.md)
 - [Codex CLI live acceptance](architecture/codex-live-acceptance.md)
 - [Performance evaluation](architecture/performance-evaluation.md)
@@ -65,8 +79,11 @@ Top-level release metadata:
 
 ## Reading order
 
-**New here?** → [Product vision](product/vision.md) → [Strategy](product/strategy.md) →
-[Architecture overview](architecture/overview.md).
+**New here?** → [README](../README.md) → [Deployment guide](guides/deployment.md) →
+the tool guide for [Claude Code](guides/claude-code.md) or [Codex CLI](guides/codex.md).
+
+**Evaluating the product?** → [Product vision](product/vision.md) →
+[Strategy](product/strategy.md) → [Architecture overview](architecture/overview.md).
 
 **Integrating Veil into a gateway?** → [SDK contract](sdk/contract.md) →
 [Integration guide](sdk/integration-guide.md) → [Gateway survey](research/gateway-integration-survey.md).
