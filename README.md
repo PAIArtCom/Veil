@@ -2,60 +2,87 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Use AI coding agents without sending real secrets or structured PII to model providers.
+**Your AI coding agent reads your secrets. Veil masks them before they leave your machine.**
 
-Veil is a local de-identification engine and loopback proxy for tools such as Claude
-Code and Codex. It replaces supported sensitive text and tool-I/O fields with
-deterministic reversible tokens before provider egress, then restores the real values
-locally before your terminal, files, or tool calls see the response.
+When you use Claude Code or Codex, your prompts carry everything in context: environment
+variables, database URLs, API keys, connection strings. That traffic goes to a third-party
+model provider's servers. Veil intercepts it on localhost, replaces every sensitive value
+with a deterministic reversible token, and restores real values locally on the way back.
+The provider sees only tokens. Your workflow stays unchanged.
 
-| Status | License | Best for |
+| Status | License | Platform |
 |---|---|---|
-| v0.1.0 release | [Apache-2.0](LICENSE) | Individual developers and gateway integrators |
+| v0.1.0 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
 
-## Start Here
+## Let your AI agent set it up
 
-| I want to... | Go to |
-|---|---|
-| Run Claude Code through Veil | [Claude Code setup](docs/guides/claude-code.md) |
-| Run Codex through Veil | [Codex CLI setup](docs/guides/codex.md) |
-| Install, upgrade, or operate the proxy | [Deployment guide](docs/guides/deployment.md) |
-| Embed Veil in a Go gateway | [SDK integration guide](docs/sdk/integration-guide.md) |
-| Understand the security boundary | [Threat model](docs/architecture/threat-model.md) |
-| Report a bug or vulnerability | [Support](SUPPORT.md) / [Security policy](SECURITY.md) |
+Paste this into your AI assistant and it will handle the full installation:
+
+```
+Install and configure Veil for me (https://github.com/PAIArtCom/Veil). Veil is a
+local proxy that replaces API keys, database passwords, and other sensitive values
+in prompts with placeholders before they reach AI providers, then restores real
+values locally on the way back.
+
+Please complete these steps:
+① check whether Go is installed and install it if not;
+② clone the repo and build the binary to ~/bin/veil, making sure it is on PATH;
+③ append `export ANTHROPIC_BASE_URL=http://127.0.0.1:8788` to ~/.zshrc or ~/.bashrc;
+④ write a one-command shortcut to start the proxy in the background;
+⑤ verify with test value `postgresql://app:s3cr3t@localhost:5432/mydb` that masking works;
+⑥ summarize how to use Veil day-to-day.
+
+Fix any errors and continue without stopping to ask me.
+```
+
+After it finishes, open a new terminal (or `source ~/.zshrc`) and restart Claude Code.
+For Codex, the config is slightly different — see [Quickstart](#quickstart) below.
+
+## What changes
+
+```
+# Without Veil — what your model provider receives today:
+"...connect to postgresql://app:s3cr3t@db.internal:5432/mydb..."
+"export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE"
+
+# With Veil — what your model provider receives:
+"...connect to PAIArtVeil_SECRET_a1b2c3d4..."
+"export AWS_ACCESS_KEY_ID=PAIArtVeil_SECRET_e5f6g7h8..."
+```
+
+Real values are restored locally before your terminal, files, or tool calls see the response.
 
 ## Quickstart
 
-Build the proxy from a clean checkout:
+Download a pre-built binary from the [releases page](https://github.com/PAIArtCom/Veil/releases/latest),
+or build from source:
 
 ```sh
 git clone https://github.com/PAIArtCom/Veil.git
 cd Veil
 go build -o ./bin/veil ./cmd/veil
 ./bin/veil version
-./bin/veil proxy --help
 ```
 
-Run Claude Code through Veil:
+**Claude Code — two commands to get started:**
 
 ```sh
+# Terminal 1: start the local proxy
 ./bin/veil proxy --addr 127.0.0.1:8788
-```
 
-In another shell:
-
-```sh
+# Terminal 2: point Claude Code at it
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
 
-Run Codex through Veil:
+**Codex CLI:**
 
 ```sh
+# Terminal 1
 ./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 ```
 
-Then configure `~/.codex/config.toml`:
+Add to `~/.codex/config.toml`:
 
 ```toml
 model_provider = "veil"
@@ -67,50 +94,58 @@ wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
 
-```sh
-export OPENAI_API_KEY=...
-codex
+That's it. Your credentials still flow to the provider unchanged — only sensitive values
+in request and response bodies are masked.
+
+## What Veil protects
+
+Veil detects and masks these types before provider egress, then restores them locally:
+
+| Type | Examples |
+|---|---|
+| **Secrets** | API keys, tokens, passwords, connection strings |
+| **Email** | `user@example.com` |
+| **Phone** | `+1 555 123 4567` |
+| **IPv4 / IPv6** | `192.168.1.1`, `2001:db8::1` |
+| **Payment cards** | `4111 1111 1111 1111` |
+| **Account numbers** | Bank and financial identifiers |
+| **URLs** | `https://internal.company.com/api` |
+| **Dates** | Off by default — opt in via policy if needed |
+| **Names / addresses** | Off by default — opt-in L2 semantic detection |
+
+Supported in v0.1.0:
+- **Claude Code** via Anthropic Messages (`/v1/messages`)
+- **Codex CLI** via OpenAI Responses (`/v1/responses`)
+- **Go SDK** integrations via `github.com/PAIArtCom/Veil`
+
+Not yet supported: OpenAI Chat Completions, Gemini, remote MCP egress classification,
+OCR, document parsing, attachment rewriting, or provider thinking/control traces.
+
+## How it works
+
 ```
-
-## What Veil Protects
-
-Veil v0.1.0 protects supported provider-native text fields, prompt text, tool-call
-arguments, tool results, and streaming text/tool argument restoration for:
-
-- Claude Code through Anthropic Messages (`/v1/messages`)
-- Codex CLI through OpenAI Responses (`/v1/responses`)
-- Go SDK integrations using the public `github.com/PAIArtCom/Veil` package
-
-It does not protect every possible provider surface. v0.1.0 does **not** handle OpenAI
-Chat Completions, Gemini, remote MCP egress classification, OCR, document parsing,
-attachment rewriting, regenerated media/document payloads, provider thinking/control
-traces, or protection against a compromised local machine.
-
-## How It Works
-
-```text
 your coding tool
-  -> Veil masks supported sensitive fields
-  -> provider sees PAIArtVeil_<TYPE>_<id> tokens
-  -> provider response returns tokens
-  -> Veil restores real values locally
-  -> your terminal, files, and tool calls use real values
+  → Veil masks sensitive fields on localhost
+  → provider sees PAIArtVeil_<TYPE>_<id> tokens only
+  → provider response returns tokens
+  → Veil restores real values locally
+  → your terminal, files, and tool calls use real values
 ```
 
-The core properties are:
+**Security properties:**
 
-- **Local only**: the standalone proxy binds to loopback and stores no provider
-  credentials.
-- **Fail closed**: parsing, detection, masking, policy, or unsupported provider errors
-  block egress instead of forwarding plaintext.
-- **Deterministic tokens**: the same value maps to the same `PAIArtVeil_<TYPE>_<id>`
-  token inside its scope, preserving multi-turn context and prompt-cache behavior.
-- **Reversible locally**: the model sees tokens; local tools and files receive restored
-  values.
+- **Local only** — the proxy binds to `127.0.0.1`. No relay, no cloud, no credentials
+  stored by Veil.
+- **Fail closed** — parsing errors, detection errors, policy violations, or unsupported
+  endpoints block the request rather than forwarding plaintext.
+- **Deterministic tokens** — the same value maps to the same token within a scope,
+  so multi-turn context and prompt-cache behavior survive masking.
+- **Reversible locally** — the model sees tokens; your tools and files get real values.
+- **No telemetry** — the engine never phones home.
 
-## Local Policy
+## Policy
 
-A local policy file can choose per-type behavior:
+A local policy file lets you choose per-type behavior:
 
 ```json
 {
@@ -122,22 +157,59 @@ A local policy file can choose per-type behavior:
 }
 ```
 
-Load it with `--policy /path/to/policy.json`, `VEIL_POLICY`, or
-`~/.veil/policy.json`. v0.1.0 supports `token`, `ignore`, and `block`; `redact`,
-`format_preserving`, unknown keys, and non-empty `rule_sets` fail closed.
+Load with `--policy /path/to/policy.json`, the `VEIL_POLICY` environment variable, or
+place it at `~/.veil/policy.json` to auto-load.
 
-## Verify Your Setup
+| Operator | Behavior |
+|---|---|
+| `token` | Replace with reversible token (default) |
+| `ignore` | Leave value unmodified |
+| `block` | Refuse the request entirely |
 
-Use a throwaway value, never a real secret. For example, ask the agent to use
-`postgresql://app:s3cr3t@localhost:5432/mydb` in a local task, then confirm:
+## Verify your setup
 
-- provider-bound text contains `PAIArtVeil_...` tokens, not the throwaway value;
-- local tool calls receive the restored value;
-- files written by the agent do not contain unresolved `PAIArtVeil_` tokens;
-- the proxy stays on `127.0.0.1`.
+Test with a throwaway value — never a real credential:
 
-See the tool-specific guides for deeper checks:
-[Claude Code](docs/guides/claude-code.md) and [Codex CLI](docs/guides/codex.md).
+```
+postgresql://app:s3cr3t@localhost:5432/mydb
+```
+
+Ask your agent to use this string in a local task, then confirm:
+
+- Provider-bound text contains `PAIArtVeil_...` tokens, not the test value
+- Local tool calls receive the restored connection string
+- Files written by the agent contain no unresolved `PAIArtVeil_` tokens
+- The proxy is still listening only on `127.0.0.1`
+
+Full verification steps: [Claude Code guide](docs/guides/claude-code.md) ·
+[Codex guide](docs/guides/codex.md)
+
+## Start here
+
+| I want to... | Go to |
+|---|---|
+| Run Claude Code through Veil | [Claude Code setup](docs/guides/claude-code.md) |
+| Run Codex through Veil | [Codex CLI setup](docs/guides/codex.md) |
+| Install, upgrade, or operate the proxy | [Deployment guide](docs/guides/deployment.md) |
+| Embed Veil in a Go gateway | [SDK integration guide](docs/sdk/integration-guide.md) |
+| Understand the security boundary | [Threat model](docs/architecture/threat-model.md) |
+| Report a bug or vulnerability | [Support](SUPPORT.md) · [Security policy](SECURITY.md) |
+
+## Veil vs PAIArt
+
+Veil is the open-source de-identification engine. PAIArt is the commercial control plane
+for teams that need fleet-wide policy management and compliance audit trails.
+
+| | Veil (this repo) | PAIArt |
+|---|---|---|
+| What | Local engine, SDK, and reference proxy | Organization control plane |
+| For | Individual developers and gateway integrators | Security and compliance teams |
+| Policy | Local JSON file | Centrally pushed, fleet-wide |
+| Audit | Bring your own `AuditSink` | Compliance dashboards, SIEM export |
+| License | Apache-2.0 | Commercial |
+
+Individual value is open; organizational control is paid. See the
+[open-core boundary](docs/product/open-core-boundary.md).
 
 ## Documentation
 
@@ -148,52 +220,3 @@ See the tool-specific guides for deeper checks:
 | SDK | [Contract](docs/sdk/contract.md), [API reference](docs/sdk/api-reference.md), [Integration guide](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
 | Architecture | [Overview](docs/architecture/overview.md), [Threat model](docs/architecture/threat-model.md), [ADRs](docs/architecture/decisions/README.md) |
 | Project | [Roadmap](docs/product/roadmap.md), [Open-core boundary](docs/product/open-core-boundary.md), [Support](SUPPORT.md), [Security](SECURITY.md), [Changelog](CHANGELOG.md) |
-
-## Veil vs PAIArt
-
-| | Veil (this repo) | PAIArt |
-|---|---|---|
-| What | Local engine, SDK, and reference proxy | Organization control plane |
-| For | Individual developers and gateway integrators | Security and compliance teams |
-| License | Apache-2.0 | Commercial |
-
-Open-core principle: individual value is open; organizational control is paid. See the
-[open-core boundary](docs/product/open-core-boundary.md).
-
-## Project Contract
-
-The sections below are the repository-level Specability contract. They keep the public
-claim, implementation boundary, and documentation aligned.
-
-## Purpose
-
-Veil provides a local de-identification engine and reference proxy for AI coding
-tools. It masks secrets and structured PII in protected text/tool surfaces before LLM
-egress and restores reversible tokens on the trusted local side.
-
-## Principles
-
-- MUST: Mask protected text/tool-I/O before provider egress and restore only on local ingress.
-- MUST: Keep tokens deterministic, reversible, type-aware, and scoped.
-- MUST: Fail closed on detection, policy, parsing, provider, or masking uncertainty.
-- SHOULD: Keep the root Go package as the public SDK and implementation details under `internal/`.
-
-## Boundaries
-
-- Does NOT handle: OpenAI Chat, Gemini, remote MCP, or unverified provider paths (see: docs/architecture/overview.md)
-- Does NOT handle: OCR, document parsing, attachment rewriting, or regeneration of opaque provider media/document payloads (see: docs/sdk/contract.md)
-- Does NOT handle: Provider thinking/control traces as user text; those traces preserve provider-native semantics and are outside the de-identification surface (see: docs/concepts/redaction-model.md)
-- Does NOT handle: L2 semantic PII, the HTTP/gRPC service, or the web console in Phase 0 (see: docs/product/roadmap.md)
-- Does NOT handle: Protection against a compromised local machine or malicious local process (see: docs/architecture/threat-model.md)
-
-## Adversarial Surfaces
-
-- **Protected text/tool egress**: Any unmasked sensitive value in a shipped text or tool-I/O field crossing to a provider is a release blocker. Opaque media/document payloads and provider thinking/control traces are explicit non-goals for v0.1.0 de-identification. Verified by: docs/architecture/phase-0-acceptance.md.
-- **Credential pass-through**: Local proxy credentials must never be logged, stored, or interpreted by the engine. Verified by: internal/proxy/proxy_test.go.
-- **Scoped restore state**: Cross-scope restore must fail visibly or leave residual tokens rather than restoring another namespace's value. Verified by: internal/mapstore/mapstore_test.go.
-- **Release claim scope**: README claims must stay tied to verified providers and documented release evidence. Verified by: docs/architecture/formal-release-plan.md.
-
-## Open Questions
-
-- [ ] Which embedded gateway should be the first Phase 1 validation target? (open since: 2026-06)
-- [ ] What exact behavior should `redact` and `format_preserving` operators use in Phase 1? (open since: 2026-06)
