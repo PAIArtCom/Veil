@@ -1,0 +1,97 @@
+---
+const features = [
+  {
+    icon: '⊙',
+    title: 'Local by design',
+    description:
+      'The proxy runs entirely on your machine. No cloud relay, no telemetry, no third-party servers.',
+  },
+  {
+    icon: '⇄',
+    title: 'Deterministic tokens',
+    description:
+      'The same secret always maps to the same token. The model can reason about values across turns without ever seeing them.',
+  },
+  {
+    icon: '◎',
+    title: 'Zero config',
+    description:
+      'Works with Claude Code and Codex CLI out of the box. One environment variable and you\'re done.',
+  },
+  {
+    icon: '◻',
+    title: 'Open source',
+    description:
+      'Apache-2.0. Read the source, audit the logic, embed it in your own tools. No black boxes.',
+  },
+];
+---
+<section class="section" id="features">
+  <div class="container">
+    <h2>Built for how you actually work</h2>
+    <p class="section-sub">No dashboards, no agents-as-a-service. Just a local proxy that does one thing well.</p>
+    <ul class="features" role="list">
+      {features.map((f) => (
+        <li class="feature">
+          <span class="feature-icon" aria-hidden="true">{f.icon}</span>
+          <h3>{f.title}</h3>
+          <p>{f.description}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .section {
+    padding: var(--space-24) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .section-sub {
+    font-size: var(--text-lg);
+    color: var(--color-muted);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-16);
+    max-width: 52ch;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-1);
+  }
+
+  .feature {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .feature-icon {
+    font-size: var(--text-xl);
+    color: var(--color-primary);
+    font-style: normal;
+    line-height: 1;
+  }
+
+  .feature h3 {
+    font-size: var(--text-lg);
+  }
+
+  .feature p {
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 640px) {
+    .features {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

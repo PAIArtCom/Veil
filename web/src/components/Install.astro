@@ -1,0 +1,140 @@
+---
+---
+<section class="section" id="install">
+  <div class="container">
+    <h2>Get started in seconds</h2>
+    <p class="section-sub">
+      Download a pre-built binary or build from source. Both take under a minute.
+    </p>
+
+    <div class="install-options">
+      <div class="install-option">
+        <h3>Binary (recommended)</h3>
+        <p>Download from the <a href="https://github.com/PAIArtCom/Veil/releases/latest" target="_blank" rel="noopener noreferrer" class="inline-link">releases page</a>, then:</p>
+        <div class="code-block">
+          <pre><code id="cmd-binary"># Claude Code
+veil proxy --addr 127.0.0.1:8788 &
+export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
+claude</code></pre>
+          <button class="copy-btn" data-target="cmd-binary" aria-label="Copy command">Copy</button>
+        </div>
+      </div>
+
+      <div class="install-option">
+        <h3>Build from source</h3>
+        <p>Requires <a href="https://go.dev/dl/" target="_blank" rel="noopener noreferrer" class="inline-link">Go 1.22+</a>.</p>
+        <div class="code-block">
+          <pre><code id="cmd-source">git clone https://github.com/PAIArtCom/Veil.git
+cd Veil
+go build -o ./bin/veil ./cmd/veil
+./bin/veil version</code></pre>
+          <button class="copy-btn" data-target="cmd-source" aria-label="Copy command">Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { stripTrailingNewline } from '../scripts/copy-code.js';
+
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const targetId = btn.getAttribute('data-target');
+      const codeEl = document.getElementById(targetId);
+      if (!codeEl) return;
+
+      const text = stripTrailingNewline(codeEl.textContent ?? '');
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      } catch {
+        btn.textContent = 'Failed';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+      }
+    });
+  });
+</script>
+
+<style>
+  .section {
+    padding: var(--space-24) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .section-sub {
+    font-size: var(--text-lg);
+    color: var(--color-muted);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-16);
+    max-width: 48ch;
+  }
+
+  .install-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
+  }
+
+  .install-option {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .install-option p {
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+  }
+
+  .inline-link {
+    color: var(--color-primary-dark);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+    text-underline-offset: 2px;
+  }
+
+  .inline-link:hover {
+    color: var(--color-ink);
+  }
+
+  .code-block {
+    position: relative;
+    background: var(--color-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .code-block pre {
+    padding: var(--space-5) var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-code-text);
+    overflow-x: auto;
+    line-height: 1.7;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-subtle);
+    background: var(--color-dark-surface);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+  }
+
+  .copy-btn:hover {
+    color: var(--color-code-text);
+    background: var(--color-dark-muted);
+  }
+
+  @media (max-width: 720px) {
+    .install-options {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

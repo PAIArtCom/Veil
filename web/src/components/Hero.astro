@@ -1,0 +1,152 @@
+---
+---
+<section class="hero">
+  <div class="container">
+    <div class="hero-body">
+      <p class="badge">Open source · Apache-2.0 · v0.1.0</p>
+      <h1>Your AI agent reads<br />your secrets.</h1>
+      <p class="sub">
+        Veil intercepts every prompt on localhost, replaces sensitive values with
+        deterministic reversible tokens, and restores real values on the way back.
+        The model sees only tokens — your workflow stays unchanged.
+      </p>
+      <div class="actions">
+        <a href="#install" class="btn btn-primary">Get started</a>
+        <a
+          href="https://github.com/PAIArtCom/Veil"
+          class="btn btn-secondary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          View on GitHub
+        </a>
+      </div>
+    </div>
+
+    <div class="demo" aria-label="Before and after comparison">
+      <figure class="demo-panel">
+        <figcaption class="demo-label demo-label--before">Without Veil</figcaption>
+        <pre class="demo-code"><code>postgresql://app:<mark class="secret">s3cr3t</mark>@db.internal:5432/mydb
+export AWS_ACCESS_KEY_ID=<mark class="secret">AKIAIOSFODNN7EXAMPLE</mark></code></pre>
+      </figure>
+
+      <span class="demo-arrow" aria-hidden="true">→</span>
+
+      <figure class="demo-panel">
+        <figcaption class="demo-label demo-label--after">With Veil</figcaption>
+        <pre class="demo-code"><code>postgresql://app:<mark class="token">VLT_a1b2c3d4</mark>@db.internal:5432/mydb
+export AWS_ACCESS_KEY_ID=<mark class="token">VLT_e5f6g7h8</mark></code></pre>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: var(--space-24) 0 var(--space-20);
+  }
+
+  .hero-body {
+    max-width: var(--max-width-prose);
+    margin-bottom: var(--space-16);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-primary-dark);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    margin-bottom: var(--space-6);
+    letter-spacing: 0.01em;
+  }
+
+  h1 {
+    margin-bottom: var(--space-6);
+  }
+
+  .sub {
+    font-size: var(--text-lg);
+    color: var(--color-muted);
+    line-height: 1.7;
+    max-width: 56ch;
+    margin-bottom: var(--space-8);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  /* Demo comparison */
+  .demo {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .demo-panel {
+    background: var(--color-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .demo-label {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-dark-surface);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .demo-label--before {
+    color: var(--color-secret);
+  }
+
+  .demo-label--after {
+    color: var(--color-token);
+  }
+
+  .demo-code {
+    padding: var(--space-4) var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-code-text);
+    overflow-x: auto;
+    line-height: 1.8;
+    white-space: pre;
+  }
+
+  mark.secret {
+    background: none;
+    color: var(--color-secret);
+  }
+
+  mark.token {
+    background: none;
+    color: var(--color-token);
+  }
+
+  .demo-arrow {
+    font-size: var(--text-2xl);
+    color: var(--color-subtle);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 860px) {
+    .demo {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto auto;
+    }
+
+    .demo-arrow {
+      text-align: center;
+      transform: rotate(90deg);
+    }
+  }
+</style>

@@ -1,0 +1,69 @@
+:root {
+  /* Brand colors */
+  --color-bg:           #FAF8F4;
+  --color-surface:      #FFFFFF;
+  --color-primary:      #2BBF7E;
+  --color-primary-dark: #1A9B5E;
+  --color-ink:          #1C1A17;
+  --color-muted:        #6E6B63;
+  --color-subtle:       #A8A49A;
+  --color-border:       #E0DDD6;
+  --color-border-strong:#C8C4BA;
+
+  /* Dark / code surfaces */
+  --color-dark:         #1C1A17;
+  --color-dark-surface: #2C2A27;
+  --color-dark-muted:   #4A4742;
+  --color-code-text:    #F0EDE6;
+  --color-token:        #2BBF7E;
+  --color-secret:       #E05A3A;
+
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Type scale */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  2rem;
+  --text-4xl:  2.75rem;
+  --text-5xl:  3.5rem;
+
+  /* Spacing */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* Layout */
+  --max-width:       1100px;
+  --max-width-prose: 680px;
+
+  /* Radii */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(28, 26, 23, 0.06);
+  --shadow-md: 0 4px 16px rgba(28, 26, 23, 0.08);
+
+  /* Transitions */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+}

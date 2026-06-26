@@ -1,0 +1,687 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Brand">
+  <div class="brand-shell">
+
+    <aside class="sidebar">
+      <a href="/" class="back">← Home</a>
+      <nav class="sidebar-nav">
+        <a href="#logo">Logo</a>
+        <a href="#colors">Colors</a>
+        <a href="#typography">Typography</a>
+        <a href="#components">Components</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <header class="page-header">
+        <p class="page-eyebrow">Veil · Design assets</p>
+        <h1 class="page-title">Brand review</h1>
+        <p class="page-sub">Reference for alignment — logo, color system, type scale, and UI primitives.</p>
+      </header>
+
+      <!-- ─── LOGO ─────────────────────────────────────────── -->
+      <section id="logo">
+        <h2>Logo mark</h2>
+
+        <div class="row">
+          <div class="asset-block asset-block--cream">
+            <svg width="80" height="80" viewBox="0 0 60 60" fill="none">
+              <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+              <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+              <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+            </svg>
+            <span class="asset-label">On cream</span>
+          </div>
+          <div class="asset-block asset-block--dark">
+            <svg width="80" height="80" viewBox="0 0 60 60" fill="none">
+              <rect x="20" y="20" width="32" height="32" rx="8" fill="#4A4742"/>
+              <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+              <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+            </svg>
+            <span class="asset-label asset-label--inv">On dark</span>
+          </div>
+          <div class="asset-block asset-block--white">
+            <svg width="80" height="80" viewBox="0 0 60 60" fill="none">
+              <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+              <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+              <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+            </svg>
+            <span class="asset-label">On white</span>
+          </div>
+        </div>
+
+        <h3>Lockup</h3>
+        <div class="row">
+          <div class="lockup-block lockup-block--cream">
+            <svg height="36" viewBox="0 0 85 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Veil">
+              <g transform="translate(0,2) scale(0.6)">
+                <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+                <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+                <rect x="8"  y="8"  width="32" height="32" rx="8" fill="#2BBF7E"/>
+              </g>
+              <path d="M47.708 28.94 41.264 11.06H43.778L49.25 26.78H48.758L54.212 11.06H56.744L50.3 28.94Z M64.094 29.228Q62.222 29.228 60.749 28.34Q59.276 27.452 58.436 25.91Q57.596 24.368 57.596 22.436Q57.596 20.486 58.427 18.977Q59.258 17.468 60.683 16.598Q62.108 15.728 63.89 15.728Q65.324 15.728 66.443 16.238Q67.562 16.748 68.345 17.627Q69.128 18.506 69.542 19.616Q69.956 20.726 69.956 21.932Q69.956 22.208 69.929 22.526Q69.902 22.844 69.842 23.144H59.234V21.224H68.558L67.484 22.076Q67.706 20.828 67.253 19.844Q66.8 18.86 65.915 18.284Q65.03 17.708 63.89 17.708Q62.756 17.708 61.823 18.29Q60.89 18.872 60.374 19.931Q59.858 20.99 59.966 22.46Q59.852 23.888 60.401 24.953Q60.95 26.018 61.937 26.603Q62.924 27.188 64.106 27.188Q65.408 27.188 66.299 26.588Q67.19 25.988 67.736 25.064L69.608 26.018Q69.224 26.906 68.423 27.635Q67.622 28.364 66.521 28.796Q65.42 29.228 64.094 29.228Z M72.26 28.94V16.016H74.51V28.94ZM72.26 13.94V11.06H74.51V13.94Z M77.348 28.94V10.772H79.598V28.94Z" fill="#1C1A17"/>
+            </svg>
+          </div>
+          <div class="lockup-block lockup-block--dark">
+            <svg height="36" viewBox="0 0 85 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Veil">
+              <g transform="translate(0,2) scale(0.6)">
+                <rect x="20" y="20" width="32" height="32" rx="8" fill="#4A4742"/>
+                <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+                <rect x="8"  y="8"  width="32" height="32" rx="8" fill="#2BBF7E"/>
+              </g>
+              <path d="M47.708 28.94 41.264 11.06H43.778L49.25 26.78H48.758L54.212 11.06H56.744L50.3 28.94Z M64.094 29.228Q62.222 29.228 60.749 28.34Q59.276 27.452 58.436 25.91Q57.596 24.368 57.596 22.436Q57.596 20.486 58.427 18.977Q59.258 17.468 60.683 16.598Q62.108 15.728 63.89 15.728Q65.324 15.728 66.443 16.238Q67.562 16.748 68.345 17.627Q69.128 18.506 69.542 19.616Q69.956 20.726 69.956 21.932Q69.956 22.208 69.929 22.526Q69.902 22.844 69.842 23.144H59.234V21.224H68.558L67.484 22.076Q67.706 20.828 67.253 19.844Q66.8 18.86 65.915 18.284Q65.03 17.708 63.89 17.708Q62.756 17.708 61.823 18.29Q60.89 18.872 60.374 19.931Q59.858 20.99 59.966 22.46Q59.852 23.888 60.401 24.953Q60.95 26.018 61.937 26.603Q62.924 27.188 64.106 27.188Q65.408 27.188 66.299 26.588Q67.19 25.988 67.736 25.064L69.608 26.018Q69.224 26.906 68.423 27.635Q67.622 28.364 66.521 28.796Q65.42 29.228 64.094 29.228Z M72.26 28.94V16.016H74.51V28.94ZM72.26 13.94V11.06H74.51V13.94Z M77.348 28.94V10.772H79.598V28.94Z" fill="#FAF8F4"/>
+            </svg>
+          </div>
+        </div>
+
+        <h3>Layer anatomy</h3>
+        <div class="anatomy-row">
+          <div class="anatomy-step">
+            <div class="anatomy-swatch">
+              <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+                <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+              </svg>
+            </div>
+            <span class="anatomy-label">Secret</span>
+            <span class="anatomy-desc">The credential, key, or URL before masking</span>
+          </div>
+          <span class="anatomy-op">+</span>
+          <div class="anatomy-step">
+            <div class="anatomy-swatch">
+              <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+                <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+              </svg>
+            </div>
+            <span class="anatomy-label">Veil layer</span>
+            <span class="anatomy-desc">The translucent veil — 45% opacity</span>
+          </div>
+          <span class="anatomy-op">+</span>
+          <div class="anatomy-step">
+            <div class="anatomy-swatch">
+              <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+                <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+              </svg>
+            </div>
+            <span class="anatomy-label">Mask</span>
+            <span class="anatomy-desc">The opaque token that the model sees</span>
+          </div>
+          <span class="anatomy-op">=</span>
+          <div class="anatomy-step">
+            <div class="anatomy-swatch">
+              <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+                <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+                <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+                <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+              </svg>
+            </div>
+            <span class="anatomy-label">Veil mark</span>
+            <span class="anatomy-desc">Final composition</span>
+          </div>
+        </div>
+
+        <h3>Scale</h3>
+        <div class="scale-row">
+          {[16, 20, 24, 32, 40, 48, 64, 80].map((s) => (
+            <div class="scale-item">
+              <svg width={s} height={s} viewBox="0 0 60 60" fill="none">
+                <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+                <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+                <rect x="8" y="8" width="32" height="32" rx="8" fill="#2BBF7E"/>
+              </svg>
+              <span class="scale-label">{s}px</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ─── COLORS ─────────────────────────────────────────── -->
+      <section id="colors">
+        <h2>Color system</h2>
+
+        <h3>Brand</h3>
+        <div class="swatch-grid">
+          {[
+            { token: '--color-primary',      hex: '#2BBF7E', label: 'Primary',       use: 'CTA, highlights' },
+            { token: '--color-primary-dark', hex: '#1A9B5E', label: 'Primary dark',  use: 'Hover, pressed' },
+            { token: '--color-bg',           hex: '#FAF8F4', label: 'Background',    use: 'Page bg', dark: true },
+            { token: '--color-surface',      hex: '#FFFFFF', label: 'Surface',       use: 'Cards, panels', dark: true },
+            { token: '--color-ink',          hex: '#1C1A17', label: 'Ink',           use: 'Headings, body' },
+            { token: '--color-muted',        hex: '#6E6B63', label: 'Muted',         use: 'Secondary text' },
+            { token: '--color-subtle',       hex: '#A8A49A', label: 'Subtle',        use: 'Hints, placeholders' },
+            { token: '--color-border',       hex: '#E0DDD6', label: 'Border',        use: 'Dividers', dark: true },
+            { token: '--color-border-strong',hex: '#C8C4BA', label: 'Border strong', use: 'Emphasis', dark: true },
+          ].map((c) => (
+            <div class="swatch">
+              <div
+                class="swatch-color"
+                style={`background: ${c.hex}; ${c.dark ? 'border: 1px solid #E0DDD6;' : ''}`}
+              />
+              <div class="swatch-info">
+                <span class="swatch-label">{c.label}</span>
+                <span class="swatch-token">{c.token}</span>
+                <span class="swatch-hex">{c.hex}</span>
+                <span class="swatch-use">{c.use}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <h3>Code / dark surface</h3>
+        <div class="swatch-grid">
+          {[
+            { token: '--color-dark',        hex: '#1C1A17', label: 'Dark',        use: 'Code bg, dark panels' },
+            { token: '--color-dark-surface',hex: '#2C2A27', label: 'Dark surface',use: 'Raised dark card' },
+            { token: '--color-dark-muted',  hex: '#4A4742', label: 'Dark muted',  use: 'Disabled on dark' },
+            { token: '--color-code-text',   hex: '#F0EDE6', label: 'Code text',   use: 'Text on dark bg' },
+            { token: '--color-token',       hex: '#2BBF7E', label: 'Token',       use: 'VLT_ highlighted value' },
+            { token: '--color-secret',      hex: '#E05A3A', label: 'Secret',      use: 'Sensitive value (before)' },
+          ].map((c) => (
+            <div class="swatch">
+              <div class="swatch-color" style={`background: ${c.hex};`} />
+              <div class="swatch-info">
+                <span class="swatch-label">{c.label}</span>
+                <span class="swatch-token">{c.token}</span>
+                <span class="swatch-hex">{c.hex}</span>
+                <span class="swatch-use">{c.use}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- ─── TYPOGRAPHY ─────────────────────────────────────── -->
+      <section id="typography">
+        <h2>Typography</h2>
+        <p class="type-meta">Inter · weights 400 / 500 · loaded via Google Fonts</p>
+
+        <div class="type-scale">
+          <div class="type-sample">
+            <span class="type-spec">5xl · 3.5rem · 500 · −0.035em</span>
+            <p style="font-size: 3.5rem; font-weight: 500; letter-spacing: -0.035em; line-height: 1.1;">Display heading</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">4xl · 2.75rem · 500 · −0.03em</span>
+            <p style="font-size: 2.75rem; font-weight: 500; letter-spacing: -0.03em; line-height: 1.15;">Page title</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">3xl · 2rem · 500 · −0.025em</span>
+            <p style="font-size: 2rem; font-weight: 500; letter-spacing: -0.025em; line-height: 1.2;">Section heading</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">xl · 1.25rem · 500 · −0.015em</span>
+            <p style="font-size: 1.25rem; font-weight: 500; letter-spacing: -0.015em; line-height: 1.3;">Sub-heading</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">lg · 1.125rem · 400</span>
+            <p style="font-size: 1.125rem; font-weight: 400; line-height: 1.7; color: var(--color-muted);">Body large — used for hero subheads and section introductions. Stays muted to let headings lead.</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">base · 1rem · 400</span>
+            <p style="font-size: 1rem; font-weight: 400; line-height: 1.7; color: var(--color-muted);">Body default — feature card descriptions, footer copy, navigation links.</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">sm · 0.875rem · 400</span>
+            <p style="font-size: 0.875rem; font-weight: 400; line-height: 1.6; color: var(--color-muted);">Body small — install instructions, step descriptions, captions.</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">xs · 0.75rem · 500 · 0.07em</span>
+            <p style="font-size: 0.75rem; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase;">LABEL / EYEBROW · step numbers, section labels</p>
+          </div>
+          <div class="type-sample">
+            <span class="type-spec">mono · ui-monospace</span>
+            <pre style="font-size: 0.875rem; line-height: 1.7; color: var(--color-code-text); background: var(--color-dark); padding: 12px 16px; border-radius: 8px; overflow-x: auto;">postgresql://app:VLT_a1b2c3d4@db.internal:5432/mydb</pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── COMPONENTS ─────────────────────────────────────── -->
+      <section id="components">
+        <h2>UI primitives</h2>
+
+        <h3>Buttons</h3>
+        <div class="comp-row">
+          <a href="#" class="btn btn-primary">Get started</a>
+          <a href="#" class="btn btn-secondary">View on GitHub</a>
+          <span class="badge">Open source · Apache-2.0</span>
+        </div>
+
+        <h3>Code block</h3>
+        <div class="code-block-demo">
+          <div class="demo-panel">
+            <figcaption class="demo-label demo-label--before">Without Veil</figcaption>
+            <pre class="demo-code"><code>postgresql://app:<mark class="secret-mark">s3cr3t</mark>@db.internal:5432/mydb</code></pre>
+          </div>
+          <div class="demo-panel">
+            <figcaption class="demo-label demo-label--after">With Veil</figcaption>
+            <pre class="demo-code"><code>postgresql://app:<mark class="token-mark">VLT_a1b2c3d4</mark>@db.internal:5432/mydb</code></pre>
+          </div>
+        </div>
+
+        <h3>Navigation</h3>
+        <div class="nav-demo">
+          <div class="nav-inner">
+            <div>
+              <svg height="24" viewBox="0 0 85 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Veil">
+                <g transform="translate(0,2) scale(0.6)">
+                  <rect x="20" y="20" width="32" height="32" rx="8" fill="#1C1A17"/>
+                  <rect x="14" y="14" width="32" height="32" rx="8" fill="#2BBF7E" opacity="0.45"/>
+                  <rect x="8"  y="8"  width="32" height="32" rx="8" fill="#2BBF7E"/>
+                </g>
+                <path d="M47.708 28.94 41.264 11.06H43.778L49.25 26.78H48.758L54.212 11.06H56.744L50.3 28.94Z M64.094 29.228Q62.222 29.228 60.749 28.34Q59.276 27.452 58.436 25.91Q57.596 24.368 57.596 22.436Q57.596 20.486 58.427 18.977Q59.258 17.468 60.683 16.598Q62.108 15.728 63.89 15.728Q65.324 15.728 66.443 16.238Q67.562 16.748 68.345 17.627Q69.128 18.506 69.542 19.616Q69.956 20.726 69.956 21.932Q69.956 22.208 69.929 22.526Q69.902 22.844 69.842 23.144H59.234V21.224H68.558L67.484 22.076Q67.706 20.828 67.253 19.844Q66.8 18.86 65.915 18.284Q65.03 17.708 63.89 17.708Q62.756 17.708 61.823 18.29Q60.89 18.872 60.374 19.931Q59.858 20.99 59.966 22.46Q59.852 23.888 60.401 24.953Q60.95 26.018 61.937 26.603Q62.924 27.188 64.106 27.188Q65.408 27.188 66.299 26.588Q67.19 25.988 67.736 25.064L69.608 26.018Q69.224 26.906 68.423 27.635Q67.622 28.364 66.521 28.796Q65.42 29.228 64.094 29.228Z M72.26 28.94V16.016H74.51V28.94ZM72.26 13.94V11.06H74.51V13.94Z M77.348 28.94V10.772H79.598V28.94Z" fill="#1C1A17"/>
+              </svg>
+            </div>
+            <div style="display:flex;gap:1.5rem;align-items:center;font-size:0.875rem;color:var(--color-muted);">
+              <span>How it works</span>
+              <span>Install</span>
+              <span style="padding:6px 14px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-ink);">GitHub</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</Base>
+
+<style>
+  /* ── Shell layout ── */
+  .brand-shell {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    min-height: 100vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-6);
+    gap: var(--space-12);
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: sticky;
+    top: var(--space-8);
+    height: fit-content;
+    padding-top: var(--space-12);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .back {
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+    transition: color var(--transition-fast);
+  }
+
+  .back:hover { color: var(--color-ink); }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .sidebar-nav a {
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+    padding: var(--space-2) 0;
+    border-left: 2px solid var(--color-border);
+    padding-left: var(--space-4);
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .sidebar-nav a:hover {
+    color: var(--color-ink);
+    border-color: var(--color-primary);
+  }
+
+  /* ── Content ── */
+  .content {
+    padding: var(--space-12) 0 var(--space-32);
+  }
+
+  .page-header {
+    margin-bottom: var(--space-16);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .page-eyebrow {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+    margin-bottom: var(--space-3);
+  }
+
+  .page-title {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--space-3);
+  }
+
+  .page-sub {
+    font-size: var(--text-base);
+    color: var(--color-muted);
+  }
+
+  /* ── Sections ── */
+  section {
+    padding-top: var(--space-16);
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--space-16);
+  }
+
+  section:first-of-type {
+    margin-top: 0;
+  }
+
+  section h2 {
+    font-size: var(--text-2xl);
+    margin-bottom: var(--space-8);
+  }
+
+  section h3 {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-subtle);
+    margin: var(--space-10) 0 var(--space-5);
+  }
+
+  /* ── Logo blocks ── */
+  .row {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .asset-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-8) var(--space-10);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    min-width: 160px;
+  }
+
+  .asset-block--cream { background: #FAF8F4; }
+  .asset-block--dark  { background: #1C1A17; border-color: #3D3A34; }
+  .asset-block--white { background: #FFFFFF; }
+
+  .asset-label {
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+  }
+
+  .asset-label--inv {
+    color: #6E6B63;
+  }
+
+  /* ── Lockup ── */
+  .lockup-block {
+    display: flex;
+    align-items: center;
+    padding: var(--space-6) var(--space-8);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+  }
+
+  .lockup-block--cream { background: #FAF8F4; }
+  .lockup-block--dark  { background: #1C1A17; border-color: #3D3A34; }
+
+  /* ── Anatomy ── */
+  .anatomy-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+  }
+
+  .anatomy-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    text-align: center;
+    max-width: 120px;
+  }
+
+  .anatomy-swatch {
+    background: #FAF8F4;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+  }
+
+  .anatomy-label {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  .anatomy-desc {
+    font-size: 10px;
+    color: var(--color-subtle);
+    line-height: 1.4;
+  }
+
+  .anatomy-op {
+    font-size: var(--text-xl);
+    color: var(--color-subtle);
+    margin-top: 28px;
+  }
+
+  /* ── Scale ── */
+  .scale-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-6);
+    flex-wrap: wrap;
+    background: #FAF8F4;
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+  }
+
+  .scale-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .scale-label {
+    font-size: 10px;
+    color: var(--color-subtle);
+  }
+
+  /* ── Swatches ── */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .swatch {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .swatch-color {
+    height: 64px;
+  }
+
+  .swatch-info {
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .swatch-label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-ink);
+  }
+
+  .swatch-token {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--color-primary-dark);
+  }
+
+  .swatch-hex {
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    color: var(--color-muted);
+  }
+
+  .swatch-use {
+    font-size: 10px;
+    color: var(--color-subtle);
+    margin-top: 2px;
+  }
+
+  /* ── Typography ── */
+  .type-meta {
+    font-size: var(--text-sm);
+    color: var(--color-subtle);
+    margin-bottom: var(--space-8);
+  }
+
+  .type-scale {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .type-sample {
+    padding: var(--space-5) 0;
+    border-bottom: 1px solid var(--color-border);
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: var(--space-6);
+    align-items: baseline;
+  }
+
+  .type-spec {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--color-subtle);
+    padding-top: 4px;
+  }
+
+  /* ── Components ── */
+  .comp-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding: var(--space-6);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-primary-dark);
+    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.01em;
+  }
+
+  .code-block-demo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+  }
+
+  .demo-panel {
+    background: var(--color-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .demo-label {
+    display: block;
+    font-size: var(--text-xs);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-dark-surface);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .demo-label--before { color: var(--color-secret); }
+  .demo-label--after  { color: var(--color-token); }
+
+  .demo-code {
+    padding: var(--space-4) var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-code-text);
+    overflow-x: auto;
+    line-height: 1.8;
+  }
+
+  .secret-mark { background: none; color: var(--color-secret); }
+  .token-mark  { background: none; color: var(--color-token); }
+
+  .nav-demo {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 0 var(--space-6);
+  }
+
+  .nav-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 60px;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 860px) {
+    .brand-shell {
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      padding-top: var(--space-6);
+    }
+
+    .sidebar-nav {
+      flex-direction: row;
+      gap: var(--space-4);
+    }
+
+    .sidebar-nav a {
+      border-left: none;
+      border-bottom: 2px solid var(--color-border);
+      padding-left: 0;
+      padding-bottom: var(--space-2);
+    }
+
+    .type-sample {
+      grid-template-columns: 1fr;
+    }
+
+    .code-block-demo {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</Base>
