@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/PAIArtCom/Veil/internal/mask"
 	"github.com/PAIArtCom/Veil/internal/token"
 )
 
@@ -22,12 +23,7 @@ func staticLookup(table map[string]string) func(string) (string, bool) {
 // buffer in one shot, with no holdback. The chunked Restorer must match this for
 // any chunking of the same input.
 func wholeRestore(table map[string]string, input string) string {
-	return string(tokenRe.ReplaceAllFunc([]byte(input), func(m []byte) []byte {
-		if restored, ok := token.RestoreKnownPrefix(string(m), staticLookup(table)); ok {
-			return []byte(restored)
-		}
-		return m
-	}))
+	return mask.RestoreKnownPlaceholders(input, staticLookup(table), nil)
 }
 
 // feedSplit feeds input to a fresh Restorer split at the given byte boundaries
@@ -51,17 +47,23 @@ func feedSplit(table map[string]string, input string, splits []int) string {
 // Hand-written tokens with 12+ hex ids (valid TokenPattern shape). Using real
 // TYPE strings from internal/types keeps the residual TYPE accounting honest.
 const (
-	tokSecret = "PAIArtVeil_SECRET_0a1b2c3d4e5f"     // 12 hex
-	tokEmail  = "PAIArtVeil_EMAIL_aabbccddeeff00"    // 12 hex
-	tokIPv4   = "PAIArtVeil_IPV4_001122334455"       // 12 hex
-	tokExtend = "PAIArtVeil_SECRET_0a1b2c3d4e5fabcd" // 16 hex (collision-extended)
+	tokSecret    = "PAIArtVeil_SECRET_0a1b2c3d4e5f"     // 12 hex
+	tokEmail     = "PAIArtVeil_EMAIL_aabbccddeeff00"    // 12 hex
+	tokIPv4      = "PAIArtVeil_IPV4_001122334455"       // 12 hex
+	tokExtend    = "PAIArtVeil_SECRET_0a1b2c3d4e5fabcd" // 16 hex (collision-extended)
+	surIPv4      = "192.168.42.7"
+	surIPv6      = "2001:db8:12:34::56"
+	surURLDelims = "https://api-112233445566.veil.paiart.com/a;b,c?token=value-112233445566"
 )
 
 var fixtureTable = map[string]string{
-	tokSecret: "AKIAIOSFODNN7EXAMPLE",
-	tokEmail:  "user@example.com",
-	tokIPv4:   "10.0.0.1",
-	tokExtend: "sk-live-extended-secret",
+	tokSecret:    "AKIAIOSFODNN7EXAMPLE",
+	tokEmail:     "user@example.com",
+	tokIPv4:      "10.0.0.1",
+	tokExtend:    "sk-live-extended-secret",
+	surIPv4:      "192.168.1.100",
+	surIPv6:      "2606:4700:4700::1111",
+	surURLDelims: "https://api.example.com/a;b,c?token=abc123",
 }
 
 // ---- Test 1: equivalence property (the key gate) -----------------------------
@@ -79,6 +81,8 @@ func TestEquivalenceAllSplitBoundaries(t *testing.T) {
 		tokSecret + tokEmail,            // adjacent tokens, no separator
 		"a" + tokIPv4 + "b" + tokExtend, // tight wrapping, extended id
 		"trailing token at end " + tokEmail,
+		"ip surrogate " + surIPv4 + " and v6 " + surIPv6,
+		"url surrogate with delimiters " + surURLDelims + " done",
 		"leading " + tokSecret + " then text",
 		"PAIArtVeil_FOO_zzzzzzzzzzzz and " + tokSecret, // a non-hex Veil-ish then a real token
 		strings.Repeat(tokSecret+" ", 5),               // repeated tokens
@@ -176,6 +180,44 @@ func TestSplitMidHex(t *testing.T) {
 	want := "x user@example.com y"
 	if got != want {
 		t.Fatalf("mid-hex split: want %q got %q", want, got)
+	}
+}
+
+func TestSplitMidIPv4Surrogate(t *testing.T) {
+	input := "ip " + surIPv4 + " ok"
+	cut := strings.Index(input, surIPv4) + len("192.")
+	got := feedSplit(fixtureTable, input, []int{cut})
+	want := "ip 192.168.1.100 ok"
+	if got != want {
+		t.Fatalf("mid-IPv4-surrogate split: want %q got %q", want, got)
+	}
+}
+
+func TestSplitMidURLSurrogateWithDelimiterCharacters(t *testing.T) {
+	input := "url " + surURLDelims + " ok"
+	cut := strings.Index(input, surURLDelims) + strings.Index(surURLDelims, ";") + 1
+	got := feedSplit(fixtureTable, input, []int{cut})
+	want := "url https://api.example.com/a;b,c?token=abc123 ok"
+	if got != want {
+		t.Fatalf("mid-URL-surrogate-delimiter split: want %q got %q", want, got)
+	}
+}
+
+func TestDoesNotRescanRestoredValuesAcrossChunks(t *testing.T) {
+	const (
+		tok       = "PAIArtVeil_SECRET_111111111111"
+		surrogate = "user-222222222222@veil.paiart.com"
+	)
+	table := map[string]string{
+		tok:       surrogate,
+		surrogate: "ops@example.com",
+	}
+	input := "secret " + tok + " direct " + surrogate
+	cut := strings.Index(input, tok) + len("PAIArtVeil_SECRET_")
+	got := feedSplit(table, input, []int{cut})
+	want := "secret " + surrogate + " direct ops@example.com"
+	if got != want {
+		t.Fatalf("restored values were rescanned: want %q got %q", want, got)
 	}
 }
 

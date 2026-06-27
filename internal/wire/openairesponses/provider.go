@@ -223,7 +223,7 @@ func (p *provider) ApplyRequest(op string, body []byte, spans []wire.MaskedSpan)
 	return body, nil
 }
 
-// RestoreResponse restores tokens in non-streaming Responses bodies.
+// RestoreResponse restores placeholders in non-streaming Responses bodies.
 func (p *provider) RestoreResponse(op string, body []byte, restore wire.RestoreFunc) ([]byte, error) {
 	if err := validateResponsesOp(op); err != nil {
 		return nil, err
@@ -242,7 +242,7 @@ func (p *provider) RestoreResponse(op string, body []byte, restore wire.RestoreF
 	return body, nil
 }
 
-// RestoreSSEEvent restores tokens in one parsed Responses SSE event payload.
+// RestoreSSEEvent restores placeholders in one parsed Responses SSE event payload.
 func (p *provider) RestoreSSEEvent(op string, eventData []byte, restore wire.RestoreFunc) ([]byte, error) {
 	if err := validateResponsesOp(op); err != nil {
 		return nil, err

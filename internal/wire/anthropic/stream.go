@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/PAIArtCom/Veil/internal/mask"
 	"github.com/PAIArtCom/Veil/internal/token"
 	"github.com/PAIArtCom/Veil/internal/wire"
 )
@@ -27,9 +28,9 @@ func (p *provider) NewStreamRestorer(op string) (wire.StreamRestorer, error) {
 //
 //   - kind is the content_block.type ("text", "tool_use", "thinking", …),
 //     captured at content_block_start so a stop/flush knows how to drain.
-//   - textTail is the held partial-token suffix of a text block: the trailing
-//     bytes of the concatenated text_delta payloads that could still grow into a
-//     PAIArtVeil_ token, carried forward until proven complete or flushed.
+//   - textTail is the held partial-placeholder suffix of a text block: the
+//     trailing bytes of the concatenated text_delta payloads that could still
+//     grow into a placeholder, carried forward until proven complete or flushed.
 //   - jsonBuf accumulates a tool_use block's input_json_delta fragments so the
 //     COMPLETE reconstructed JSON can be restored at block stop (tools need
 //     complete input, and full-parse restore is escaping-correct).
@@ -100,18 +101,24 @@ func (s *streamRestorer) handleDelta(eventData []byte, restore wire.RestoreFunc)
 	case "text_delta":
 		blk := s.block(idx, "text")
 		// Concatenate the held tail with this delta's text, then split off the
-		// safe prefix and hold back the new partial-token suffix. This is the
+		// safe prefix and hold back the new partial-placeholder suffix. This is the
 		// same holdback the raw byte restorer applies, but driven per content
-		// block on decoded text rather than on raw SSE bytes — so a token split
-		// across text_delta events (mid-PAIArtVeil_/mid-TYPE/mid-hex) is reassembled
-		// before any match is attempted.
+		// block on decoded text rather than on raw SSE bytes, so a split
+		// placeholder is reassembled before any match is attempted.
 		combined := append(blk.textTail, []byte(gjson.GetBytes(eventData, "delta.text").Str)...)
-		danger := token.PartialSuffixStart(combined)
+		tokenDanger := token.PartialSuffixStart(combined)
+		surrogateDanger := mask.PartialSurrogateSuffixStart(combined)
+		danger := tokenDanger
+		maxHold := token.MaxTokenLen
+		if surrogateDanger < danger {
+			danger = surrogateDanger
+			maxHold = mask.MaxSurrogateLen
+		}
 		// Growth guard, mirroring internal/stream.Restorer: a dangerous suffix
 		// longer than any real token cannot complete, so emit the excess to keep
 		// the held tail bounded. No real token spans the forced cut.
-		if len(combined)-danger > token.MaxTokenLen {
-			danger = len(combined) - token.MaxTokenLen
+		if len(combined)-danger > maxHold {
+			danger = len(combined) - maxHold
 		}
 		safe := combined[:danger]
 		// Copy the retained tail into a fresh backing array so the (possibly
@@ -194,7 +201,7 @@ func (s *streamRestorer) drainBlock(idx int64, blk *blockState, restore wire.Res
 
 	default:
 		// Treat every non-tool block as text-shaped for tail flushing. A held
-		// text tail at this point is the trailing partial-token suffix; restore
+		// text tail at this point is the trailing partial-placeholder suffix; restore
 		// it as a complete value (it terminated when the block stopped).
 		if len(blk.textTail) == 0 {
 			return nil, nil

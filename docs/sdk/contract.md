@@ -46,8 +46,8 @@ The three range from "richest" to "barest." The contract is pinned to the barest
    auth — fits [pass-through](../architecture/decisions/0004-auth-pass-through.md)).
 3. **Streaming's lowest common denominator is raw-chunk passthrough with arbitrary byte
    boundaries** (2 of 3 default to this). → The SDK **must** provide a stateful streaming
-   restore that tolerates a token split across chunks; it **also** offers an event-level
-   restore for gateways that already parse SSE.
+   restore that tolerates a token or surrogate split across chunks; it **also** offers an
+   event-level restore for gateways that already parse SSE.
 4. **No host plugin registry can be assumed** (only 1 of 3 has one). → The SDK is a
    **small library API**. Integrators call it at their own seams; wiring is their (small)
    job.
@@ -90,9 +90,10 @@ rules and `L2` for optional NER. The public SDK surfaces are Text, Wire, and Str
   provider/op pairs and malformed provider JSON return errors and must be treated as
   fail-closed. Opaque media/document payloads and provider thinking/control traces are not
   converted into text by the SDK.
-- **Existing Veil tokens.** `Mask` and `MaskRequest` preserve valid `PAIArtVeil_…` token
-  spans already present in protected text/tool-I/O fields. This prevents residual tokens
-  from earlier turns from being wrapped into nested tokens on a later request.
+- **Existing Veil placeholders.** `Mask` and `MaskRequest` preserve valid `PAIArtVeil_…`
+  token spans and known format-preserving surrogates already present in protected
+  text/tool-I/O fields. This prevents residual placeholders from earlier turns from
+  being wrapped into nested placeholders on a later request.
 - **Choosing a streaming method.** Use `RestoreStreamChunk` if you relay raw bytes (clipal,
   Orbit default). Use `NewSSEStreamRestorer` if you already parse SSE and need
   provider-aware holdback across adjacent events. Use `RestoreSSEEvent` only as a

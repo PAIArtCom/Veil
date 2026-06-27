@@ -3,6 +3,7 @@ package veil_test
 import (
 	"context"
 	"errors"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -58,8 +59,8 @@ func TestMaskRestoreEmail(t *testing.T) {
 	if strings.Contains(masked, "user@example.com") {
 		t.Fatalf("email not masked: %q", masked)
 	}
-	if !strings.Contains(masked, "PAIArtVeil_EMAIL_") {
-		t.Fatalf("expected PAIArtVeil_EMAIL_ token in masked text: %q", masked)
+	if !strings.Contains(masked, "user-") || !strings.Contains(masked, "@veil.paiart.com") {
+		t.Fatalf("expected veil.paiart.com email surrogate in masked text: %q", masked)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -108,20 +109,104 @@ func TestMaskRestoreMixed(t *testing.T) {
 	}
 }
 
+func TestMaskRestoreComplexMixedPlaceholders(t *testing.T) {
+	e := newTestEngine(t)
+	scope := veil.Scope{Session: "complex-mixed"}
+	text := strings.Join([]string{
+		"email=ops@example.com",
+		"ordinary=https://supabase.com/docs",
+		"sensitive=https://api.example.com/v1?token=abc123",
+		"dsn=postgresql://app:s3cr3t@db.example.com:5432/prod",
+		"ipv4=10.20.30.40",
+		"ipv6=2606:4700:4700::1111",
+		"key=AKIAIOSFODNN7EXAMPLE",
+	}, " ")
+
+	masked, st, err := e.Mask(ctx, scope, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	for _, leaked := range []string{
+		"ops@example.com",
+		"api.example.com",
+		"abc123",
+		"app:s3cr3t",
+		"db.example.com",
+		"10.20.30.40",
+		"2606:4700:4700::1111",
+		"AKIAIOSFODNN7EXAMPLE",
+	} {
+		if strings.Contains(masked, leaked) {
+			t.Fatalf("masked complex text leaked %q in %q", leaked, masked)
+		}
+	}
+	fields := keyValueFields(t, masked)
+	if got := fields["ordinary"]; got != "https://supabase.com/docs" {
+		t.Fatalf("ordinary URL should pass through unchanged, got %q in %q", got, masked)
+	}
+	if got := fields["email"]; !strings.HasPrefix(got, "user-") || !strings.HasSuffix(got, "@veil.paiart.com") {
+		t.Fatalf("email surrogate = %q, masked=%q", got, masked)
+	}
+	if got := fields["sensitive"]; !strings.HasPrefix(got, "https://api-") ||
+		!strings.Contains(got, ".veil.paiart.com/v1") || !strings.Contains(got, "token=value-") {
+		t.Fatalf("sensitive URL surrogate = %q, masked=%q", got, masked)
+	}
+	if got := fields["dsn"]; !strings.HasPrefix(got, "postgresql://user-") ||
+		!strings.Contains(got, ":password-") || !strings.Contains(got, "@db-") ||
+		!strings.Contains(got, ".veil.paiart.com:5432/prod") {
+		t.Fatalf("DSN surrogate = %q, masked=%q", got, masked)
+	}
+	if got := fields["ipv4"]; !strings.HasPrefix(got, "10.") {
+		t.Fatalf("private IPv4 surrogate should preserve 10/8 shape, got %q in %q", got, masked)
+	} else if addr, err := netip.ParseAddr(got); err != nil || !addr.Is4() {
+		t.Fatalf("IPv4 surrogate is not valid IPv4: %q", got)
+	}
+	if got := fields["ipv6"]; !strings.HasPrefix(got, "2001:db8:") {
+		t.Fatalf("public IPv6 surrogate should use documentation prefix, got %q in %q", got, masked)
+	} else if addr, err := netip.ParseAddr(got); err != nil || !addr.Is6() {
+		t.Fatalf("IPv6 surrogate is not valid IPv6: %q", got)
+	}
+	if got := fields["key"]; !strings.HasPrefix(got, "PAIArtVeil_SECRET_") {
+		t.Fatalf("secret should use opaque token, got %q in %q", got, masked)
+	}
+
+	remasked, _, err := e.Mask(ctx, scope, masked)
+	if err != nil {
+		t.Fatalf("second Mask: %v", err)
+	}
+	if remasked != masked {
+		t.Fatalf("known placeholders should not be nested on second mask:\n masked:  %q\n remask:  %q", masked, remasked)
+	}
+
+	restored, err := e.Restore(ctx, st, masked)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if restored != text {
+		t.Fatalf("complex mixed round-trip failed:\n  original: %q\n  restored: %q", text, restored)
+	}
+}
+
+func keyValueFields(t *testing.T, text string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, field := range strings.Fields(text) {
+		key, value, ok := strings.Cut(field, "=")
+		if !ok {
+			t.Fatalf("field %q is not key=value in %q", field, text)
+		}
+		out[key] = value
+	}
+	return out
+}
+
 func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 	e := newTestEngine(t)
 	cases := []struct {
 		name      string
 		text      string
 		plaintext string
-		wantKeep  string
 	}{
-		{
-			name:      "connection string masks only password",
-			text:      "dsn postgres://admin:hunter2@db.example.com/prod",
-			plaintext: "hunter2",
-			wantKeep:  "postgres://admin:",
-		},
 		{
 			name:      "openai key beats generic assignment",
 			text:      "OPENAI_API_KEY=sk-abcdefghijklmnopqrstuvwxyz12345",
@@ -159,9 +244,6 @@ func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 			if strings.Contains(masked, "PAIArtVeil_URL_") {
 				t.Fatalf("URL overlap won over secret span: %q", masked)
 			}
-			if tc.wantKeep != "" && !strings.Contains(masked, tc.wantKeep) {
-				t.Fatalf("expected non-secret context %q to remain in %q", tc.wantKeep, masked)
-			}
 			restored, err := e.Restore(ctx, st, masked)
 			if err != nil {
 				t.Fatalf("Restore: %v", err)
@@ -170,6 +252,32 @@ func TestMaskResolverPreservesSpecificSecretSpans(t *testing.T) {
 				t.Fatalf("round-trip failed:\n  original: %q\n  restored: %q", tc.text, restored)
 			}
 		})
+	}
+}
+
+func TestMaskRestoreDatabaseURLSurrogate(t *testing.T) {
+	e := newTestEngine(t)
+	text := "dsn postgresql://app:s3cr3t@localhost:5432/mydb"
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	for _, leaked := range []string{"app:s3cr3t", "localhost", "PAIArtVeil_URL_"} {
+		if strings.Contains(masked, leaked) {
+			t.Fatalf("masked DSN leaked %q in %q", leaked, masked)
+		}
+	}
+	for _, want := range []string{"postgresql://user-", ":password-", "@db-", ".veil.paiart.com:5432/mydb"} {
+		if !strings.Contains(masked, want) {
+			t.Fatalf("masked DSN missing %q in %q", want, masked)
+		}
+	}
+	restored, err := e.Restore(ctx, st, masked)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if restored != text {
+		t.Fatalf("round-trip failed:\n  original: %q\n  restored: %q", text, restored)
 	}
 }
 
@@ -182,6 +290,47 @@ func TestMaskRestoreIPv4(t *testing.T) {
 	}
 	if strings.Contains(masked, "10.0.0.1") {
 		t.Fatalf("IPv4 not masked: %q", masked)
+	}
+	if strings.Contains(masked, "PAIArtVeil_IPV4_") {
+		t.Fatalf("IPv4 should use an IP-shaped surrogate, got opaque token: %q", masked)
+	}
+	maskedIP := strings.TrimSuffix(strings.TrimPrefix(masked, "server at "), " is down")
+	addr, err := netip.ParseAddr(maskedIP)
+	if err != nil || !addr.Is4() {
+		t.Fatalf("masked IPv4 is not a valid IPv4 address: %q", maskedIP)
+	}
+	if !strings.HasPrefix(maskedIP, "10.") {
+		t.Fatalf("private IPv4 surrogate should preserve private 10/8 shape, got %q", maskedIP)
+	}
+	restored, err := e.Restore(ctx, st, masked)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if restored != text {
+		t.Fatalf("round-trip failed:\n  original: %q\n  restored: %q", text, restored)
+	}
+}
+
+func TestMaskRestoreIPv6(t *testing.T) {
+	e := newTestEngine(t)
+	text := "public v6 2606:4700:4700::1111 is reachable"
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if strings.Contains(masked, "2606:4700:4700::1111") {
+		t.Fatalf("IPv6 not masked: %q", masked)
+	}
+	if strings.Contains(masked, "PAIArtVeil_IPV6_") {
+		t.Fatalf("IPv6 should use an IPv6-shaped surrogate, got opaque token: %q", masked)
+	}
+	maskedIP := strings.TrimSuffix(strings.TrimPrefix(masked, "public v6 "), " is reachable")
+	addr, err := netip.ParseAddr(maskedIP)
+	if err != nil || !addr.Is6() {
+		t.Fatalf("masked IPv6 is not a valid IPv6 address: %q", maskedIP)
+	}
+	if !strings.HasPrefix(maskedIP, "2001:db8:") {
+		t.Fatalf("public IPv6 surrogate should use documentation prefix, got %q", maskedIP)
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {
@@ -805,7 +954,26 @@ func TestScopeIsolation(t *testing.T) {
 
 // ---- URL round-trip ----
 
-func TestMaskRestoreURL(t *testing.T) {
+func TestMaskLeavesOrdinaryHTTPURLUnchanged(t *testing.T) {
+	e := newTestEngine(t)
+	text := "reference https://supabase.com/docs for the design approach"
+	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	if masked != text {
+		t.Fatalf("ordinary URL was modified:\n  original: %q\n  masked:   %q", text, masked)
+	}
+	restored, err := e.Restore(ctx, st, masked)
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if restored != text {
+		t.Fatalf("ordinary URL round-trip failed:\n  original: %q\n  restored: %q", text, restored)
+	}
+}
+
+func TestMaskRestoreSensitiveQueryURL(t *testing.T) {
 	e := newTestEngine(t)
 	text := "see https://api.example.com/v1/secret?token=abc123 for details"
 	masked, st, err := e.Mask(ctx, veil.Scope{}, text)
@@ -814,6 +982,16 @@ func TestMaskRestoreURL(t *testing.T) {
 	}
 	if strings.Contains(masked, "https://api.example.com") {
 		t.Fatalf("URL not masked: %q", masked)
+	}
+	for _, leaked := range []string{"api.example.com", "abc123"} {
+		if strings.Contains(masked, leaked) {
+			t.Fatalf("masked URL leaked %q in %q", leaked, masked)
+		}
+	}
+	for _, want := range []string{"https://api-", ".veil.paiart.com/v1/secret", "token=value-"} {
+		if !strings.Contains(masked, want) {
+			t.Fatalf("masked URL missing %q in %q", want, masked)
+		}
 	}
 	restored, err := e.Restore(ctx, st, masked)
 	if err != nil {

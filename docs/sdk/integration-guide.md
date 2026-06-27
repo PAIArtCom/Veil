@@ -59,7 +59,7 @@ Notes:
 Pick the method that matches how your gateway relays the stream.
 
 **B1 — raw byte relay (the common case: clipal default, Orbit same-protocol).** You hand
-the engine raw chunks; it holds back partial tokens across chunk boundaries:
+the engine raw chunks; it holds back partial placeholders across chunk boundaries:
 
 ```go
 for {

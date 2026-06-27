@@ -7,7 +7,7 @@ tools.
 
 This module implements the standalone HTTP proxy handler that masks supported
 provider-bound text/tool-I/O fields, forwards the provider-native request to the
-configured upstream, and restores tokens on the trusted local response path. For v0.1.0
+configured upstream, and restores placeholders on the trusted local response path. For v0.1.0
 it handles Anthropic Messages `POST /v1/messages` and OpenAI Responses `POST
 /v1/responses` / `POST /responses`; other paths fail closed before upstream egress.
 

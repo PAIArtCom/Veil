@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
+	"github.com/PAIArtCom/Veil/internal/mask"
 	"github.com/PAIArtCom/Veil/internal/token"
 	"github.com/PAIArtCom/Veil/internal/wire"
 )
@@ -72,9 +73,16 @@ func (s *streamRestorer) handleTextDelta(eventData []byte, restore wire.RestoreF
 		s.text[key] = st
 	}
 	combined := append(st.tail, []byte(gjson.GetBytes(eventData, "delta").Str)...)
-	danger := token.PartialSuffixStart(combined)
-	if len(combined)-danger > token.MaxTokenLen {
-		danger = len(combined) - token.MaxTokenLen
+	tokenDanger := token.PartialSuffixStart(combined)
+	surrogateDanger := mask.PartialSurrogateSuffixStart(combined)
+	danger := tokenDanger
+	maxHold := token.MaxTokenLen
+	if surrogateDanger < danger {
+		danger = surrogateDanger
+		maxHold = mask.MaxSurrogateLen
+	}
+	if len(combined)-danger > maxHold {
+		danger = len(combined) - maxHold
 	}
 	safe := combined[:danger]
 	st.tail = append([]byte(nil), combined[danger:]...)

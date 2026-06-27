@@ -245,7 +245,7 @@ func (p *Proxy) newUpstreamRequest(r *http.Request, body []byte) (*http.Request,
 }
 
 // relayBuffered relays a complete (non-streaming) upstream response: read the
-// whole body, restore tokens, and write the result. On a restore error the raw
+// whole body, restore placeholders, and write the result. On a restore error the raw
 // upstream body is written so the trusted local user still gets a response
 // (residual tokens are audited by the engine); the error is logged, never
 // swallowed (exit criterion #5).

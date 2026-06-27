@@ -63,6 +63,19 @@ func maskOneToken(t *testing.T, e *veil.Engine, scope veil.Scope, text string) (
 	return wireState(t, e, scope), toks[0]
 }
 
+func maskOnePlaceholder(t *testing.T, e *veil.Engine, scope veil.Scope, text, prefix string) (*veil.State, string) {
+	t.Helper()
+	masked, _, err := e.Mask(context.Background(), scope, text)
+	if err != nil {
+		t.Fatalf("Mask(%q): %v", text, err)
+	}
+	placeholder, ok := strings.CutPrefix(masked, prefix)
+	if !ok || placeholder == "" || placeholder == text[len(prefix):] {
+		t.Fatalf("want one masked placeholder after %q in %q", prefix, masked)
+	}
+	return wireState(t, e, scope), placeholder
+}
+
 // sseStreamCollect feeds each event payload to the restorer in order and returns
 // the flat, ordered list of emitted payloads (Event outputs followed by Flush
 // outputs). It fails on any Event/Flush error.
@@ -243,8 +256,9 @@ func TestSSETextTokenAtEndFlushedAtStop(t *testing.T) {
 	assertStopLast(t, payloads, 0)
 }
 
-// Two tokens with a boundary between them and a split inside the second.
-func TestSSETwoTokensBoundaryAndInnerSplit(t *testing.T) {
+// A token and a format-preserving surrogate with a boundary between them and a
+// split inside the surrogate.
+func TestSSETokenAndSurrogateBoundaryAndInnerSplit(t *testing.T) {
 	scope := veil.Scope{Session: "sse-A-two"}
 	e := newTestEngineWithAudit(t, nil)
 	masked, _, err := e.Mask(context.Background(), scope, "k1 AKIAIOSFODNN7EXAMPLE k2 user@example.com")
@@ -252,15 +266,23 @@ func TestSSETwoTokensBoundaryAndInnerSplit(t *testing.T) {
 		t.Fatalf("Mask: %v", err)
 	}
 	toks := streamTokenRe.FindAllString(masked, -1)
-	if len(toks) != 2 {
-		t.Fatalf("want 2 tokens, got %v", toks)
+	if len(toks) != 1 {
+		t.Fatalf("want 1 token, got %v in %q", toks, masked)
+	}
+	surrogateStart := strings.Index(masked, "user-")
+	if surrogateStart < 0 {
+		t.Fatalf("missing email surrogate in %q", masked)
 	}
 	st := wireState(t, e, scope)
-	t1, t2 := toks[0], toks[1]
+	surrogateEnd := len(masked)
+	if relEnd := strings.Index(masked[surrogateStart:], " "); relEnd >= 0 {
+		surrogateEnd = surrogateStart + relEnd
+	}
+	t1, t2 := toks[0], masked[surrogateStart:surrogateEnd]
 	mid2 := len(t1) + len(" ") + 5 // somewhere inside t2 when concatenated
 
 	full := t1 + " " + t2
-	frags := splitToken(full, len(t1), mid2) // boundary between, then inside t2
+	frags := splitToken(full, len(t1), mid2) // boundary between, then inside surrogate
 	s := newSSE(t, e, st)
 	events := [][]byte{
 		blockStart(0, "text"),
@@ -273,6 +295,29 @@ func TestSSETwoTokensBoundaryAndInnerSplit(t *testing.T) {
 	want := "AKIAIOSFODNN7EXAMPLE user@example.com"
 	if got != want {
 		t.Fatalf("two-token split: got %q want %q", got, want)
+	}
+}
+
+func TestSSEIPv4SurrogateSplitAcrossEvents(t *testing.T) {
+	scope := veil.Scope{Session: "sse-A-ip"}
+	e := newTestEngineWithAudit(t, nil)
+	st, ip := maskOnePlaceholder(t, e, scope, "ip 192.168.1.100", "ip ")
+	if strings.Contains(ip, "PAIArtVeil_IPV4_") {
+		t.Fatalf("IPv4 should use an IP-shaped surrogate, got %q", ip)
+	}
+
+	frags := splitToken(ip, len("192."))
+	s := newSSE(t, e, st)
+	events := [][]byte{
+		blockStart(0, "text"),
+		textDeltaEvent(0, "ip "+frags[0]),
+		textDeltaEvent(0, frags[1]),
+		blockStop(0),
+	}
+	got := reassembleText(t, sseStreamCollect(t, s, events))
+	want := "ip 192.168.1.100"
+	if got != want {
+		t.Fatalf("IPv4 surrogate split: got %q want %q", got, want)
 	}
 }
 
@@ -397,9 +442,9 @@ func TestSSETextSpecialCharsValidJSON(t *testing.T) {
 func TestSSEMultiIndexIsolation(t *testing.T) {
 	scope := veil.Scope{Session: "sse-D"}
 	e := newTestEngineWithAudit(t, nil)
-	// Both tokens are minted in the same scope so the one State knows both. The
-	// IPv4 and the AWS key are independently L1-detectable.
-	st, textTok := maskOneToken(t, e, scope, "ip 192.168.1.100")
+	// Both placeholders are minted in the same scope so the one State knows both.
+	// The IPv4 surrogate and the AWS key token are independently L1-detectable.
+	st, textTok := maskOnePlaceholder(t, e, scope, "ip 192.168.1.100", "ip ")
 	_, toolTok := maskOneToken(t, e, scope, "key AKIAIOSFODNN7EXAMPLE")
 
 	// Interleave three blocks: index 0 text (split), index 1 tool_use (split),
@@ -455,6 +500,127 @@ func TestSSEMultiIndexIsolation(t *testing.T) {
 	}
 	if !strings.Contains(thinkingText, textTok) {
 		t.Fatalf("thinking delta should pass through with token unrestored, got %q", thinkingText)
+	}
+}
+
+func TestSSEComplexMixedPlaceholdersAcrossIndices(t *testing.T) {
+	scope := veil.Scope{Session: "sse-complex"}
+	e := newTestEngineWithAudit(t, nil)
+	seed := strings.Join([]string{
+		"email=ops@example.com",
+		"sensitive=https://api.example.com/v1?token=abc123",
+		"dsn=postgresql://app:s3cr3t@db.example.com:5432/prod",
+		"ipv4=10.20.30.40",
+		"ipv6=2606:4700:4700::1111",
+		"key=AKIAIOSFODNN7EXAMPLE",
+	}, " ")
+	masked, _, err := e.Mask(context.Background(), scope, seed)
+	if err != nil {
+		t.Fatalf("Mask: %v", err)
+	}
+	fields := keyValueFields(t, masked)
+	st := wireState(t, e, scope)
+
+	textComplete := strings.Join([]string{
+		fields["email"],
+		fields["sensitive"],
+		fields["dsn"],
+		fields["ipv4"],
+		fields["ipv6"],
+		fields["key"],
+	}, "|")
+	textCut1 := strings.Index(textComplete, fields["sensitive"]) + len(fields["sensitive"])/2
+	textCut2 := strings.Index(textComplete, fields["ipv6"]) + len("2001:db8:")
+	textFrags := splitToken(textComplete, textCut1, textCut2)
+
+	toolBytes, err := json.Marshal(map[string]string{
+		"email": fields["email"],
+		"url":   fields["sensitive"],
+		"dsn":   fields["dsn"],
+		"ipv4":  fields["ipv4"],
+		"ipv6":  fields["ipv6"],
+		"key":   fields["key"],
+	})
+	if err != nil {
+		t.Fatalf("marshal tool JSON: %v", err)
+	}
+	toolComplete := string(toolBytes)
+	toolCut1 := strings.Index(toolComplete, fields["dsn"]) + len(fields["dsn"])/2
+	toolCut2 := strings.Index(toolComplete, fields["ipv4"]) + len("10.")
+	toolFrags := splitToken(toolComplete, toolCut1, toolCut2)
+
+	s := newSSE(t, e, st)
+	events := [][]byte{
+		blockStart(0, "text"),
+		blockStart(1, "tool_use"),
+		blockStart(2, "thinking"),
+		textDeltaEvent(0, "mixed "+textFrags[0]),
+		inputJSONDeltaEvent(1, toolFrags[0]),
+		thinkingDeltaEvent(2, "reasoning "+fields["email"]+" "+fields["key"]),
+		textDeltaEvent(0, textFrags[1]),
+		inputJSONDeltaEvent(1, toolFrags[1]),
+		textDeltaEvent(0, textFrags[2]+" done"),
+		inputJSONDeltaEvent(1, toolFrags[2]),
+		blockStop(0),
+		blockStop(1),
+		blockStop(2),
+	}
+	payloads := sseStreamCollect(t, s, events)
+
+	gotText := reassembleTextForIndex(payloads, 0)
+	for _, want := range []string{
+		"ops@example.com",
+		"https://api.example.com/v1?token=abc123",
+		"postgresql://app:s3cr3t@db.example.com:5432/prod",
+		"10.20.30.40",
+		"2606:4700:4700::1111",
+		"AKIAIOSFODNN7EXAMPLE",
+	} {
+		if !strings.Contains(gotText, want) {
+			t.Fatalf("index 0 text missing %q: %q", want, gotText)
+		}
+	}
+	for _, placeholder := range fields {
+		if strings.Contains(gotText, placeholder) {
+			t.Fatalf("index 0 text still contains placeholder %q: %q", placeholder, gotText)
+		}
+	}
+
+	var toolJSON string
+	for _, p := range payloads {
+		if gjson.GetBytes(p, "delta.type").Str == "input_json_delta" {
+			if idx := gjson.GetBytes(p, "index").Int(); idx != 1 {
+				t.Fatalf("tool delta keyed to index %d, want 1: %s", idx, p)
+			}
+			toolJSON = gjson.GetBytes(p, "delta.partial_json").Str
+		}
+	}
+	var toolInput map[string]string
+	if err := json.Unmarshal([]byte(toolJSON), &toolInput); err != nil {
+		t.Fatalf("tool input JSON invalid: %q: %v", toolJSON, err)
+	}
+	wants := map[string]string{
+		"email": "ops@example.com",
+		"url":   "https://api.example.com/v1?token=abc123",
+		"dsn":   "postgresql://app:s3cr3t@db.example.com:5432/prod",
+		"ipv4":  "10.20.30.40",
+		"ipv6":  "2606:4700:4700::1111",
+		"key":   "AKIAIOSFODNN7EXAMPLE",
+	}
+	for key, want := range wants {
+		if got := toolInput[key]; got != want {
+			t.Fatalf("tool input %s = %q, want %q in %q", key, got, want, toolJSON)
+		}
+	}
+
+	var thinkingText string
+	for _, p := range payloads {
+		if gjson.GetBytes(p, "delta.type").Str == "thinking_delta" {
+			thinkingText = gjson.GetBytes(p, "delta.thinking").Str
+		}
+	}
+	if !strings.Contains(thinkingText, fields["email"]) || !strings.Contains(thinkingText, fields["key"]) {
+		t.Fatalf("thinking delta should preserve placeholders unrestored, got %q", thinkingText)
 	}
 }
 

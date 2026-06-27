@@ -33,6 +33,7 @@ import (
 // tokenRe matches a PAIArtVeil_ token, mirroring the engine's token grammar
 // used elsewhere in the repo's tests.
 var tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
+var mixedPlaceholderRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}|user-[0-9a-f]{12}@veil\.paiart\.com|(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"\\<>]*veil\.paiart\.com[^\s"\\<>]*|(?:127\.0\.0|10\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}|192\.168\.\d{1,3}|169\.254\.\d{1,3}|203\.0\.113)\.\d{1,3}|(?:2001:db8:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fd00:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fe80::[0-9a-f]{1,4}:[0-9a-f]{1,4}:[0-9a-f]{1,4})`)
 
 // recorder is a mutex-guarded holder for byte slices an httptest handler records
 // on its own goroutine and the test goroutine reads after the response
@@ -405,6 +406,37 @@ func splitTokenStream(tok string) string {
 	return sse.String()
 }
 
+func splitMixedPlaceholderStream(placeholders []string, ordinaryURL string) string {
+	textComplete := strings.Join(placeholders, "|") + "|ordinary=" + ordinaryURL
+	textCut1 := strings.Index(textComplete, placeholders[1]) + len(placeholders[1])/2
+	textCut2 := strings.Index(textComplete, placeholders[len(placeholders)-1]) + len(placeholders[len(placeholders)-1])/2
+	tf := splitString(textComplete, textCut1, textCut2)
+
+	toolBytes, _ := json.Marshal(map[string]string{
+		"combo":    strings.Join(placeholders, ","),
+		"ordinary": ordinaryURL,
+	})
+	toolComplete := string(toolBytes)
+	toolCut1 := strings.Index(toolComplete, placeholders[0]) + len(placeholders[0])/2
+	toolCut2 := strings.Index(toolComplete, placeholders[len(placeholders)-1]) + len(placeholders[len(placeholders)-1])/2
+	jf := splitString(toolComplete, toolCut1, toolCut2)
+
+	var sse strings.Builder
+	sse.WriteString("event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_complex\"}}\n\n")
+	sse.WriteString("event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"mixed " + jsonEsc(tf[0]) + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + jsonEsc(tf[1]) + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"" + jsonEsc(tf[2]) + " done\"}}\n\n")
+	sse.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n")
+	sse.WriteString("event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"tu_complex\",\"name\":\"run\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"" + jsonEsc(jf[0]) + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"" + jsonEsc(jf[1]) + "\"}}\n\n")
+	sse.WriteString("event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"" + jsonEsc(jf[2]) + "\"}}\n\n")
+	sse.WriteString("event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":1}\n\n")
+	sse.WriteString("event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+	return sse.String()
+}
+
 // jsonEsc escapes s for embedding inside a JSON string literal that is itself a
 // data: line value (so the partial_json string carries escaped JSON).
 func jsonEsc(s string) string {
@@ -412,11 +444,41 @@ func jsonEsc(s string) string {
 	return string(b[1 : len(b)-1]) // drop the surrounding quotes
 }
 
+func splitString(s string, cuts ...int) []string {
+	frags := make([]string, 0, len(cuts)+1)
+	prev := 0
+	for _, cut := range cuts {
+		frags = append(frags, s[prev:cut])
+		prev = cut
+	}
+	frags = append(frags, s[prev:])
+	return frags
+}
+
+func uniqueStringMatches(re *regexp.Regexp, s string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, match := range re.FindAllString(s, -1) {
+		if _, ok := seen[match]; ok {
+			continue
+		}
+		seen[match] = struct{}{}
+		out = append(out, match)
+	}
+	return out
+}
+
 // toolInputFromStream parses the client SSE stream, reconstructs index 1's
 // tool_use input by concatenating its input_json_delta partial_json fragments,
 // and returns the decoded {"dsn": ...} value. It asserts the reconstruction is
 // valid JSON.
 func toolInputDSN(t *testing.T, clientStream []byte) string {
+	t.Helper()
+	input := toolInputMap(t, clientStream)
+	return input["dsn"]
+}
+
+func toolInputMap(t *testing.T, clientStream []byte) map[string]string {
 	t.Helper()
 	var pj strings.Builder
 	sc := bufio.NewScanner(bytes.NewReader(clientStream))
@@ -437,13 +499,11 @@ func toolInputDSN(t *testing.T, clientStream []byte) string {
 	if err := sc.Err(); err != nil {
 		t.Fatalf("scan client stream: %v", err)
 	}
-	var input struct {
-		DSN string `json:"dsn"`
-	}
+	var input map[string]string
 	if err := json.Unmarshal([]byte(pj.String()), &input); err != nil {
 		t.Fatalf("reassembled tool_use.input is not valid JSON: %q: %v", pj.String(), err)
 	}
-	return input.DSN
+	return input
 }
 
 // reassembleTextDeltas parses the client SSE stream and concatenates every
@@ -543,6 +603,99 @@ func TestStreamingRoundTripSplitAcrossEvents(t *testing.T) {
 	}
 	if n := strings.Count(string(clientStream), "event: content_block_stop"); n != 2 {
 		t.Fatalf("want 2 content_block_stop events, got %d", n)
+	}
+}
+
+func TestStreamingRoundTripComplexMixedPlaceholders(t *testing.T) {
+	engine := newTestEngine(t)
+	const sensitiveURL = "https://api.example.com/v1?token=abc123"
+	const dsn = "postgresql://app:s3cr3t@db.example.com:5432/prod"
+	const ipv4 = "10.20.30.40"
+	const ipv6 = "2606:4700:4700::1111"
+	const ordinaryURL = "https://supabase.com/docs"
+	sensitiveValues := []string{awsKey, email, sensitiveURL, dsn, ipv4, ipv6}
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+		body, _ := io.ReadAll(r.Body)
+		for _, value := range sensitiveValues {
+			if bytes.Contains(body, []byte(value)) {
+				t.Errorf("upstream masked request leaked %q: %s", value, body)
+			}
+		}
+		if !bytes.Contains(body, []byte(ordinaryURL)) {
+			t.Errorf("ordinary URL should remain visible upstream: %s", body)
+		}
+		placeholders := uniqueStringMatches(mixedPlaceholderRe, string(body))
+		if len(placeholders) < len(sensitiveValues) {
+			t.Errorf("upstream got %d placeholders, want at least %d in %s: %v", len(placeholders), len(sensitiveValues), body, placeholders)
+			http.Error(w, "missing placeholders", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl := w.(http.Flusher)
+		_, _ = io.WriteString(w, splitMixedPlaceholderStream(placeholders, ordinaryURL))
+		fl.Flush()
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqText := strings.Join([]string{
+		"key " + awsKey,
+		"email " + email,
+		"url " + sensitiveURL,
+		"dsn " + dsn,
+		"ipv4 " + ipv4,
+		"ipv6 " + ipv6,
+		"ordinary " + ordinaryURL,
+	}, " ")
+	reqBody, err := json.Marshal(map[string]any{
+		"model":      "claude-opus-4-5",
+		"max_tokens": 1024,
+		"stream":     true,
+		"messages": []any{
+			map[string]string{"role": "user", "content": reqText},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+	resp, err := http.Post(front.URL+"/v1/messages", "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientStream, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 1 {
+		t.Fatalf("upstream received %d requests, want 1", received.Load())
+	}
+	if bytes.Contains(clientStream, []byte("PAIArtVeil_")) || bytes.Contains(clientStream, []byte("veil.paiart.com")) {
+		t.Fatalf("known placeholder residue in client stream: %s", clientStream)
+	}
+	gotText := reassembleTextDeltas(t, clientStream)
+	for _, value := range append(sensitiveValues, ordinaryURL) {
+		if !strings.Contains(gotText, value) {
+			t.Fatalf("reassembled text missing %q: %q", value, gotText)
+		}
+	}
+	toolInput := toolInputMap(t, clientStream)
+	combo := toolInput["combo"]
+	for _, value := range sensitiveValues {
+		if !strings.Contains(combo, value) {
+			t.Fatalf("tool input combo missing %q: %#v", value, toolInput)
+		}
+	}
+	if toolInput["ordinary"] != ordinaryURL {
+		t.Fatalf("ordinary URL in tool input = %q, want %q", toolInput["ordinary"], ordinaryURL)
+	}
+	if n := strings.Count(string(clientStream), `"input_json_delta"`); n != 1 {
+		t.Fatalf("want exactly 1 consolidated input_json_delta in client stream, got %d: %s", n, clientStream)
 	}
 }
 

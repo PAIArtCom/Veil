@@ -2,7 +2,7 @@ package wire
 
 import "errors"
 
-// RestoreFunc restores tokens in a text value using the State selected by the caller.
+// RestoreFunc restores placeholders in a text value using the State selected by the caller.
 // It returns an error for missing mappings, invalid state, or other restore failures.
 type RestoreFunc func(text string) (string, error)
 
@@ -28,7 +28,7 @@ type MaskedSpan struct {
 // that have no streaming restorer yet (callers fail closed or fall back).
 var ErrStreamingUnsupported = errors.New("wire: streaming restore unsupported")
 
-// StreamRestorer restores tokens across a provider's SSE event sequence,
+// StreamRestorer restores placeholders across a provider's SSE event sequence,
 // holding cross-event state per content block. One StreamRestorer serves one
 // response stream and is single-writer.
 type StreamRestorer interface {
@@ -36,7 +36,7 @@ type StreamRestorer interface {
 	// single `data:` JSON value, already frame-reassembled by the caller) and
 	// returns zero or more complete event payloads to emit downstream, in order
 	// (more when a held tail flushes alongside a stop; fewer when a delta is
-	// buffered). restore replaces complete PAIArtVeil_ tokens (and counts residuals).
+	// buffered). restore replaces complete placeholders and counts residual opaque tokens.
 	Event(eventData []byte, restore RestoreFunc) ([][]byte, error)
 	// Flush returns any events still held at end of stream.
 	Flush(restore RestoreFunc) ([][]byte, error)

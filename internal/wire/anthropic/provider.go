@@ -358,7 +358,7 @@ func textSpanFromString(val gjson.Result, path, role string) wire.TextSpan {
 	return span
 }
 
-// RestoreResponse restores tokens in a non-streaming Anthropic response body.
+// RestoreResponse restores placeholders in a non-streaming Anthropic response body.
 // It walks content blocks of the assistant message:
 //   - type=="text" → restore .text
 //   - type=="tool_use" → restore every string leaf in .input recursively
@@ -417,7 +417,7 @@ func (p *provider) RestoreResponse(op string, body []byte, restore wire.RestoreF
 	return body, restoreErr
 }
 
-// RestoreSSEEvent restores tokens in a single parsed Anthropic SSE event
+// RestoreSSEEvent restores placeholders in a single parsed Anthropic SSE event
 // payload. Only content_block_delta events are touched:
 //   - delta.type=="text_delta" → restore delta.text
 //   - delta.type=="input_json_delta" → restore delta.partial_json

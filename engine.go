@@ -300,7 +300,7 @@ func minInt(a, b int) int {
 
 // maskText is the shared masking core used by both Mask and MaskRequest.
 // It detects sensitive values in text, masks them using the resolved policy,
-// accumulates token→value entries in the store under scope, and returns the
+// accumulates placeholder→value entries in the store under scope, and returns the
 // masked text. If any type hits OperatorBlock the blocked types are returned
 // (text will equal the original). Detection errors are returned as-is
 // (fail-closed).
@@ -340,7 +340,9 @@ func (e *Engine) maskText(ctx context.Context, policy types.Policy, scope Scope,
 }
 
 // Mask replaces detected sensitive values in text with deterministic, reversible
-// tokens (PAIArtVeil_<TYPE>_<id>). It returns the State needed to restore the same text surface.
+// placeholders. Most types use PAIArtVeil_<TYPE>_<id> tokens; EMAIL, IPv4,
+// IPv6, and sensitive URL findings use format-preserving surrogates. It returns
+// the State needed to restore the same text surface.
 func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked string, st *State, err error) {
 	policy, err := e.activePolicy(ctx, scope)
 	if err != nil {
@@ -362,21 +364,16 @@ func (e *Engine) Mask(ctx context.Context, scope Scope, text string) (masked str
 // tokenRe matches any PAIArtVeil_… token in text.
 var tokenRe = regexp.MustCompile(token.TokenPattern)
 
-// Restore replaces tokens in text with their original values using st. A nil State is
-// invalid because text restore must never consult an unrelated namespace.
+// Restore replaces known tokens and format-preserving surrogates in text with
+// their original values using st. A nil State is invalid because text restore
+// must never consult an unrelated namespace.
 func (e *Engine) Restore(ctx context.Context, st *State, text string) (string, error) {
 	if st == nil {
 		return "", ErrInvalidState
 	}
 	scope := st.scope
 	lookup := e.lookup(scope)
-	result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-		if restored, ok := token.RestoreKnownPrefix(tok, lookup); ok {
-			return restored
-		}
-		return tok // unknown token → leave as-is
-	})
-	return result, nil
+	return mask.RestoreKnownPlaceholders(text, lookup, nil), nil
 }
 
 // ---- Wire-format surface (native provider JSON) ---------------------------------
@@ -448,10 +445,10 @@ func (e *Engine) MaskRequest(ctx context.Context, scope Scope, provider, op stri
 	return maskedBody, &State{scope: scope, provider: provider, op: op}, nil
 }
 
-// RestoreResponse restores tokens in a complete (non-streaming) provider response body.
+// RestoreResponse restores placeholders in a complete (non-streaming) provider response body.
 // It uses st.Provider and st.Op to dispatch through the same provider walker that masked
 // the request. Restore errors are returned explicitly so callers can audit via ctx or
-// choose whether to surface residual tokens to the trusted local user.
+// choose whether to surface residual placeholders to the trusted local user.
 func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([]byte, error) {
 	if st == nil || st.provider == "" || st.op == "" {
 		return nil, ErrInvalidState
@@ -470,10 +467,10 @@ func (e *Engine) RestoreResponse(ctx context.Context, st *State, body []byte) ([
 
 // ---- Streaming surface ----------------------------------------------------------
 
-// RestoreStreamChunk restores tokens in a raw streamed chunk, holding back partial
-// tokens across chunk boundaries. This is the universal streaming method: it works
+// RestoreStreamChunk restores placeholders in a raw streamed chunk, holding back partial
+// placeholders across chunk boundaries. This is the universal streaming method: it works
 // even when the host relays raw bytes with arbitrary chunk boundaries. It returns
-// the bytes that are safe to forward now; bytes belonging to a token that may be
+// the bytes that are safe to forward now; bytes belonging to a placeholder that may be
 // completed by a later chunk are held internally until proven complete (then they
 // surface on a subsequent call) or until FlushStream.
 //
@@ -516,7 +513,7 @@ func (e *Engine) FlushStream(st *State) []byte {
 	return out
 }
 
-// RestoreSSEEvent restores tokens in a single parsed SSE event payload. It dispatches
+// RestoreSSEEvent restores placeholders in a single parsed SSE event payload. It dispatches
 // via st.Provider/st.Op, so provider-specific event JSON can be restored without
 // rewriting non-text fields. Use RestoreStreamChunk for raw byte relay.
 func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byte) ([]byte, error) {
@@ -542,9 +539,9 @@ func (e *Engine) RestoreSSEEvent(ctx context.Context, st *State, eventData []byt
 // (accumulate while relaying, audit once at end of stream).
 //
 // Unlike the stateless RestoreSSEEvent, an SSEStream holds the provider's
-// cross-event holdback (e.g. a PAIArtVeil_ token split across content_block_delta
+// cross-event holdback (e.g. a placeholder split across content_block_delta
 // events), so the proxy can drive it one complete event at a time and have
-// split tokens reassembled before any restore is attempted.
+// split placeholders reassembled before any restore is attempted.
 //
 // Concurrency: an SSEStream is single-writer. One instance serves exactly one
 // response stream, driven sequentially by one relay goroutine; it holds no lock.
@@ -604,7 +601,7 @@ func (s *SSEStream) Flush(ctx context.Context) ([][]byte, error) {
 	return out, err
 }
 
-// lookup returns a token→value resolver bound to scope. It is the single place
+// lookup returns a placeholder→value resolver bound to scope. It is the single place
 // that consults the mapstore for restore, shared by the wire restore closures
 // and the streaming holdback Restorer.
 func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
@@ -613,10 +610,10 @@ func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 	}
 }
 
-// restoreScan returns a RestoreFunc that replaces PAIArtVeil_… tokens found in text
-// with their stored values under scope (unknown tokens left as-is, consistent
+// restoreScan returns a RestoreFunc that replaces placeholders found in text
+// with their stored values under scope (unknown placeholders left as-is, consistent
 // with the text-surface Restore), counting every validly-shaped but unresolved
-// token into residual by TYPE string. It is the single token-scan shared by the
+// opaque token into residual by TYPE string. It is the single restore scan shared by the
 // buffered/SSE-event surface (a per-call residual map) and the stateful SSE
 // stream (a per-stream residual map accumulated across many Event calls). The
 // caller owns residual and converts it for audit; all invocations happen on the
@@ -624,15 +621,11 @@ func (e *Engine) lookup(scope Scope) func(string) (string, bool) {
 func (e *Engine) restoreScan(scope Scope, residual map[string]int) wire.RestoreFunc {
 	lookup := e.lookup(scope)
 	return func(text string) (string, error) {
-		result := tokenRe.ReplaceAllStringFunc(text, func(tok string) string {
-			if restored, ok := token.RestoreKnownPrefix(tok, lookup); ok {
-				return restored
-			}
+		result := mask.RestoreKnownPlaceholders(text, lookup, func(tok string) {
 			// Unknown but validly-shaped token: leave as-is and count by TYPE.
 			if typ, ok := token.ParseType(tok); ok {
 				residual[typ]++
 			}
-			return tok
 		})
 		return result, nil
 	}

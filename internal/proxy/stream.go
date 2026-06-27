@@ -38,7 +38,7 @@ const (
 //     finish it arrive on a later read, so an event can never be processed
 //     half-received (exit criterion #7).
 //   - Stream restorer (cross-event holdback): the restorer holds per-content-
-//     block state so a token split across whole events is reassembled before any
+//     block state so a placeholder split across whole events is reassembled before any
 //     match is attempted, and emits zero or more complete events per input event
 //     (zero while buffering an input_json_delta; two when a held text tail or a
 //     consolidated tool input flushes alongside a stop).

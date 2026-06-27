@@ -15,7 +15,7 @@ Fast, deterministic, no model. Catches data with **structure**.
 | Built-in starter regex rules | API keys, provider tokens, private keys |
 | Shannon entropy + context keywords | High-entropy secrets near `password`/`token`/`key` |
 | Checksums (e.g. Luhn) | Credit-card numbers, validated identifiers |
-| Structured patterns | Emails, phones, IPv4/IPv6, connection strings, URLs |
+| Structured patterns | Emails, phones, IPv4/IPv6, connection strings, credential-bearing URLs |
 
 Context keywords reduce false positives: in Phase 0, a high-entropy blob is only treated
 as a secret when a keyword (`secret`, `token`, `apikey`, …) sits nearby. Isolated
@@ -26,6 +26,10 @@ high-entropy strings are not flagged; strict bare high-entropy fallback is Phase
 
 **Phase 0 coverage notes (deliberate limits):**
 
+- **URL** masking is intentionally narrow. Database/cache connection strings and HTTP(S)
+  URLs with userinfo or sensitive query keys (`token`, `key`, `password`, `auth`, etc.)
+  are masked; ordinary public/reference HTTP(S) links are left visible because masking
+  them often destroys user intent with little privacy gain.
 - **IPV6** is intentionally *partial*. A bare compressed form like `::1` or `a::b` is textually
   identical to language scope/path syntax (`std::vector`, `crate::module`, `a::b`), so masking
   it would corrupt source code — the traffic this tool protects. Phase 0 masks an IPv6 literal

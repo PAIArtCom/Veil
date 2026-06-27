@@ -38,6 +38,9 @@ func newTestEngine(t *testing.T) *veil.Engine {
 var ctx = context.Background()
 
 var tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
+var emailSurrogateRe = regexp.MustCompile(`user-[0-9a-f]{12}@veil\.paiart\.com`)
+var dbURLSurrogateRe = regexp.MustCompile(`postgres://user-[0-9a-f]{12}:password-[0-9a-f]{12}@db-[0-9a-f]{12}\.veil\.paiart\.com/prod`)
+var mixedPlaceholderRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}|user-[0-9a-f]{12}@veil\.paiart\.com|(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"\\<>]*veil\.paiart\.com[^\s"\\<>]*|(?:127\.0\.0|10\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}|192\.168\.\d{1,3}|169\.254\.\d{1,3}|203\.0\.113)\.\d{1,3}|(?:2001:db8:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fd00:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fe80::[0-9a-f]{1,4}:[0-9a-f]{1,4}:[0-9a-f]{1,4})`)
 
 // ---- ExtractRequest / ApplyRequest unit tests --------------------------------
 
@@ -138,11 +141,9 @@ func TestExtractMessageStringContent(t *testing.T) {
 // an AWS key in the tool_result.
 func TestExtractMessageBlockContent(t *testing.T) {
 	e := newTestEngine(t)
-	// Use a postgres URL as the "password" field value — it contains an https
-	// URL-shaped string that L1 detects, and the AWS key is always detected.
-	// The host field uses a value that won't be detected (a plain hostname is
-	// not a URL without the scheme).
-	const toolURL = "https://db.example.com/prod"
+	// Use a PostgreSQL DSN so URL masking covers credential-bearing connection
+	// strings while ordinary public HTTP(S) URLs remain model-visible.
+	const toolURL = "postgresql://app:s3cr3t@db.example.com/prod"
 	body := []byte(`{
 		"model": "claude-opus-4-5",
 		"max_tokens": 1024,
@@ -543,23 +544,23 @@ func TestRestoreResponseToolUseInput(t *testing.T) {
 		t.Fatalf("MaskRequest: %v", err)
 	}
 
-	// Find the URL token from the masked request.
+	// Find the URL surrogate from the masked request.
 	maskedReq, _, _ := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
-	tok := extractFirstToken(string(maskedReq))
-	if tok == "" {
-		t.Fatalf("no token found in masked request: %s", maskedReq)
+	surrogate := dbURLSurrogateRe.FindString(string(maskedReq))
+	if surrogate == "" {
+		t.Fatalf("no DB URL surrogate found in masked request: %s", maskedReq)
 	}
 
 	// Build a synthetic response where the assistant emitted a tool_use with
-	// that token in the input.
-	respBody := []byte(`{"role":"assistant","content":[{"type":"tool_use","id":"tu_1","name":"run_query","input":{"dsn":"` + tok + `","limit":100}}],"stop_reason":"tool_use"}`)
+	// that surrogate in the input.
+	respBody := []byte(`{"role":"assistant","content":[{"type":"tool_use","id":"tu_1","name":"run_query","input":{"dsn":"` + surrogate + `","limit":100}}],"stop_reason":"tool_use"}`)
 
 	restored, err := e.RestoreResponse(ctx, st, respBody)
 	if err != nil {
 		t.Fatalf("RestoreResponse: %v", err)
 	}
-	if bytes.Contains(restored, []byte(tok)) {
-		t.Fatalf("token not restored in tool_use.input: %s", restored)
+	if bytes.Contains(restored, []byte(surrogate)) {
+		t.Fatalf("surrogate not restored in tool_use.input: %s", restored)
 	}
 	// The non-string numeric field limit:100 must survive.
 	if !bytes.Contains(restored, []byte(`"limit":100`)) {
@@ -635,19 +636,19 @@ func TestRestoreSSEInputJsonDelta(t *testing.T) {
 	}
 
 	maskedReq, _, _ := e.MaskRequest(ctx, scope, "anthropic", "messages", reqBody)
-	tok := extractFirstToken(string(maskedReq))
-	if tok == "" {
-		t.Fatalf("no token found: %s", maskedReq)
+	surrogate := emailSurrogateRe.FindString(string(maskedReq))
+	if surrogate == "" {
+		t.Fatalf("no email surrogate found: %s", maskedReq)
 	}
 
-	eventData := []byte(`{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"email\":\"` + tok + `\"}"}}`)
+	eventData := []byte(`{"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\"email\":\"` + surrogate + `\"}"}}`)
 
 	restored, err := e.RestoreSSEEvent(ctx, st, eventData)
 	if err != nil {
 		t.Fatalf("RestoreSSEEvent: %v", err)
 	}
-	if bytes.Contains(restored, []byte(tok)) {
-		t.Fatalf("token not restored in input_json_delta: %s", restored)
+	if bytes.Contains(restored, []byte(surrogate)) {
+		t.Fatalf("surrogate not restored in input_json_delta: %s", restored)
 	}
 	if !bytes.Contains(restored, []byte("user@example.com")) {
 		t.Fatalf("original email not in restored event: %s", restored)
@@ -709,14 +710,18 @@ func TestFullRoundTrip(t *testing.T) {
 		t.Fatalf("MaskRequest: %v", err)
 	}
 
-	// Collect all tokens that appear in the masked request.
+	// Collect all reversible placeholders that appear in the masked request.
 	toks := tokenRe.FindAllString(string(maskedReq), -1)
-	if len(toks) == 0 {
-		t.Fatal("no tokens in masked request")
+	placeholders := append([]string{}, toks...)
+	if surrogate := emailSurrogateRe.FindString(string(maskedReq)); surrogate != "" {
+		placeholders = append(placeholders, surrogate)
+	}
+	if len(placeholders) == 0 {
+		t.Fatal("no reversible placeholders in masked request")
 	}
 
-	// Build a synthetic assistant response echoing the tokens.
-	respText := "Here are your values: " + strings.Join(toks, " and ")
+	// Build a synthetic assistant response echoing the placeholders.
+	respText := "Here are your values: " + strings.Join(placeholders, " and ")
 	respBody := []byte(`{"role":"assistant","content":[{"type":"text","text":"` + respText + `"}],"stop_reason":"end_turn"}`)
 
 	restored, err := e.RestoreResponse(ctx, st, respBody)
@@ -735,10 +740,109 @@ func TestFullRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRestoreResponseComplexMixedPlaceholders(t *testing.T) {
+	e := newTestEngine(t)
+
+	values := []string{
+		"AKIAIOSFODNN7EXAMPLE",
+		"ops@example.com",
+		"https://api.example.com/v1?token=abc123",
+		"postgresql://app:s3cr3t@db.example.com:5432/prod",
+		"10.20.30.40",
+		"2606:4700:4700::1111",
+	}
+	reqText := strings.Join(values, " ")
+	reqBody, err := json.Marshal(map[string]any{
+		"model":      "claude-opus-4-5",
+		"max_tokens": 1024,
+		"system":     "system " + reqText,
+		"messages": []any{
+			map[string]any{"role": "user", "content": "user " + reqText},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	maskedReq, st, err := e.MaskRequest(ctx, veil.Scope{Session: "anthropic-complex"}, "anthropic", "messages", reqBody)
+	if err != nil {
+		t.Fatalf("MaskRequest: %v", err)
+	}
+	for _, value := range values {
+		if bytes.Contains(maskedReq, []byte(value)) {
+			t.Fatalf("masked request leaked %q in %s", value, maskedReq)
+		}
+	}
+	placeholders := uniqueStringMatches(mixedPlaceholderRe, string(maskedReq))
+	if len(placeholders) < len(values) {
+		t.Fatalf("got %d placeholders, want at least %d in %s: %v", len(placeholders), len(values), maskedReq, placeholders)
+	}
+
+	const unknown = "user-deadbeefcafe@veil.paiart.com"
+	respBody, err := json.Marshal(map[string]any{
+		"role": "assistant",
+		"content": []any{
+			map[string]any{"type": "text", "text": "mixed " + strings.Join(placeholders, "|") + " unknown " + unknown},
+			map[string]any{
+				"type": "tool_use",
+				"id":   "tu_1",
+				"name": "run",
+				"input": map[string]any{
+					"combo":   strings.Join(placeholders, ","),
+					"unknown": unknown,
+					"count":   7,
+					"enabled": true,
+				},
+			},
+		},
+		"stop_reason": "tool_use",
+	})
+	if err != nil {
+		t.Fatalf("marshal response: %v", err)
+	}
+
+	restored, err := e.RestoreResponse(ctx, st, respBody)
+	if err != nil {
+		t.Fatalf("RestoreResponse: %v", err)
+	}
+	if !json.Valid(restored) {
+		t.Fatalf("restored response is not valid JSON: %s", restored)
+	}
+	for _, placeholder := range placeholders {
+		if bytes.Contains(restored, []byte(placeholder)) {
+			t.Fatalf("known placeholder %q survived restore: %s", placeholder, restored)
+		}
+	}
+	for _, value := range values {
+		if !bytes.Contains(restored, []byte(value)) {
+			t.Fatalf("restored response missing %q: %s", value, restored)
+		}
+	}
+	if !bytes.Contains(restored, []byte(unknown)) {
+		t.Fatalf("unknown placeholder-like value should remain unchanged: %s", restored)
+	}
+	if !bytes.Contains(restored, []byte(`"count":7`)) || !bytes.Contains(restored, []byte(`"enabled":true`)) {
+		t.Fatalf("non-string tool fields were altered: %s", restored)
+	}
+}
+
 // ---- helpers -----------------------------------------------------------------
 
 // extractFirstToken finds the first PAIArtVeil_… token in s.
 func extractFirstToken(s string) string {
 	m := tokenRe.FindString(s)
 	return m
+}
+
+func uniqueStringMatches(re *regexp.Regexp, s string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, match := range re.FindAllString(s, -1) {
+		if _, ok := seen[match]; ok {
+			continue
+		}
+		seen[match] = struct{}{}
+		out = append(out, match)
+	}
+	return out
 }

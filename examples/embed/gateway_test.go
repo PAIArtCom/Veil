@@ -17,6 +17,7 @@ import (
 const throwawayKey = "AKIAIOSFODNN7EXAMPLE"
 
 var tokenRE = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
+var mixedPlaceholderRE = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}|user-[0-9a-f]{12}@veil\.paiart\.com|(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"\\<>]*veil\.paiart\.com[^\s"\\<>]*|(?:127\.0\.0|10\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}|192\.168\.\d{1,3}|169\.254\.\d{1,3}|203\.0\.113)\.\d{1,3}|(?:2001:db8:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fd00:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fe80::[0-9a-f]{1,4}:[0-9a-f]{1,4}:[0-9a-f]{1,4})`)
 
 func newTestGateway(t *testing.T) *Gateway {
 	t.Helper()
@@ -112,6 +113,67 @@ func TestGatewayRawStreamRestoresArbitraryByteSplitsAndFlushesTail(t *testing.T)
 	}
 }
 
+func TestGatewayRawStreamRestoresComplexMixedPlaceholdersByteByByte(t *testing.T) {
+	gw := newTestGateway(t)
+	const (
+		email        = "ops@example.com"
+		sensitiveURL = "https://api.example.com/v1?token=abc123"
+		dsn          = "postgresql://app:s3cr3t@db.example.com:5432/prod"
+		ipv4         = "10.20.30.40"
+		ipv6         = "2606:4700:4700::1111"
+		ordinaryURL  = "https://supabase.com/docs"
+	)
+	sensitiveValues := []string{throwawayKey, email, sensitiveURL, dsn, ipv4, ipv6}
+	text := strings.Join([]string{
+		"key " + throwawayKey,
+		"email " + email,
+		"url " + sensitiveURL,
+		"dsn " + dsn,
+		"ipv4 " + ipv4,
+		"ipv6 " + ipv6,
+		"ordinary " + ordinaryURL,
+	}, " ")
+
+	masked, ex, err := gw.MaskOutbound(context.Background(), veil.Scope{Session: "raw-stream-mixed"}, anthropicRequest(text))
+	if err != nil {
+		t.Fatalf("MaskOutbound: %v", err)
+	}
+	for _, value := range sensitiveValues {
+		if bytes.Contains(masked, []byte(value)) {
+			t.Fatalf("masked provider body leaked %q: %s", value, masked)
+		}
+	}
+	if !bytes.Contains(masked, []byte(ordinaryURL)) {
+		t.Fatalf("ordinary URL should remain visible in masked body: %s", masked)
+	}
+	placeholders := uniqueStringMatches(mixedPlaceholderRE, string(masked))
+	if len(placeholders) < len(sensitiveValues) {
+		t.Fatalf("got %d placeholders, want at least %d in %s: %v", len(placeholders), len(sensitiveValues), masked, placeholders)
+	}
+
+	streamed := []byte("raw " + strings.Join(placeholders, "|") + " ordinary " + ordinaryURL)
+	var out bytes.Buffer
+	for _, b := range streamed {
+		out.Write(gw.RestoreRawStreamChunk(ex, []byte{b}))
+	}
+	out.Write(gw.FlushRawStream(ex))
+	got := out.String()
+
+	for _, value := range append(sensitiveValues, ordinaryURL) {
+		if !strings.Contains(got, value) {
+			t.Fatalf("raw stream output missing %q: %q", value, got)
+		}
+	}
+	for _, placeholder := range placeholders {
+		if strings.Contains(got, placeholder) {
+			t.Fatalf("known placeholder %q survived raw stream restore: %q", placeholder, got)
+		}
+	}
+	if strings.Contains(got, "PAIArtVeil_") || strings.Contains(got, "veil.paiart.com") {
+		t.Fatalf("raw stream restore left placeholder residue: %q", got)
+	}
+}
+
 func TestGatewayParsedSSEEventRestoresProviderPayload(t *testing.T) {
 	gw := newTestGateway(t)
 	_, ex, tok := maskOne(t, gw, veil.Scope{Session: "sse-event"}, "key "+throwawayKey)
@@ -170,4 +232,17 @@ func TestGatewayOutboundUnsupportedProviderFailsClosed(t *testing.T) {
 	if errors.Is(err, veil.ErrInvalidState) {
 		t.Fatalf("unexpected invalid state error for unsupported provider: %v", err)
 	}
+}
+
+func uniqueStringMatches(re *regexp.Regexp, s string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, match := range re.FindAllString(s, -1) {
+		if _, ok := seen[match]; ok {
+			continue
+		}
+		seen[match] = struct{}{}
+		out = append(out, match)
+	}
+	return out
 }

@@ -2,8 +2,8 @@
 // http.Handler that terminates the AI tool's request locally, masks the
 // outbound Anthropic /v1/messages JSON body through the Veil engine,
 // forwards the masked request to the configured upstream with the client's own
-// credential header untouched, and restores tokens on the way back (buffered or
-// streamed). See docs/architecture/decisions/0001-base-url-proxy-over-hooks.md
+// credential header untouched, and restores placeholders on the way back
+// (buffered or streamed). See docs/architecture/decisions/0001-base-url-proxy-over-hooks.md
 // (base-URL proxy) and 0004-auth-pass-through.md (credential pass-through).
 //
 // The handler is transport-agnostic: the loopback-only binding mandated by the

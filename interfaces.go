@@ -17,8 +17,10 @@ type Detector interface {
 type TransformOperator = types.TransformOperator
 
 const (
-	// OperatorToken replaces values with deterministic reversible PAIArtVeil_<TYPE>_<id>
-	// tokens. This is the Veil default.
+	// OperatorToken replaces values with deterministic reversible placeholders.
+	// Most types use PAIArtVeil_<TYPE>_<id> tokens; EMAIL, IPv4, IPv6, and
+	// sensitive URL findings use format-preserving surrogates. This is the Veil
+	// default.
 	OperatorToken TransformOperator = types.OperatorToken
 	// OperatorFormatPreserving is reserved for deterministic realistic surrogates
 	// such as valid-looking emails or phone numbers. (Phase 1.)

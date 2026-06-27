@@ -3,6 +3,7 @@ package l1
 import (
 	"context"
 	"net/netip"
+	neturl "net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -278,10 +279,11 @@ func buildRules() []rule {
 
 		// URL
 		{
-			typ:    types.TypeURL,
-			source: "l1:url",
-			score:  0.85,
-			re:     regexp.MustCompile(`(?i)\b(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"'<>]+`),
+			typ:      types.TypeURL,
+			source:   "l1:url",
+			score:    0.995,
+			re:       regexp.MustCompile(`(?i)\b(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"'<>]+`),
+			validate: sensitiveURL,
 		},
 
 		// ISO calendar date.
@@ -729,6 +731,39 @@ func validSecretSpan(text string, start, end int) bool {
 		return false
 	}
 	return true
+}
+
+func sensitiveURL(match string) bool {
+	u, err := neturl.Parse(match)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return false
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "postgres", "postgresql", "mysql", "mongodb", "mongodb+srv", "redis":
+		return true
+	case "http", "https":
+		if u.User != nil {
+			return true
+		}
+		for key := range u.Query() {
+			if sensitiveQueryKey(key) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
+}
+
+func sensitiveQueryKey(key string) bool {
+	k := strings.ToLower(key)
+	for _, part := range []string{"token", "key", "secret", "password", "passwd", "pwd", "auth", "credential"} {
+		if strings.Contains(k, part) {
+			return true
+		}
+	}
+	return false
 }
 
 func validGenericSecretSpan(text string, start, end int) bool {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/tidwall/gjson"
@@ -16,14 +17,18 @@ import (
 )
 
 var (
-	ctx     = context.Background()
-	tokenRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
+	ctx                = context.Background()
+	tokenRe            = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}`)
+	emailSurrogateRe   = regexp.MustCompile(`user-[0-9a-f]{12}@veil\.paiart\.com`)
+	urlSurrogateRe     = regexp.MustCompile(`postgresql://user-[0-9a-f]{12}:password-[0-9a-f]{12}@db-[0-9a-f]{12}\.veil\.paiart\.com/prod`)
+	placeholderRe      = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}|user-[0-9a-f]{12}@veil\.paiart\.com|postgresql://user-[0-9a-f]{12}:password-[0-9a-f]{12}@db-[0-9a-f]{12}\.veil\.paiart\.com/prod`)
+	mixedPlaceholderRe = regexp.MustCompile(`PAIArtVeil_[A-Z0-9]+_[0-9a-f]{12,}|user-[0-9a-f]{12}@veil\.paiart\.com|(?:https?|postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^\s"\\<>]*veil\.paiart\.com[^\s"\\<>]*|(?:127\.0\.0|10\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}|192\.168\.\d{1,3}|169\.254\.\d{1,3}|203\.0\.113)\.\d{1,3}|(?:2001:db8:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fd00:[0-9a-f]{1,4}:[0-9a-f]{1,4}::[0-9a-f]{1,4}|fe80::[0-9a-f]{1,4}:[0-9a-f]{1,4}:[0-9a-f]{1,4})`)
 )
 
 const (
 	awsKey = "AKIAIOSFODNN7EXAMPLE"
 	email  = "codex-user@example.com"
-	dsn    = "https://db.example.com/prod"
+	dsn    = "postgresql://app:s3cr3t@db.example.com/prod"
 )
 
 func newTestEngine(t *testing.T) *veil.Engine {
@@ -144,7 +149,7 @@ func TestPromptVariableBackslashKeyMasksInPlace(t *testing.T) {
 		t.Fatalf("expected one prompt variable, got %#v in %s", decoded.Prompt.Variables, masked)
 	}
 	got := decoded.Prompt.Variables[key]
-	if !tokenRe.MatchString(got) {
+	if !emailSurrogateRe.MatchString(got) {
 		t.Fatalf("prompt variable %q not masked in place: %#v", key, decoded.Prompt.Variables)
 	}
 }
@@ -157,16 +162,16 @@ func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
-	toks := tokenRe.FindAll(masked, -1)
-	if len(toks) < 2 {
-		t.Fatalf("expected at least two tokens: %s", masked)
+	placeholders := placeholderRe.FindAll(masked, -1)
+	if len(placeholders) < 2 {
+		t.Fatalf("expected at least two reversible placeholders: %s", masked)
 	}
 	resp := []byte(`{"id":"resp_1","output":[
-		{"type":"message","role":"assistant","content":[{"type":"output_text","text":"using ` + string(toks[0]) + `"}]},
-		{"type":"function_call","call_id":"call_1","name":"run","arguments":"{\"dsn\":\"` + string(toks[0]) + `\"}"},
-		{"type":"mcp_call","arguments":"{\"email\":\"` + string(toks[1]) + `\"}"},
-		{"type":"custom_tool_call","input":"custom ` + string(toks[0]) + `"},
-		{"type":"code_interpreter_call","code":"print(\"` + string(toks[1]) + `\")"}
+		{"type":"message","role":"assistant","content":[{"type":"output_text","text":"using ` + string(placeholders[0]) + `"}]},
+		{"type":"function_call","call_id":"call_1","name":"run","arguments":"{\"dsn\":\"` + string(placeholders[0]) + `\"}"},
+		{"type":"mcp_call","arguments":"{\"email\":\"` + string(placeholders[1]) + `\"}"},
+		{"type":"custom_tool_call","input":"custom ` + string(placeholders[0]) + `"},
+		{"type":"code_interpreter_call","code":"print(\"` + string(placeholders[1]) + `\")"}
 	]}`)
 
 	restored, err := e.RestoreResponse(ctx, st, resp)
@@ -179,6 +184,107 @@ func TestRestoreResponseCoversOutputTextAndToolCalls(t *testing.T) {
 	for _, plain := range [][]byte{[]byte(dsn), []byte(email)} {
 		if !bytes.Contains(restored, plain) {
 			t.Fatalf("missing restored value %q in %s", plain, restored)
+		}
+	}
+}
+
+func TestRestoreResponseComplexMixedPlaceholdersAcrossOutputItems(t *testing.T) {
+	e := newTestEngine(t)
+	const sensitiveURL = "https://api.example.com/v1?token=abc123"
+	const ipv4 = "10.20.30.40"
+	const ipv6 = "2606:4700:4700::1111"
+	const ordinaryURL = "https://supabase.com/docs"
+
+	callArgs, err := json.Marshal(map[string]string{
+		"dsn": dsn,
+		"v6":  ipv6,
+	})
+	if err != nil {
+		t.Fatalf("marshal call args: %v", err)
+	}
+	body, err := json.Marshal(map[string]any{
+		"model":        "gpt-5.4",
+		"instructions": "Use key " + awsKey + " and endpoint " + sensitiveURL + " only locally.",
+		"prompt": map[string]any{
+			"id": "pmpt_123",
+			"variables": map[string]string{
+				"contact": email,
+			},
+		},
+		"input": []any{
+			map[string]any{"type": "message", "role": "user", "content": []any{
+				map[string]string{"type": "input_text", "text": "ordinary " + ordinaryURL + " private " + ipv4},
+			}},
+			map[string]string{"type": "function_call_output", "call_id": "call_1", "output": "database " + dsn},
+			map[string]string{"type": "function_call", "call_id": "call_2", "name": "connect", "arguments": string(callArgs)},
+		},
+		"tools": []any{
+			map[string]string{"type": "function", "name": "static_schema", "description": "static " + awsKey + " must stay"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	masked, st, err := e.MaskRequest(ctx, veil.Scope{Session: "responses-complex"}, "openai-responses", "responses", body)
+	if err != nil {
+		t.Fatalf("MaskRequest: %v", err)
+	}
+	for _, leaked := range [][]byte{[]byte(email), []byte(dsn), []byte(sensitiveURL), []byte(ipv4), []byte(ipv6)} {
+		if bytes.Contains(masked, leaked) {
+			t.Fatalf("masked request leaked %q in %s", leaked, masked)
+		}
+	}
+	if !bytes.Contains(masked, []byte(ordinaryURL)) {
+		t.Fatalf("ordinary URL should remain visible in masked request: %s", masked)
+	}
+	if !bytes.Contains(masked, []byte(`static `+awsKey+` must stay`)) {
+		t.Fatalf("static tool schema example was altered: %s", masked)
+	}
+	placeholders := uniqueStringMatches(mixedPlaceholderRe, string(masked))
+	if len(placeholders) < 6 {
+		t.Fatalf("got %d placeholders, want at least 6 in %s: %v", len(placeholders), masked, placeholders)
+	}
+
+	argJSON, err := json.Marshal(map[string]string{"combo": strings.Join(placeholders, ",")})
+	if err != nil {
+		t.Fatalf("marshal response args: %v", err)
+	}
+	mcpJSON, err := json.Marshal(map[string]string{"contact": placeholders[1], "all": strings.Join(placeholders, "|")})
+	if err != nil {
+		t.Fatalf("marshal mcp args: %v", err)
+	}
+	resp, err := json.Marshal(map[string]any{
+		"id": "resp_1",
+		"output": []any{
+			map[string]any{"type": "message", "role": "assistant", "content": []any{
+				map[string]string{"type": "output_text", "text": "using " + strings.Join(placeholders, "|") + " ordinary " + ordinaryURL},
+			}},
+			map[string]string{"type": "function_call", "call_id": "call_1", "name": "run", "arguments": string(argJSON)},
+			map[string]string{"type": "mcp_call", "arguments": string(mcpJSON)},
+			map[string]string{"type": "custom_tool_call", "input": "custom " + placeholders[0] + " " + placeholders[len(placeholders)-1]},
+			map[string]string{"type": "code_interpreter_call", "code": "print(" + placeholders[0] + ")"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal response: %v", err)
+	}
+
+	restored, err := e.RestoreResponse(ctx, st, resp)
+	if err != nil {
+		t.Fatalf("RestoreResponse: %v", err)
+	}
+	if !json.Valid(restored) {
+		t.Fatalf("restored response is not valid JSON: %s", restored)
+	}
+	for _, placeholder := range placeholders {
+		if bytes.Contains(restored, []byte(placeholder)) {
+			t.Fatalf("known placeholder %q survived restore: %s", placeholder, restored)
+		}
+	}
+	for _, value := range [][]byte{[]byte(awsKey), []byte(email), []byte(dsn), []byte(sensitiveURL), []byte(ipv4), []byte(ipv6), []byte(ordinaryURL)} {
+		if !bytes.Contains(restored, value) {
+			t.Fatalf("restored response missing %q: %s", value, restored)
 		}
 	}
 }
@@ -266,11 +372,11 @@ func TestRestoreSSEEventRestoresParsedResponsesEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MaskRequest: %v", err)
 	}
-	tok := tokenRe.Find(masked)
-	if tok == nil {
-		t.Fatalf("missing token: %s", masked)
+	surrogate := urlSurrogateRe.Find(masked)
+	if surrogate == nil {
+		t.Fatalf("missing URL surrogate: %s", masked)
 	}
-	event := []byte(`{"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","call_id":"call_1","name":"run","arguments":"{\"dsn\":\"` + string(tok) + `\"}"}}`)
+	event := []byte(`{"type":"response.output_item.done","output_index":0,"item":{"type":"function_call","call_id":"call_1","name":"run","arguments":"{\"dsn\":\"` + string(surrogate) + `\"}"}}`)
 	restored, err := e.RestoreSSEEvent(ctx, st, event)
 	if err != nil {
 		t.Fatalf("RestoreSSEEvent: %v", err)
@@ -278,4 +384,17 @@ func TestRestoreSSEEventRestoresParsedResponsesEvents(t *testing.T) {
 	if got := gjson.GetBytes(restored, "item.arguments").Str; !bytes.Contains([]byte(got), []byte(dsn)) {
 		t.Fatalf("arguments not restored: %s", restored)
 	}
+}
+
+func uniqueStringMatches(re *regexp.Regexp, s string) []string {
+	seen := map[string]struct{}{}
+	var out []string
+	for _, match := range re.FindAllString(s, -1) {
+		if _, ok := seen[match]; ok {
+			continue
+		}
+		seen[match] = struct{}{}
+		out = append(out, match)
+	}
+	return out
 }

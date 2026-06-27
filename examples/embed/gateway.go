@@ -72,7 +72,7 @@ func (g *Gateway) RestoreBuffered(ctx context.Context, ex *Exchange, body []byte
 }
 
 // RestoreRawStreamChunk restores one raw streamed byte chunk. It may hold back
-// bytes that could be part of a token split across chunk boundaries.
+// bytes that could be part of a placeholder split across chunk boundaries.
 func (g *Gateway) RestoreRawStreamChunk(ex *Exchange, chunk []byte) []byte {
 	if ex == nil {
 		return chunk

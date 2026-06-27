@@ -7,6 +7,8 @@ with the namespace prefix updated by
 
 ## Format
 
+Most sensitive types use the opaque token format:
+
 ```
 PAIArtVeil_<TYPE>_<id>
 ```
@@ -32,6 +34,37 @@ token id space.
 
 Example: `sk-live-9f8a7b6c…` → `PAIArtVeil_SECRET_7f3a9c2e1b8d`
 
+EMAIL findings and sensitive URL findings use deterministic format-preserving surrogates
+under the `veil.paiart.com` domain family so the model still sees URL/email grammar.
+Sensitive URLs include database/cache connection strings and HTTP(S) URLs with userinfo
+or sensitive query keys; ordinary public/reference HTTP(S) links are not masked by
+default:
+
+```
+user-<id>@veil.paiart.com
+https://api-<id>.veil.paiart.com/...
+postgresql://user-<id>:password-<id>@db-<id>.veil.paiart.com:5432/...
+```
+
+IPv4 and IPv6 findings use IP-shaped surrogates instead of opaque tokens so the model
+still sees address grammar:
+
+```
+10.<id-byte>.<id-byte>.<host>       # original 10/8 private IPv4
+192.168.<id-byte>.<host>           # original 192.168/16 private IPv4
+203.0.113.<host>                   # original public/other IPv4
+fd00:<id-hex>:<id-hex>::<id-hex>   # original private IPv6
+fe80::<id-hex>:<id-hex>:<id-hex>   # original link-local IPv6
+2001:db8:<id-hex>:<id-hex>::<id-hex> # original public/other IPv6
+```
+
+The `<id>` is derived from the same local-keyed HMAC material as the opaque token. These
+surrogates are still reversible only through the scoped local reverse map; the real email,
+host, userinfo, IP address, and sensitive query values do not cross provider egress.
+If a generated format-preserving surrogate is already owned by a different value in the
+same scope, Veil falls back to the opaque `PAIArtVeil_<TYPE>_<id>` token for that value
+rather than overwriting the existing reverse mapping.
+
 ## Type enum (initial)
 
 `SECRET` · `EMAIL` · `PHONE` · `IPV4` · `IPV6` · `CARD` · `ACCT` · `URL` · `DATE` ·
@@ -43,14 +76,15 @@ Example: `sk-live-9f8a7b6c…` → `PAIArtVeil_SECRET_7f3a9c2e1b8d`
 
 ## Properties (required)
 
-- **Deterministic.** Same `normalize(value)` → same token for a given local key, with no
-  randomness and no request dependence. This keeps prompt caches warm and multi-turn
-  context coherent.
+- **Deterministic.** Same `normalize(value)` → same placeholder for a given local key,
+  with no randomness and no request dependence. This keeps prompt caches warm and
+  multi-turn context coherent.
 - **Type-aware.** The embedded `TYPE` allows per-type handling (e.g. default-off for
-  `PERSON`) and classification on restore.
-- **Bijective.** `token → value` resolves via the in-memory map. Truncation to 12 hex (48
-  bits) keeps collisions negligible; on the rare insert-time collision (different value,
-  same id) the engine extends the id length for that entry.
+  `PERSON`) and classification on restore. Format-preserving surrogates carry type through
+  their grammar and map entry rather than through a `PAIArtVeil_` prefix.
+- **Bijective.** `placeholder → value` resolves via the in-memory map. Truncation to 12
+  hex (48 bits) keeps collisions negligible; on the rare insert-time collision (different
+  value, same id) the engine extends the id length for that entry.
 - **Identifier-safe.** The token matches `[A-Za-z_][A-Za-z0-9_]*`, so if it ever lands in
   generated code it is a valid identifier — it will not break syntax. Models also preserve
   such opaque identifiers reliably across a round trip.
@@ -70,15 +104,17 @@ locally (e.g. `~/.veil/key`). It is:
 - **defense in depth** — an observer of tokens alone cannot recover values without it
   (though the real protection is that values never leave the machine).
 
-## Optional: format-preserving variant
+## Format-preserving variants
 
-For structured types where the model benefits from a realistic shape (e.g. validating a
-phone or email format), a per-type *format-preserving* replacement (a valid-looking but
-fake value, deterministically derived) may be used instead of the opaque `PAIArtVeil_…`
-form.
-This is an opt-in refinement, not the default, because it complicates a single uniform
-restore scanner. The `PAIArtVeil_` scanner only covers `OperatorToken`; format-preserving
-operators need type-specific reverse strategies and fixtures.
+For EMAIL, IPv4, IPv6, and sensitive URL findings, Veil's default `OperatorToken` emits
+the format-preserving surrogates above instead of opaque `PAIArtVeil_…` tokens. This
+keeps model-visible text closer to the original grammar while preserving the same local
+reversibility boundary. Ordinary public/reference HTTP(S) links are not findings under
+the default L1 URL rule.
+
+Additional per-type format-preserving policy operators remain reserved for Phase 1. They
+need type-specific reverse strategies, stream holdback rules, fixtures, and policy
+contracts before they can be exposed as configurable behavior.
 
 `OperatorRedact` is intentionally irreversible and must not write a reversible mapping.
 It is useful for policy choices where local restoration is not required, but it cannot

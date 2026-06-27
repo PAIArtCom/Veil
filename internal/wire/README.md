@@ -7,7 +7,7 @@
 This module defines the provider registry and the `Provider` contract used by the
 public engine wire surface. Each provider package extracts protected text and tool-I/O
 fields from its own native request shape, applies masked text back into that shape, and
-restores tokens from buffered and streaming provider responses.
+restores placeholders from buffered and streaming provider responses.
 
 ## Principles
 
@@ -28,7 +28,7 @@ restores tokens from buffered and streaming provider responses.
 
 - **Provider shape drift**: New provider fields can carry protected text/tool I/O if walkers silently skip unsupported shapes. Opaque media/document payloads and provider thinking/control traces are a declared non-goal, not a skipped text surface. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
 - **Tool I/O egress**: Tool-call arguments and tool-result outputs can contain restored local values, so provider walkers must cover those request and response fields. Verified by: openairesponses/provider_test.go.
-- **Cross-event token splits**: Streaming deltas can split an `PAIArtVeil_` token across provider events, so stream restorers must hold partial token tails until safe. Verified by: anthropic/stream_test.go and openairesponses/stream_test.go.
+- **Cross-event placeholder splits**: Streaming deltas can split an `PAIArtVeil_` token or format-preserving surrogate across provider events, so stream restorers must hold partial placeholder tails until safe. Verified by: anthropic/stream_test.go and openairesponses/stream_test.go.
 - **Static schema mutation**: Tool definitions are provider instructions, not user data, and changing them can break agent behavior. Verified by: anthropic/provider_test.go and openairesponses/provider_test.go.
 
 ## Open Questions

@@ -244,13 +244,23 @@ func TestPhonePositivePlainDigitsWithContext(t *testing.T) {
 
 // ---- URL ----
 
-func TestURLPositive(t *testing.T) {
-	findings, err := det.Detect(ctx, "see https://example.com/path?q=1 for details")
+func TestOrdinaryHTTPURLNegative(t *testing.T) {
+	findings, err := det.Detect(ctx, "see https://supabase.com/docs for design details")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasType(findings, types.TypeURL) {
+		t.Fatal("unexpected URL finding for ordinary public URL")
+	}
+}
+
+func TestSensitiveQueryURLPositive(t *testing.T) {
+	findings, err := det.Detect(ctx, "callback https://api.example.com/path?token=abc123 for details")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !hasType(findings, types.TypeURL) {
-		t.Fatal("expected URL finding")
+		t.Fatal("expected URL finding for sensitive query URL")
 	}
 }
 
