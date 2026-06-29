@@ -30,7 +30,7 @@ jobs:
         working-directory: web
 
       - name: Create Cloudflare Pages project (first run only)
-        run: npx wrangler pages project create veil || true
+        run: npx wrangler pages project create veil --production-branch main || true
         working-directory: web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
