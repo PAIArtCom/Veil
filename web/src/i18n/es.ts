@@ -109,7 +109,7 @@ export default {
     title: 'Apunta tu agente a',
     titleAccent: 'un proxy local.',
     titleEnd: '',
-    sub: 'Sin dashboard, sin cuenta. Cambia una variable de entorno para enrutar tu agente por localhost: tus herramientas y tu flujo de trabajo no cambian.',
+    sub: 'Sin dashboard, sin cuenta. Cambia el base URL en la configuración de tu agente para enrutarlo por localhost: tus herramientas y tu flujo de trabajo no cambian.',
     link: 'Instalar servicio',
     steps: [
       {
@@ -120,7 +120,7 @@ export default {
       {
         title: 'Apunta tu agente',
         description:
-          'Cambia la URL base de Claude Code o Codex. Una variable de entorno.',
+          'Cambia la URL base en la configuración de Claude Code o Codex. No necesitas una terminal de proxy.',
       },
       {
         title: 'Sigue trabajando',
@@ -132,15 +132,37 @@ export default {
 
   install: {
     eyebrow: 'Empezar',
-    title: 'Instala y ejecuta con',
-    titleAccent: 'un comando.',
+    title: 'Instala una vez,',
+    titleAccent: 'sigue trabajando.',
     titleEnd: '',
-    sub: 'Elige tu plataforma, instala el servicio en segundo plano y apunta tu agente a localhost. Sin terminal extra para el proxy.',
+    sub: 'Para la mayoría de usuarios, npm es el camino más corto: instalar, arrancar el servicio y poner un base URL local en el agente.',
     link: 'Todos los releases',
-    curl: { label: 'macOS y Linux', hint: 'curl — sin dependencias' },
-    npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
+    curl: { label: 'Instalador curl', hint: 'macOS · Linux alternativo' },
+    npm: { label: 'npm (recomendado)', hint: 'macOS · Linux · Windows' },
     brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
     winps: { label: 'Windows', hint: 'PowerShell — se añade al PATH' },
+    quick: {
+      kicker: 'Inicio simple',
+      title: 'Instala, inicia, configura.',
+      sub: 'Sin checkout del código y sin terminal permanente. npm descarga el binario correcto y el servicio mantiene Veil corriendo.',
+      steps: [
+        {
+          title: 'Instala Veil',
+          body: 'Usa npm salvo que necesites Homebrew o instaladores shell.',
+          code: 'npm i -g @paiart/veil',
+        },
+        {
+          title: 'Inicia el servicio',
+          body: 'Mantiene el proxy local en 127.0.0.1:8787.',
+          code: 'veil service install && veil status',
+        },
+        {
+          title: 'Configura el base URL',
+          body: 'Claude Code usa settings.json; Codex usa config.toml. Después sigues trabajando normal.',
+          code: 'http://127.0.0.1:8787',
+        },
+      ],
+    },
     agentsLabel: 'Configura tu agente',
     sourceLink: 'Más opciones (go install, compilar)',
     claudeCode: {
@@ -261,7 +283,7 @@ export default {
       },
       {
         q: '¿Cómo lo quito?',
-        a: 'Quita la variable de entorno. Si instalaste el servicio en segundo plano, ejecuta veil service uninstall. No hay cuenta ni relay en la nube.',
+        a: 'Quita el base URL local de la configuración del agente y ejecuta veil service uninstall. No hay cuenta, relay en la nube ni proceso remoto.',
       },
     ],
   },

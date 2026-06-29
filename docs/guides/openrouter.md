@@ -29,7 +29,7 @@ endpoints instead of forwarding plaintext it does not know how to mask.
 Use any release install path:
 
 ```sh
-npm install -g @paiart/veil
+npm i -g @paiart/veil
 ```
 
 or:
@@ -50,9 +50,21 @@ veil status
 You do not need to keep a terminal open with `veil proxy`. The service runs on
 `127.0.0.1:8787` after login.
 
+Useful service commands:
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
+```
+
 ## 3. Configure Codex
 
-Set your OpenRouter key in the shell that starts Codex:
+Make your OpenRouter key available to Codex as `OPENAI_API_KEY`. For daily use, put it in
+your normal shell profile, launcher environment, or credential manager. For a quick
+one-off test:
 
 ```sh
 export OPENAI_API_KEY="sk-or-v1-..."
@@ -112,8 +124,9 @@ Expected result:
 | OpenRouter returns 404 | Confirm `base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"`. |
 | Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
 | Codex bypasses Veil | Confirm `model_provider = "veil-openrouter"` and `base_url` starts with `http://127.0.0.1:8787/`. |
+| Need to remove the service | Run `veil service uninstall`; remove the Veil provider from `~/.codex/config.toml` if you no longer want Codex to use Veil. |
 | Request is blocked by Veil | Confirm the client is using Responses, not Chat Completions. Unsupported paths fail closed. |
-| Authentication fails | Confirm `OPENAI_API_KEY` is an OpenRouter key and is exported in the same shell that starts Codex. |
+| Authentication fails | Confirm `OPENAI_API_KEY` is an OpenRouter key and is available to the environment that starts Codex. |
 
 ## Current limits
 

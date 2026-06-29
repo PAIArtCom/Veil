@@ -10,7 +10,7 @@ numbers, IP addresses, and similar sensitive values.
 ## Install
 
 ```sh
-npm install -g @paiart/veil
+npm i -g @paiart/veil
 ```
 
 The npm package downloads the matching Veil binary for your platform from the GitHub
@@ -29,6 +29,16 @@ Install the background service once:
 ```sh
 veil service install
 veil status
+```
+
+Daily service commands:
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
 ```
 
 Point Claude Code at it in `~/.claude/settings.json`:
@@ -59,11 +69,15 @@ wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
 
-For OpenRouter, put the upstream directly in the local base URL:
+For OpenRouter, make your OpenRouter key available to Codex as `OPENAI_API_KEY`, then put
+the upstream directly in the local base URL:
 
 ```sh
 export OPENAI_API_KEY="sk-or-v1-..."
 ```
+
+Use that export only for a quick test. For daily use, put the key in your normal shell
+profile, launcher environment, or credential manager.
 
 ```toml
 model_provider = "veil-openrouter"

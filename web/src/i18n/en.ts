@@ -120,7 +120,7 @@ export default {
       {
         title: 'Point your agent',
         description:
-          'Change the base URL for Claude Code or Codex. One environment variable.',
+          'Change the base URL in Claude Code or Codex config. No proxy terminal.',
       },
       {
         title: 'Keep working',
@@ -135,12 +135,34 @@ export default {
     title: 'Install once,',
     titleAccent: 'one command.',
     titleEnd: 'keep working.',
-    sub: 'Pick your platform, install the background service, then point your agent at localhost. No separate proxy terminal.',
+    sub: 'For most users, npm is the shortest path: one install command, one background service command, then a local base URL in your agent config.',
     link: 'All releases',
-    curl: { label: 'macOS & Linux', hint: 'curl — no dependencies' },
-    npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
+    curl: { label: 'curl installer', hint: 'macOS · Linux fallback' },
+    npm: { label: 'npm (recommended)', hint: 'macOS · Linux · Windows' },
     brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
     winps: { label: 'Windows', hint: 'PowerShell — auto-adds to PATH' },
+    quick: {
+      kicker: 'Simple setup',
+      title: 'Install, start, configure.',
+      sub: 'No source checkout and no proxy terminal. npm downloads the matching binary, and the service keeps Veil running after login.',
+      steps: [
+        {
+          title: 'Install Veil',
+          body: 'Use the npm package unless you specifically need Homebrew or shell installers.',
+          code: 'npm i -g @paiart/veil',
+        },
+        {
+          title: 'Start the background service',
+          body: 'This keeps the localhost proxy running on 127.0.0.1:8787.',
+          code: 'veil service install && veil status',
+        },
+        {
+          title: 'Set your agent base URL',
+          body: 'Claude Code uses settings.json; Codex uses config.toml. Continue working normally after that.',
+          code: 'http://127.0.0.1:8787',
+        },
+      ],
+    },
     agentsLabel: 'Then wire up your agent',
     sourceLink: 'More options (go install, build from source)',
     claudeCode: {
@@ -229,7 +251,7 @@ export default {
       { q: 'Does Veil see my API keys?', a: 'Veil never stores or touches your provider credentials. It only rewrites content in the request and response body; your API keys pass through untouched.' },
       { q: 'Can I use OpenRouter or another gateway?', a: 'Yes when the client uses an API shape Veil supports. For OpenRouter, set Codex base_url to http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1 and wire_api="responses". Codex appends /responses, and Veil forwards to OpenRouter /api/v1/responses. Do not send Chat Completions through Veil yet; unsupported endpoints fail closed.' },
       { q: 'Which agents are supported?', a: 'Claude Code (Anthropic Messages), Codex CLI (OpenAI Responses), OpenRouter through Codex Responses, and Go SDK integrations. Chat Completions clients, Gemini, and more are on the roadmap.' },
-      { q: 'How do I remove it?', a: 'Unset the environment variable. Veil is just a local process — there is no account, agent, or daemon to uninstall.' },
+      { q: 'How do I remove it?', a: 'Remove the local base URL from your agent config and run veil service uninstall. There is no account, cloud relay, or remote process.' },
     ],
   },
 

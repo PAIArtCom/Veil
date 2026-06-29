@@ -9,7 +9,7 @@ request/response body fields only.
 
 ## Prerequisites
 
-- Go installed for source builds.
+- Node.js/npm for the recommended install path, or another release installer.
 - Claude Code already installed and authenticated.
 - Access to your Claude Code settings file at `~/.claude/settings.json`.
 
@@ -18,7 +18,7 @@ request/response body fields only.
 Use a release install for normal use:
 
 ```sh
-npm install -g @paiart/veil
+npm i -g @paiart/veil
 ```
 
 Or build from the repository root when testing a checkout:
@@ -44,6 +44,16 @@ Notes:
   permissions.
 - Add `--policy /path/to/policy.json` to `veil service install` when you want local
   per-type `token`, `ignore`, or `block` behavior.
+
+Useful service commands:
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
+```
 
 ## 3. Point Claude Code at Veil
 
@@ -101,26 +111,27 @@ Expected result:
 |---|---|
 | Claude Code bypasses Veil | Confirm `~/.claude/settings.json` contains `env.ANTHROPIC_BASE_URL` and restart Claude Code. |
 | Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
+| Need to remove the service | Run `veil service uninstall`; remove `ANTHROPIC_BASE_URL` from `~/.claude/settings.json` if you no longer want Claude Code to use Veil. |
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check whether the request uses an unsupported endpoint or a strict local policy selected `block`. |
 | Tokens remain visible locally | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |
-| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.0. |
+| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.2. |
 
 ## Known Limits
 
 - Claude Code support covers Anthropic Messages (`/v1/messages`) only.
 - Other Anthropic endpoints, such as `count_tokens`, fail closed until they are
   wire-aware.
-- v0.1.0 protects text and tool I/O, not OCR, document parsing, attachment rewriting, or
+- v0.1.2 protects text and tool I/O, not OCR, document parsing, attachment rewriting, or
   regenerated media/document payloads.
 - Provider thinking/control traces keep provider-native semantics and are outside the
   masking contract.
 - SSE framing assumes LF (`\n\n`), which matches Anthropic's emitted stream shape.
-- Bedrock and Vertex egress paths are separate and out of scope for v0.1.0.
+- Bedrock and Vertex egress paths are separate and out of scope for v0.1.2.
 
 ## Validation Evidence
 
-The Claude Code path is live-accepted for v0.1.0. Maintainers can review the release
+The Claude Code path is live-accepted for v0.1.2. Maintainers can review the release
 evidence in the [Phase 0 acceptance report](../architecture/phase-0-acceptance.md). The
 proxy behavior is grounded in [ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md),
 [ADR-0004](../architecture/decisions/0004-auth-pass-through.md), and

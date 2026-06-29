@@ -109,18 +109,18 @@ export default {
     title: 'エージェントを',
     titleAccent: 'ローカルプロキシに向ける',
     titleEnd: '',
-    sub: 'アカウントもダッシュボードも不要。Claude CodeまたはCodex CLIの接続先を環境変数ひとつでlocalhostに向けるだけ。APIキーのマスキングはVeilが自動で行います。ツールもワークフローもそのままです。',
-    link: 'プロキシを実行',
+    sub: 'アカウントもダッシュボードも不要。Claude CodeまたはCodex CLIの設定でbase URLをlocalhostに向けるだけです。APIキーのマスキングはVeilが自動で行います。ツールもワークフローもそのままです。',
+    link: 'サービスをインストール',
     steps: [
       {
         title: 'Veilを起動',
         description:
-          'コマンドひとつでlocalhostにローカルプロキシが起動します。ここがAPIキー漏洩対策の境界線です。',
+          'コマンドひとつでlocalhost proxyをバックグラウンド常駐させます。ここがAPIキー漏洩対策の境界線です。',
       },
       {
         title: 'エージェントを向ける',
         description:
-          'Claude CodeまたはCodex CLIのベースURLを変更するだけ。環境変数ひとつです。',
+          'Claude CodeまたはCodex CLIの設定でbase URLを変更するだけです。proxy用terminalは不要です。',
       },
       {
         title: 'あとはいつも通り',
@@ -132,28 +132,50 @@ export default {
 
   install: {
     eyebrow: 'はじめよう',
-    title: '',
-    titleAccent: 'コマンドひとつ',
-    titleEnd: 'で試せる。',
-    sub: 'プラットフォームを選ぶだけ。数秒でバイナリが手元に届きます。あとはエージェントをプロキシに向けるだけです。',
+    title: '一度installして、',
+    titleAccent: 'そのまま作業。',
+    titleEnd: '',
+    sub: '多くのユーザーにはnpmが最短です。インストールしてserviceを起動し、agent設定にlocal base URLを入れるだけです。',
     link: '全リリース一覧',
-    curl: { label: 'macOS & Linux', hint: 'curl — 依存なし' },
-    npm: { label: 'npm', hint: 'macOS · Linux · Windows 対応' },
+    curl: { label: 'curl installer', hint: 'macOS · Linux fallback' },
+    npm: { label: 'npm（推奨）', hint: 'macOS · Linux · Windows' },
     brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
     winps: { label: 'Windows', hint: 'PowerShell — PATHに自動追加' },
+    quick: {
+      kicker: 'Simple setup',
+      title: 'Install, start, configure.',
+      sub: 'source checkoutもproxy用terminalも不要です。npmが適切なbinaryを取得し、serviceがVeilを常駐させます。',
+      steps: [
+        {
+          title: 'Veilをinstall',
+          body: 'Homebrewやshell installerが必要でなければnpmを使います。',
+          code: 'npm i -g @paiart/veil',
+        },
+        {
+          title: 'background serviceを起動',
+          body: 'localhost proxyを127.0.0.1:8787で動かし続けます。',
+          code: 'veil service install && veil status',
+        },
+        {
+          title: 'agentのbase URLを設定',
+          body: 'Claude Codeはsettings.json、Codexはconfig.tomlを使います。その後は通常通り作業できます。',
+          code: 'http://127.0.0.1:8787',
+        },
+      ],
+    },
     agentsLabel: 'エージェントの設定',
     sourceLink: 'その他の方法（go install、ソースビルド）',
     claudeCode: {
       title: 'Claude Code',
       guide: 'ガイドを見る',
       description:
-        'Veilを起動し、変数をひとつ設定して、Claude Codeを起動。APIキーのシークレットマスキングが有効になります。',
+        'Veil serviceを一度入れて、base URLを~/.claude/settings.jsonに追加し、Claude Codeを起動します。',
     },
     codex: {
       title: 'Codex CLI',
       guide: 'ガイドを見る',
       description:
-        'OpenAIをアップストリームにVeilを起動し、Codex CLIを向けるだけ。APIキーのLLMへの漏洩を防ぎます。',
+        'OpenAIをservice upstreamにし、Codex CLIをlocal Responses base URLへ向けます。',
     },
     openRouter: {
       title: 'OpenRouter',
@@ -258,7 +280,7 @@ export default {
       },
       {
         q: 'Veilをアンインストールするには？',
-        a: '環境変数を解除するだけです。Veilは単なるローカルプロセスで、アンインストールが必要なアカウント・エージェント・デーモンはありません。',
+        a: 'エージェント設定からlocal base URLを削除し、veil service uninstallを実行します。アカウント、クラウドrelay、リモートプロセスはありません。',
       },
     ],
   },

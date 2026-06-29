@@ -120,7 +120,7 @@ export default {
       {
         title: '配置你的助手',
         description:
-          '把 Claude Code 或 Codex CLI 的 base URL 改一下。一个环境变量的事。',
+          '把 Claude Code 或 Codex CLI 配置里的 base URL 改一下，不需要长期开 proxy 终端。',
       },
       {
         title: '继续写代码',
@@ -135,12 +135,34 @@ export default {
     title: '安装一次，',
     titleAccent: '即可上手。',
     titleEnd: '持续可用。',
-    sub: '选择你的平台，安装后台服务，然后把 AI 助手指向 localhost。不需要单独开一个 proxy 终端。',
+    sub: '对大多数用户来说，npm 是最短路径：一条安装命令，一条后台服务命令，然后在 AI 助手配置里填本地 base URL。',
     link: '全部版本',
-    curl: { label: 'macOS 和 Linux', hint: 'curl — 无需其他依赖' },
-    npm: { label: 'npm', hint: 'macOS · Linux · Windows 通用' },
+    curl: { label: 'curl 安装器', hint: 'macOS · Linux 备用' },
+    npm: { label: 'npm（推荐）', hint: 'macOS · Linux · Windows 通用' },
     brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
     winps: { label: 'Windows', hint: 'PowerShell — 自动加入 PATH' },
+    quick: {
+      kicker: '简单上手',
+      title: '安装、启动、配置。',
+      sub: '不需要 clone 源码，也不需要开一个长期 proxy 终端。npm 会下载对应平台二进制，后台服务负责登录后常驻运行。',
+      steps: [
+        {
+          title: '安装 Veil',
+          body: '除非你明确需要 Homebrew 或 shell 安装器，否则直接用 npm。',
+          code: 'npm i -g @paiart/veil',
+        },
+        {
+          title: '启动后台服务',
+          body: '让本地代理常驻在 127.0.0.1:8787。',
+          code: 'veil service install && veil status',
+        },
+        {
+          title: '配置 AI 助手 base URL',
+          body: 'Claude Code 写 settings.json；Codex 写 config.toml。配置后照常使用。',
+          code: 'http://127.0.0.1:8787',
+        },
+      ],
+    },
     agentsLabel: '然后接入你的 AI 助手',
     sourceLink: '更多方式（go install、源码编译）',
     claudeCode: {
@@ -258,7 +280,7 @@ export default {
       },
       {
         q: '如何移除？',
-        a: '取消那个环境变量即可。如安装过后台服务，执行 veil service uninstall。Veil 没有账号、云端中继或远程后台进程。',
+        a: '从 AI 助手配置里移除本地 base URL，并执行 veil service uninstall。Veil 没有账号、云端中继或远程后台进程。',
       },
     ],
   },

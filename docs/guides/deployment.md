@@ -1,9 +1,8 @@
 # Guide: Deployment & Operations
 
-**Status: v0.1.0 operations baseline.** The standalone proxy ships from source and
-release binaries for Claude Code and local Codex CLI Responses paths. Package-manager
-installers are release-channel conveniences backed by the same GitHub Release assets;
-service manager units remain planned.
+**Status: v0.1.2 operations baseline.** Veil ships release binaries, npm, Homebrew,
+curl/PowerShell installers, and user-level background services for Claude Code, local
+Codex CLI Responses, and Codex Responses through OpenRouter.
 
 ## Run model
 
@@ -14,18 +13,25 @@ self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scop
 
 ## Install
 
-v0.1.0 supports source builds, release binaries, curl/PowerShell installers, and npm
-distribution backed by release assets. Homebrew formula generation is automated for stable
-tags and publishes to `PAIArtCom/homebrew-veil` when `HOMEBREW_TAP_REPO` is set to that
-repository and `HOMEBREW_TAP_TOKEN` is configured.
+v0.1.2 supports npm, Homebrew, curl/PowerShell installers, source builds, and release
+binaries backed by GitHub Release assets. Homebrew formula generation is automated for
+stable tags and publishes to `PAIArtCom/homebrew-veil` when `HOMEBREW_TAP_REPO` is set to
+that repository and `HOMEBREW_TAP_TOKEN` is configured.
 
 | Method | Use when | Steps |
 |---|---|---|
-| curl / PowerShell installer | You want the shortest end-user install path | Run the platform installer; it downloads the matching release binary and verifies `checksums.txt`. |
-| npm | You are in a Node.js toolchain | Install `@paiart/veil`; postinstall downloads and verifies the matching release binary. |
+| npm | You want the shortest cross-platform user install path | `npm i -g @paiart/veil`; postinstall downloads and verifies the matching release binary. |
+| curl / PowerShell installer | You do not want to use npm | Run the platform installer; it downloads the matching release binary and verifies `checksums.txt`. |
 | Homebrew | You use Homebrew on macOS or Linux | `brew tap PAIArtCom/veil`, then `brew install veil`. |
 | Source build | You have Go installed or want to verify from source | Clone, build `./cmd/veil`, run `veil version`. |
 | Release binary | You want the smallest end-user install path | Download the asset for your OS/architecture, verify its checksum, put it on `PATH`. |
+
+### npm
+
+```sh
+npm i -g @paiart/veil
+veil version
+```
 
 ### Source build
 
@@ -71,7 +77,7 @@ veil version
 Maintainers can build multi-platform release artifacts locally:
 
 ```sh
-VERSION=v0.1.0 ./scripts/build-release.sh
+VERSION=v0.1.2 ./scripts/build-release.sh
 ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
 ```
 
@@ -89,34 +95,53 @@ Expected release asset names:
 
 ## Upgrade
 
-Stop any running proxy, replace the `veil` binary, then start the proxy again. The local
+Upgrade with the same installer you used, then restart the background service. The local
 HMAC key at `~/.veil/key` is not regenerated during a normal upgrade.
 
 ```sh
 veil version
-pkill -f "veil proxy" || true
-# replace the binary using your install method
+npm i -g @paiart/veil
+veil restart
 veil version
 ```
 
 ## Uninstall
 
-Remove the binary from your `PATH`. If you also want to remove local Veil state, delete
-`~/.veil/key` and any local policy file you created. Deleting the key prevents old tokens
-from being restored.
+Remove the user service first, then remove the binary with the installer you used. If you
+also want to remove local Veil state, delete `~/.veil/key` and any local policy file you
+created. Deleting the key prevents old tokens from being restored.
+
+```sh
+veil service uninstall
+npm uninstall -g @paiart/veil
+```
 
 ## Run the Claude Code proxy
 
 ```sh
-veil proxy --addr 127.0.0.1:8788
-claude
+veil service install
+veil status
 ```
 
-For normal use, put `ANTHROPIC_BASE_URL=http://127.0.0.1:8788` in
+For normal use, put `ANTHROPIC_BASE_URL=http://127.0.0.1:8787` in
 `~/.claude/settings.json` under `env`. A temporary shell export is acceptable only for a
-one-off release smoke test. The proxy defaults to `https://api.anthropic.com` upstream.
+one-off release smoke test. The service defaults to `https://api.anthropic.com` upstream.
 Use `--upstream` only for a controlled local capture proxy or a compatible provider
 endpoint; do not commit raw captures.
+
+## Service operations
+
+`veil service install` creates a user-level background service on macOS (`launchd`),
+Linux (`systemd --user`), or Windows (Task Scheduler). The service runs the same
+loopback-only proxy as `veil proxy` and starts after login.
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
+```
 
 ## Local policy
 
@@ -139,7 +164,7 @@ Minimal safe config:
 }
 ```
 
-Supported v0.1.0 operators are `token`, `ignore`, and `block`. `redact`,
+Supported v0.1.2 operators are `token`, `ignore`, and `block`. `redact`,
 `format_preserving`, and non-empty `rule_sets` are reserved and fail closed. Unknown keys
 also fail closed, including `comment`, `label`, `metadata`, provider labels, analytics
 labels, customer labels, raw payload references, dotenv paths, or secret-looking values.
@@ -187,6 +212,8 @@ sanitized summaries.
 
 - Listen address (implemented flag: `--addr`, default `127.0.0.1:8787`).
 - Upstream provider base URL (implemented flag: `--upstream`, default `https://api.anthropic.com`).
+- Background service lifecycle (`veil service install|start|stop|restart|status|uninstall`,
+  plus `veil status` and `veil restart` shortcuts).
 - Local policy file (implemented flag: `--policy`; env `VEIL_POLICY`; default path `~/.veil/policy.json` if present).
 - Per-type `token`, `ignore`, and `block` operators (implemented); `redact`, `format_preserving`, and rule-set selection are planned and fail closed.
 - Optional local map cache (off by default; in-memory is the default).
@@ -198,16 +225,7 @@ sanitized summaries.
 |---|---|
 | Proxy refuses to bind | Use a loopback address such as `127.0.0.1:8788`; non-loopback addresses are rejected. |
 | Tool bypasses Veil | Confirm the tool-specific base URL points at Veil: `ANTHROPIC_BASE_URL` for Claude Code or custom `model_providers` for Codex. |
-| Policy file blocks startup | Remove unknown keys and unsupported operators; v0.1.0 supports only `token`, `ignore`, and `block`. |
+| Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
+| Policy file blocks startup | Remove unknown keys and unsupported operators; v0.1.2 supports only `token`, `ignore`, and `block`. |
 | Requests are blocked | The request may use an unsupported endpoint or unsupported provider JSON shape. This is fail-closed behavior. |
 | Tokens appear in local files | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |
-
-## Observability (planned)
-
-- Local-only counters: requests processed, findings masked by type, blocked (fail-closed)
-  requests, residual-token flags.
-- Any aggregate reporting to a control plane (PAIArt) is opt-in and subject to
-  audit-data minimization ([open-core boundary](../product/open-core-boundary.md)).
-
-_This page will gain service-manager units when those become part of the shipped release
-scope._

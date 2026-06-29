@@ -22,8 +22,17 @@ stays unchanged.
 
 ## Install
 
-Release installers require published GitHub Release assets for the selected version. If
-you are working from an unreleased checkout, use [Build from source](#build-from-source).
+For most users, npm is the shortest path. It installs the Veil command and downloads the
+matching release binary for your platform.
+
+### npm / Node.js toolchains
+
+```sh
+npm i -g @paiart/veil
+```
+
+Works on macOS, Linux, and Windows. The correct binary for your platform is downloaded
+automatically from the matching GitHub Release during install.
 
 ### macOS and Linux
 
@@ -37,15 +46,6 @@ Install a specific version or to a custom directory:
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.2 sh
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
-
-### npm / Node.js toolchains
-
-```sh
-npm install -g @paiart/veil
-```
-
-Works on macOS, Linux, and Windows. The correct binary for your platform is
-downloaded automatically from the matching GitHub Release during install.
 
 ### macOS — Homebrew
 
@@ -73,6 +73,8 @@ go install github.com/PAIArtCom/Veil/cmd/veil@latest
 
 ### Build from source
 
+Use this only when developing or testing an unreleased checkout.
+
 ```sh
 git clone https://github.com/PAIArtCom/Veil.git
 cd Veil
@@ -95,8 +97,8 @@ in prompts with placeholders before they reach AI providers, then restores real
 values locally on the way back.
 
 Please complete these steps:
-① check whether Go is installed and install it if not;
-② clone the repo and build the binary to ~/bin/veil, making sure it is on PATH;
+① install Veil with `npm i -g @paiart/veil`;
+② confirm `veil version` works;
 ③ install and start the background service with `veil service install`;
 ④ create or update `~/.claude/settings.json` so `env.ANTHROPIC_BASE_URL` is `http://127.0.0.1:8787`;
 ⑤ verify with test value `postgresql://app:s3cr3t@localhost:5432/mydb` that masking works;
@@ -135,6 +137,16 @@ veil status
 `veil service install` creates a user-level background service on macOS (`launchd`),
 Linux (`systemd --user`), or Windows (Task Scheduler) that runs the localhost proxy
 after login. Use `veil restart` after changing service options.
+
+Daily service commands:
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
+```
 
 **Claude Code:**
 

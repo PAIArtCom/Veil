@@ -19,8 +19,16 @@ Veil 是面向 AI 编程助手的本地脱敏代理。在 Claude Code 或 Codex 
 
 ## 安装
 
-Release 安装器依赖对应版本的 GitHub Release 产物已经发布。如果你正在使用尚未发布的
-checkout，请使用[源码编译](#源码编译)。
+对大多数用户来说，npm 是最短路径：安装 Veil 命令，并自动下载当前平台对应的 release
+二进制。
+
+### npm / Node.js
+
+```sh
+npm i -g @paiart/veil
+```
+
+macOS、Linux、Windows 通用。安装时从对应版本的 GitHub Release 自动下载当前平台二进制。
 
 ### macOS 和 Linux
 
@@ -34,14 +42,6 @@ curl -fsSL https://veil.paiart.com/install.sh | sh
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.2 sh
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
-
-### npm / Node.js
-
-```sh
-npm install -g @paiart/veil
-```
-
-macOS、Linux、Windows 通用。安装时从对应版本的 GitHub Release 自动下载当前平台二进制。
 
 ### macOS — Homebrew
 
@@ -69,6 +69,8 @@ go install github.com/PAIArtCom/Veil/cmd/veil@latest
 
 ### 源码编译
 
+仅在开发或测试尚未发布的 checkout 时使用。
+
 ```sh
 git clone https://github.com/PAIArtCom/Veil.git
 cd Veil
@@ -87,8 +89,8 @@ go build -o ./bin/veil ./cmd/veil
 帮我安装配置 Veil（https://github.com/PAIArtCom/Veil）。它是一个本地代理，在 prompt 发给模型厂商之前把 API 密钥、数据库密码等敏感信息替换成占位符，响应回来后在本地自动还原。
 
 请完成以下步骤：
-① 检查是否安装了 Go，没有就先装；
-② git clone 仓库并编译，把可执行文件放到 ~/bin/veil 并确保它在 PATH 里；
+① 用 `npm i -g @paiart/veil` 安装 Veil；
+② 确认 `veil version` 可用；
 ③ 执行 `veil service install` 安装并启动后台服务；
 ④ 创建或更新 `~/.claude/settings.json`，把 `env.ANTHROPIC_BASE_URL` 设为 `http://127.0.0.1:8787`；
 ⑤ 用测试值 postgresql://app:s3cr3t@localhost:5432/mydb 验证脱敏生效；
@@ -124,6 +126,16 @@ veil status
 `veil service install` 会在 macOS 上创建 `launchd` 用户服务，在 Linux 上创建
 `systemd --user` 服务，在 Windows 上创建 Task Scheduler 任务，登录后自动在后台运行本地代理。
 改过服务参数后，用 `veil restart` 重启。
+
+日常服务命令：
+
+```sh
+veil status              # 检查本地代理是否运行
+veil restart             # 配置变更后重启
+veil service stop        # 停止后台代理
+veil service start       # 重新启动后台代理
+veil service uninstall   # 移除系统后台服务
+```
 
 **Claude Code 接入：**
 

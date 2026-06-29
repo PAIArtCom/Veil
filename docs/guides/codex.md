@@ -9,7 +9,7 @@ supported request/response body fields only.
 
 ## Prerequisites
 
-- Go installed for source builds.
+- Node.js/npm for the recommended install path, or another release installer.
 - Codex CLI installed.
 - An OpenAI-compatible credential available through `OPENAI_API_KEY`.
 
@@ -18,7 +18,7 @@ supported request/response body fields only.
 Use a release install for normal use:
 
 ```sh
-npm install -g @paiart/veil
+npm i -g @paiart/veil
 ```
 
 Or build from the repository root when testing a checkout:
@@ -41,6 +41,16 @@ veil status
 macOS uses a `launchd` user agent. Linux uses `systemd --user`. Windows uses Task
 Scheduler. The service runs the same loopback-only proxy as `veil proxy`, so it still
 refuses non-local bind addresses.
+
+Useful service commands:
+
+```sh
+veil status              # check the local proxy
+veil restart             # restart after config changes
+veil service stop        # stop the background proxy
+veil service start       # start it again
+veil service uninstall   # remove the OS service
+```
 
 Use `--policy /path/to/policy.json` if you want local per-type `token`, `ignore`, or
 `block` behavior:
@@ -98,12 +108,16 @@ wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
 
-Start Codex:
+Start Codex from an environment where `OPENAI_API_KEY` is available. For a quick
+one-off test:
 
 ```sh
 export OPENAI_API_KEY=...
 codex
 ```
+
+For daily use, put that key in your normal shell profile, launcher environment, or
+credential manager so you do not have to export it every session.
 
 Codex sends `POST /v1/responses` with `stream=true` through this route. Veil masks
 message input, top-level instructions, function-call output, and supported agentic call
@@ -140,6 +154,7 @@ Expected result:
 | Codex bypasses Veil | Confirm `model_provider = "veil"` is active and `base_url` points at `http://127.0.0.1:8787/...`. |
 | Traffic appears to use WebSockets | Use the custom provider entry above instead of `openai_base_url`. |
 | Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
+| Need to remove the service | Run `veil service uninstall`; remove the Veil provider from `~/.codex/config.toml` if you no longer want Codex to use Veil. |
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check for unsupported Responses input item shapes or a local policy selecting `block`. |
 | OpenRouter returns 404 | Confirm `base_url` is `http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1`, so Codex's `/responses` append reaches `/api/v1/responses`. |
