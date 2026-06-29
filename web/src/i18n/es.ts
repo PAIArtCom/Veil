@@ -110,12 +110,12 @@ export default {
     titleAccent: 'un proxy local.',
     titleEnd: '',
     sub: 'Sin dashboard, sin cuenta. Cambia una variable de entorno para enrutar tu agente por localhost: tus herramientas y tu flujo de trabajo no cambian.',
-    link: 'Ejecutar el proxy',
+    link: 'Instalar servicio',
     steps: [
       {
         title: 'Inicia Veil',
         description:
-          'Un comando levanta el proxy en localhost. Ese es tu nuevo límite de privacidad.',
+          'Un comando mantiene el proxy de localhost corriendo en segundo plano. Ese es tu nuevo límite de privacidad.',
       },
       {
         title: 'Apunta tu agente',
@@ -135,7 +135,7 @@ export default {
     title: 'Instala y ejecuta con',
     titleAccent: 'un comando.',
     titleEnd: '',
-    sub: 'Elige tu plataforma — el binario llega en segundos. Luego apunta tu agente al proxy.',
+    sub: 'Elige tu plataforma, instala el servicio en segundo plano y apunta tu agente a localhost. Sin terminal extra para el proxy.',
     link: 'Todos los releases',
     curl: { label: 'macOS y Linux', hint: 'curl — sin dependencias' },
     npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
@@ -146,13 +146,20 @@ export default {
     claudeCode: {
       title: 'Claude Code',
       guide: 'Ver guía',
-      description: 'Inicia Veil, exporta una variable, lanza Claude Code.',
+      description: 'Instala el servicio de Veil una vez, añade el base URL a ~/.claude/settings.json y lanza Claude Code.',
     },
     codex: {
       title: 'Codex CLI',
       guide: 'Ver guía',
       description:
         'Inicia Veil con el upstream de OpenAI y apunta Codex hacia él.',
+    },
+    openRouter: {
+      title: 'OpenRouter',
+      guide: 'Ver guía',
+      description:
+        'Pon el upstream de OpenRouter directamente en la ruta del base_url local. Veil lo separa localmente y solo reescribe campos soportados del request y response.',
+      note: 'Usa base_url http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1. Codex añade /responses. Chat Completions no está soportado.',
     },
     copied: '¡Copiado!',
   },
@@ -165,16 +172,17 @@ export default {
     sub: 'Veil es transparente con su cobertura. Si no puede enmascarar un formato de request, lo dice — o lo bloquea con fail-closed.',
     ctaDownload: 'Descargar última versión',
     ctaTypes: 'Ver tipos protegidos',
-    supportedTitle: 'Funciona ahora (v0.1.0)',
+    supportedTitle: 'Funciona ahora (v0.1.2)',
     notYetTitle: 'Próximamente',
     supported: [
       'Claude Code (Anthropic Messages)',
       'Codex CLI (OpenAI Responses)',
+      'OpenRouter vía Codex Responses',
       'Integraciones con Go SDK',
       'Campos de texto y tool-use en formatos soportados',
     ],
     notYet: [
-      'OpenAI Chat Completions',
+      'Clientes Chat Completions',
       'Gemini',
       'OCR, adjuntos, parsing de documentos',
       'Tráfico remoto de herramientas MCP',
@@ -244,12 +252,16 @@ export default {
         a: 'Veil nunca almacena ni accede a las credenciales de tu proveedor. Solo reescribe el cuerpo del request y del response; tus API keys pasan intactas sin que Veil las lea.',
       },
       {
+        q: '¿Puedo usar OpenRouter u otro gateway?',
+        a: 'Sí, si el cliente usa una forma de API soportada por Veil. Para OpenRouter, configura base_url como http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1 y Codex con wire_api="responses". Codex añade /responses y Veil reenvía a /api/v1/responses en OpenRouter. No envíes Chat Completions por Veil todavía; los endpoints no soportados fallan cerrados.',
+      },
+      {
         q: '¿Qué agentes son compatibles?',
-        a: 'En la v0.1.0: Claude Code (proxy Anthropic Messages) y Codex CLI (proxy OpenAI Responses), más integraciones con el Go SDK. OpenAI Chat Completions, Gemini y más están en el roadmap.',
+        a: 'Claude Code (Anthropic Messages), Codex CLI (OpenAI Responses), OpenRouter vía Codex Responses e integraciones con Go SDK. Clientes Chat Completions, Gemini y más están en el roadmap.',
       },
       {
         q: '¿Cómo lo quito?',
-        a: 'Quita la variable de entorno. Veil es solo un proceso local: no hay cuenta, daemon ni background agent que desinstalar.',
+        a: 'Quita la variable de entorno. Si instalaste el servicio en segundo plano, ejecuta veil service uninstall. No hay cuenta ni relay en la nube.',
       },
     ],
   },

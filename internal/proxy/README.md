@@ -7,9 +7,11 @@ tools.
 
 This module implements the standalone HTTP proxy handler that masks supported
 provider-bound text/tool-I/O fields, forwards the provider-native request to the
-configured upstream, and restores placeholders on the trusted local response path. For v0.1.0
-it handles Anthropic Messages `POST /v1/messages` and OpenAI Responses `POST
-/v1/responses` / `POST /responses`; other paths fail closed before upstream egress.
+configured upstream, and restores placeholders on the trusted local response path. It
+handles Anthropic Messages `POST /v1/messages` and OpenAI Responses `POST
+/v1/responses` / `POST /responses`. The `/veil/upstream=https://...` prefix is a local
+convenience ingress that carries a human-readable upstream URL in the path, then maps
+back to those same provider-native paths; other paths fail closed before upstream egress.
 
 ## Principles
 
@@ -17,6 +19,7 @@ it handles Anthropic Messages `POST /v1/messages` and OpenAI Responses `POST
 - MUST: Forward the client credential verbatim without storing, logging, or parsing it.
 - MUST: Restore buffered and streaming responses before they reach the local AI tool whenever a masked request created state.
 - MUST: Keep response errors fixed-shape and sanitized; never include raw provider payloads or secrets.
+- MUST: Strip Veil-only routing parameters such as `upstream` before provider egress.
 - SHOULD: Keep proxy tests on loopback `httptest` servers with deterministic throwaway values.
 
 ## Boundaries
@@ -32,6 +35,7 @@ it handles Anthropic Messages `POST /v1/messages` and OpenAI Responses `POST
 - **Credential header disclosure**: Authorization and provider API-key headers cross the handler as pass-through data and must not appear in logs or errors. Verified by: proxy_test.go.
 - **Compressed stream restore bypass**: Upstream compressed streams can hide tokens from restore, so the proxy strips client `Accept-Encoding` before upstream egress. Verified by: proxy_test.go.
 - **Unsupported endpoint egress**: Unsupported paths can carry plaintext body shapes Veil has not verified, so they must fail closed and not contact upstream. Verified by: proxy_test.go.
+- **Dynamic upstream confusion**: `/veil/upstream=https://...` must validate the override URL, split only supported provider-native paths, and never contact upstream for unsupported endpoints. Verified by: proxy_test.go.
 - **Provider route confusion**: Anthropic and OpenAI Responses paths select different provider walkers and error envelopes; routing drift can leak plaintext or break local tools. Verified by: proxy_test.go.
 - **Streaming restore error visibility**: Streaming restore errors after headers are committed must be logged without raw event payload disclosure. Verified by: proxy_test.go.
 - **Capture hygiene**: Tests and live acceptance captures must use throwaway values and commit only sanitized summaries or fixtures. Verified by: ../../docs/architecture/phase-0-acceptance.md.

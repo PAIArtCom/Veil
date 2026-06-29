@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -123,5 +125,81 @@ func TestRunProxyHelpReturnsSuccess(t *testing.T) {
 	}
 	if got := buf.String(); !strings.Contains(got, "Usage of proxy") || !strings.Contains(got, "-addr") || !strings.Contains(got, "-policy") {
 		t.Fatalf("help output missing expected flags: %q", got)
+	}
+}
+
+func TestSplitServiceArgsAllowsActionBeforeOrAfterFlags(t *testing.T) {
+	action, flags, err := splitServiceArgs([]string{"install", "--addr", "127.0.0.1:8788", "--force"})
+	if err != nil {
+		t.Fatalf("split action-first: %v", err)
+	}
+	if action != "install" || strings.Join(flags, " ") != "--addr 127.0.0.1:8788 --force" {
+		t.Fatalf("action=%q flags=%q", action, flags)
+	}
+
+	action, flags, err = splitServiceArgs([]string{"--force", "--upstream=https://api.openai.com", "restart"})
+	if err != nil {
+		t.Fatalf("split flags-first: %v", err)
+	}
+	if action != "restart" || strings.Join(flags, " ") != "--force --upstream=https://api.openai.com" {
+		t.Fatalf("action=%q flags=%q", action, flags)
+	}
+}
+
+func TestRunServiceDryRunInstallBuildsBackgroundProxyPlan(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := runService([]string{
+		"install",
+		"--dry-run",
+		"--force",
+		"--bin", filepath.Join(t.TempDir(), "veil"),
+		"--addr", "127.0.0.1:8788",
+		"--upstream", "https://api.openai.com",
+	}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("runService dry-run: %v\nstderr=%s", err, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "write") || !strings.Contains(out, "com.paiart.veil") && !strings.Contains(out, "veil.service") {
+		t.Fatalf("dry-run output missing service definition write: %s", out)
+	}
+	if !strings.Contains(out, "launchctl") && !strings.Contains(out, "systemctl") {
+		t.Fatalf("dry-run output missing service-manager command: %s", out)
+	}
+}
+
+func TestRunServiceRejectsNonLoopbackAddr(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	err := runService([]string{
+		"install",
+		"--dry-run",
+		"--bin", filepath.Join(t.TempDir(), "veil"),
+		"--addr", "0.0.0.0:8788",
+	}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("runService accepted non-loopback address")
+	}
+	if !strings.Contains(err.Error(), "non-loopback") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunStatusReportsRunningProxy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" {
+			t.Fatalf("path = %q, want /healthz", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}` + "\n"))
+	}))
+	defer srv.Close()
+
+	addr := strings.TrimPrefix(srv.URL, "http://")
+	var stdout, stderr bytes.Buffer
+	if err := runStatus([]string{"--addr", addr}, &stdout, &stderr); err != nil {
+		t.Fatalf("runStatus: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "running") || !strings.Contains(stdout.String(), `"status":"ok"`) {
+		t.Fatalf("status output missing running health: %s", stdout.String())
 	}
 }

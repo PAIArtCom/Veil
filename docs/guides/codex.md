@@ -13,24 +13,64 @@ supported request/response body fields only.
 - Codex CLI installed.
 - An OpenAI-compatible credential available through `OPENAI_API_KEY`.
 
-## 1. Build Veil
+## 1. Install or build Veil
 
-From the repository root:
+Use a release install for normal use:
+
+```sh
+npm install -g @paiart/veil
+```
+
+Or build from the repository root when testing a checkout:
 
 ```sh
 go build -o ./bin/veil ./cmd/veil
 ./bin/veil version
-./bin/veil proxy --help
 ```
 
-## 2. Start the local proxy
+## 2. Keep Veil running in the background
+
+For day-to-day use, install the user service once instead of starting `veil proxy` in a
+separate terminal every session:
 
 ```sh
-./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+veil service install --force --upstream https://api.openai.com
+veil status
 ```
 
-Add `--policy /path/to/policy.json` if you want local per-type `token`, `ignore`, or
-`block` behavior.
+macOS uses a `launchd` user agent. Linux uses `systemd --user`. Windows uses Task
+Scheduler. The service runs the same loopback-only proxy as `veil proxy`, so it still
+refuses non-local bind addresses.
+
+Use `--policy /path/to/policy.json` if you want local per-type `token`, `ignore`, or
+`block` behavior:
+
+```sh
+veil service install --force --upstream https://api.openai.com --policy ~/.veil/policy.json
+```
+
+### Using OpenRouter instead of OpenAI
+
+Use OpenRouter through its Responses API endpoint, not through Chat Completions.
+
+Put OpenRouter directly in Codex's local `base_url`:
+
+```toml
+model_provider = "veil-openrouter"
+
+[model_providers.veil-openrouter]
+name     = "Veil OpenRouter"
+base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
+
+Codex appends `/responses`; Veil forwards the request to
+`https://openrouter.ai/api/v1/responses`, not to the default service upstream.
+
+Do not configure a Chat Completions client or `/v1/chat/completions` base URL through
+Veil. Chat Completions is not a supported wire adapter in v0.1.2, so Veil fails closed
+instead of forwarding plaintext it cannot verify.
 
 ## 3. Configure Codex
 
@@ -41,7 +81,19 @@ model_provider = "veil"
 
 [model_providers.veil]
 name     = "Veil"
-base_url = "http://127.0.0.1:8788/v1"
+base_url = "http://127.0.0.1:8787/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
+
+For OpenRouter:
+
+```toml
+model_provider = "veil-openrouter"
+
+[model_providers.veil-openrouter]
+name     = "Veil OpenRouter"
+base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"
 wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
@@ -85,19 +137,24 @@ Expected result:
 
 | Symptom | Check |
 |---|---|
-| Codex bypasses Veil | Confirm `model_provider = "veil"` is active and `base_url` is `http://127.0.0.1:8788/v1`. |
+| Codex bypasses Veil | Confirm `model_provider = "veil"` is active and `base_url` points at `http://127.0.0.1:8787/...`. |
 | Traffic appears to use WebSockets | Use the custom provider entry above instead of `openai_base_url`. |
+| Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check for unsupported Responses input item shapes or a local policy selecting `block`. |
-| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.0. |
+| OpenRouter returns 404 | Confirm `base_url` is `http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1`, so Codex's `/responses` append reaches `/api/v1/responses`. |
+| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.2. |
 
 ## Known Limits
 
 - Static `tools` definitions are not masked; they are provider instructions, not local
   tool output.
 - Unsupported Responses input item shapes fail closed before upstream egress.
+- OpenAI-compatible does not mean Veil-compatible. Gateways must expose a supported wire
+  shape, currently Responses or Anthropic Messages. Chat Completions is still out of
+  scope.
 - A separate direct `https://api.openai.com` official-service run is not claimed for
-  v0.1.0; the local Codex CLI Responses path is the release evidence boundary.
+  v0.1.2; the local Codex CLI Responses path is the release evidence boundary.
 - AWS Bedrock, where SigV4 signs body and host, cannot be served by a rewrite proxy.
 - Avoid `CODEX_SANDBOX=seatbelt` interactions with OS-level proxies; the explicit
   `base_url` route is unaffected.

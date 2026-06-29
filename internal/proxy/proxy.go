@@ -147,23 +147,35 @@ func isHopByHop(canonKey string) bool {
 // provider proxy because unsupported endpoints can carry plaintext request
 // bodies that Veil has not verified how to mask.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost && r.URL.Path == "/v1/messages" {
-		p.serveProvider(w, r, providerRoute{
+	if r.Method == http.MethodGet && (r.URL.Path == "/healthz" || r.URL.Path == "/veil/healthz") {
+		p.serveHealth(w)
+		return
+	}
+
+	routeReq, upstream, err := p.normalizeRequest(r)
+	if err != nil {
+		p.log.Warn("proxy: invalid request routing option", "err", err)
+		errorWriterForPath(r.URL.Path)(w, http.StatusBadRequest, "invalid_request", "invalid Veil proxy route")
+		return
+	}
+
+	if routeReq.Method == http.MethodPost && routeReq.URL.Path == "/v1/messages" {
+		p.serveProvider(w, routeReq, upstream, providerRoute{
 			provider: "anthropic",
 			op:       "messages",
 			writeErr: writeAnthropicError,
 		})
 		return
 	}
-	if r.Method == http.MethodPost && (r.URL.Path == "/v1/responses" || r.URL.Path == "/responses") {
-		p.serveProvider(w, r, providerRoute{
+	if routeReq.Method == http.MethodPost && (routeReq.URL.Path == "/v1/responses" || routeReq.URL.Path == "/responses") {
+		p.serveProvider(w, routeReq, upstream, providerRoute{
 			provider: "openai-responses",
 			op:       "responses",
 			writeErr: writeOpenAIError,
 		})
 		return
 	}
-	writeAnthropicError(w, http.StatusNotFound, "unsupported_endpoint", "unsupported Veil proxy endpoint")
+	errorWriterForPath(routeReq.URL.Path)(w, http.StatusNotFound, "unsupported_endpoint", "unsupported Veil proxy endpoint")
 }
 
 type providerRoute struct {
@@ -172,8 +184,98 @@ type providerRoute struct {
 	writeErr func(http.ResponseWriter, int, string, string)
 }
 
+// normalizeRequest maps Veil's convenience ingress back to provider-native
+// paths. The human-readable form:
+//
+//	/veil/upstream=https://openrouter.ai/api/v1/responses
+//
+// becomes provider path /v1/responses and upstream https://openrouter.ai/api.
+// The older query form remains supported for compatibility. In both forms
+// Veil-only routing data is removed before provider egress.
+// Existing provider-native paths keep using the proxy's configured default
+// upstream.
+func (p *Proxy) normalizeRequest(r *http.Request) (*http.Request, *url.URL, error) {
+	upstream := p.upstream
+	path := r.URL.Path
+	if path != "/veil" && !strings.HasPrefix(path, "/veil/") {
+		return r, upstream, nil
+	}
+
+	if after, ok := strings.CutPrefix(path, "/veil/upstream="); ok {
+		routePath, u, err := parsePathUpstream(after)
+		if err != nil {
+			return nil, nil, err
+		}
+		clone := r.Clone(r.Context())
+		nextURL := *r.URL
+		nextURL.Path = routePath
+		nextURL.RawPath = ""
+		clone.URL = &nextURL
+		return clone, u, nil
+	}
+
+	values := r.URL.Query()
+	if raw := values.Get("upstream"); raw != "" {
+		u, err := parseUpstream(raw)
+		if err != nil {
+			return nil, nil, err
+		}
+		upstream = u
+		values.Del("upstream")
+	}
+
+	clone := r.Clone(r.Context())
+	u := *r.URL
+	u.Path = strings.TrimPrefix(path, "/veil")
+	if u.Path == "" {
+		u.Path = "/"
+	}
+	u.RawPath = ""
+	u.RawQuery = values.Encode()
+	clone.URL = &u
+	return clone, upstream, nil
+}
+
+var supportedProviderPathSuffixes = []string{
+	"/v1/responses",
+	"/v1/messages",
+	"/responses",
+}
+
+func parsePathUpstream(after string) (routePath string, upstream *url.URL, err error) {
+	for _, suffix := range supportedProviderPathSuffixes {
+		if !strings.HasSuffix(after, suffix) {
+			continue
+		}
+		raw := strings.TrimSuffix(after, suffix)
+		u, err := parseUpstream(raw)
+		if err != nil {
+			return "", nil, err
+		}
+		return suffix, u, nil
+	}
+
+	u, err := parseUpstream(after)
+	if err != nil {
+		return "", nil, err
+	}
+	return "/", u, nil
+}
+
+func errorWriterForPath(path string) func(http.ResponseWriter, int, string, string) {
+	if path == "/responses" || strings.HasSuffix(path, "/responses") {
+		return writeOpenAIError
+	}
+	return writeAnthropicError
+}
+
+func (p *Proxy) serveHealth(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = fmt.Fprintf(w, `{"status":"ok","default_upstream":%s,"supported":["/v1/messages","/v1/responses","/responses","/veil/upstream=https://example.com/v1/messages","/veil/upstream=https://example.com/v1/responses"]}`+"\n", jsonString(p.upstream.String()))
+}
+
 // serveProvider handles one masked provider-native path.
-func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, route providerRoute) {
+func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, upstream *url.URL, route providerRoute) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		// Could not read the client body; nothing was forwarded.
@@ -201,7 +303,7 @@ func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, route prov
 
 	// Build the upstream request: same method, upstream host + the incoming
 	// path and raw query, masked body.
-	upReq, err := p.newUpstreamRequest(r, masked)
+	upReq, err := p.newUpstreamRequest(r, upstream, masked)
 	if err != nil {
 		p.log.Error("proxy: build upstream request", "err", err)
 		route.writeErr(w, http.StatusBadGateway, "upstream_error", "failed to build upstream request")
@@ -228,9 +330,12 @@ func (p *Proxy) serveProvider(w http.ResponseWriter, r *http.Request, route prov
 // client headers verbatim — including the credential (Authorization / x-api-key)
 // and Anthropic version/beta headers. The proxy holds no credentials of its own;
 // it forwards whatever the client sent (ADR-0004).
-func (p *Proxy) newUpstreamRequest(r *http.Request, body []byte) (*http.Request, error) {
-	target := *p.upstream
-	target.Path = singleJoiningSlash(p.upstream.Path, r.URL.Path)
+func (p *Proxy) newUpstreamRequest(r *http.Request, upstream *url.URL, body []byte) (*http.Request, error) {
+	if upstream == nil {
+		upstream = p.upstream
+	}
+	target := *upstream
+	target.Path = singleJoiningSlash(upstream.Path, r.URL.Path)
 	target.RawQuery = r.URL.RawQuery
 
 	upReq, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), bytes.NewReader(body))

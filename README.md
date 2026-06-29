@@ -18,7 +18,7 @@ stays unchanged.
 
 | Status | License | Platform |
 |---|---|---|
-| v0.1.0 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
+| v0.1.2 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
 
 ## Install
 
@@ -34,7 +34,7 @@ curl -fsSL https://veil.paiart.com/install.sh | sh
 Install a specific version or to a custom directory:
 
 ```sh
-curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.1 sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.2 sh
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
 
@@ -97,16 +97,16 @@ values locally on the way back.
 Please complete these steps:
 ① check whether Go is installed and install it if not;
 ② clone the repo and build the binary to ~/bin/veil, making sure it is on PATH;
-③ append `export ANTHROPIC_BASE_URL=http://127.0.0.1:8788` to ~/.zshrc or ~/.bashrc;
-④ write a one-command shortcut to start the proxy in the background;
+③ install and start the background service with `veil service install`;
+④ create or update `~/.claude/settings.json` so `env.ANTHROPIC_BASE_URL` is `http://127.0.0.1:8787`;
 ⑤ verify with test value `postgresql://app:s3cr3t@localhost:5432/mydb` that masking works;
 ⑥ summarize how to use Veil day-to-day.
 
 Fix any errors and continue without stopping to ask me.
 ```
 
-After it finishes, open a new terminal (or `source ~/.zshrc`) and restart Claude Code.
-For Codex, the config is slightly different — see [Quickstart](#quickstart) below.
+After it finishes, restart Claude Code. For Codex, the config is slightly different —
+see [Quickstart](#quickstart) below.
 
 ## What changes
 
@@ -124,24 +124,34 @@ Real values are restored locally before your terminal, files, or tool calls see 
 
 ## Quickstart
 
-After [installing](#install) Veil, start the proxy and point your AI tool at it.
-
-**Claude Code — two commands to get started:**
+After [installing](#install) Veil, install the background service once and point your AI
+tool at the local base URL. You should not have to run `veil proxy` every time.
 
 ```sh
-# Terminal 1: start the local proxy
-veil proxy --addr 127.0.0.1:8788
+veil service install
+veil status
+```
 
-# Terminal 2: point Claude Code at it
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-claude
+`veil service install` creates a user-level background service on macOS (`launchd`),
+Linux (`systemd --user`), or Windows (Task Scheduler) that runs the localhost proxy
+after login. Use `veil restart` after changing service options.
+
+**Claude Code:**
+
+Add this to `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"
+  }
+}
 ```
 
 **Codex CLI:**
 
 ```sh
-# Terminal 1
-veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+veil service install --force --upstream https://api.openai.com
 ```
 
 Add to `~/.codex/config.toml`:
@@ -151,13 +161,39 @@ model_provider = "veil"
 
 [model_providers.veil]
 name     = "Veil"
-base_url = "http://127.0.0.1:8788/v1"
+base_url = "http://127.0.0.1:8787/v1"
 wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
 
 That's it. Your credentials still flow to the provider unchanged — only sensitive values
 in request and response bodies are masked.
+
+**Codex CLI with OpenRouter:**
+
+Use OpenRouter through the Responses API path. The upstream base is
+`https://openrouter.ai/api`, so Codex's `/v1/responses` request becomes OpenRouter's
+`/api/v1/responses` request.
+
+You can keep the background service on its default upstream and put OpenRouter directly
+in the local base URL:
+
+```toml
+model_provider = "veil-openrouter"
+
+[model_providers.veil-openrouter]
+name     = "Veil OpenRouter"
+base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
+
+Codex appends `/responses`, so Veil forwards to
+`https://openrouter.ai/api/v1/responses`. No URL escaping or extra upstream command is
+required.
+
+Do not point Chat Completions clients at Veil yet. Unsupported endpoints fail closed
+instead of being forwarded without verified masking.
 
 ## What Veil protects
 
@@ -175,12 +211,13 @@ Veil detects and masks these types before provider egress, then restores them lo
 | **Dates** | Off by default — opt in via policy if needed |
 | **Names / addresses** | Off by default — opt-in L2 semantic detection |
 
-Supported in v0.1.0:
+Supported in v0.1.2:
 - **Claude Code** via Anthropic Messages (`/v1/messages`)
 - **Codex CLI** via OpenAI Responses (`/v1/responses`)
+- **OpenRouter** via Codex CLI and OpenRouter Responses (`/api/v1/responses`)
 - **Go SDK** integrations via `github.com/PAIArtCom/Veil`
 
-Not yet supported: OpenAI Chat Completions, Gemini, remote MCP egress classification,
+Not yet supported: Chat Completions clients, Gemini, remote MCP egress classification,
 OCR, document parsing, attachment rewriting, or provider thinking/control traces.
 
 ## How it works
@@ -252,6 +289,7 @@ Full verification steps: [Claude Code guide](docs/guides/claude-code.md) ·
 |---|---|
 | Run Claude Code through Veil | [Claude Code setup](docs/guides/claude-code.md) |
 | Run Codex through Veil | [Codex CLI setup](docs/guides/codex.md) |
+| Run Codex through OpenRouter | [OpenRouter setup](docs/guides/openrouter.md) |
 | Install, upgrade, or operate the proxy | [Deployment guide](docs/guides/deployment.md) |
 | Embed Veil in a Go gateway | [SDK integration guide](docs/sdk/integration-guide.md) |
 | Understand the security boundary | [Threat model](docs/architecture/threat-model.md) |
@@ -277,7 +315,7 @@ Individual value is open; organizational control is paid. See the
 
 | Area | Docs |
 |---|---|
-| User guides | [Deployment](docs/guides/deployment.md), [Claude Code](docs/guides/claude-code.md), [Codex CLI](docs/guides/codex.md) |
+| User guides | [Deployment](docs/guides/deployment.md), [Claude Code](docs/guides/claude-code.md), [Codex CLI](docs/guides/codex.md), [OpenRouter](docs/guides/openrouter.md) |
 | Concepts | [Redaction model](docs/concepts/redaction-model.md), [Token spec](docs/concepts/token-spec.md), [Detection layers](docs/concepts/detection-layers.md) |
 | SDK | [Contract](docs/sdk/contract.md), [API reference](docs/sdk/api-reference.md), [Integration guide](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
 | Architecture | [Overview](docs/architecture/overview.md), [Threat model](docs/architecture/threat-model.md), [ADRs](docs/architecture/decisions/README.md) |

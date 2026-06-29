@@ -109,13 +109,14 @@ from being restored.
 
 ```sh
 veil proxy --addr 127.0.0.1:8788
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
 
-The proxy defaults to `https://api.anthropic.com` upstream. Use `--upstream` only for a
-controlled local capture proxy or a compatible provider endpoint; do not commit raw
-captures.
+For normal use, put `ANTHROPIC_BASE_URL=http://127.0.0.1:8788` in
+`~/.claude/settings.json` under `env`. A temporary shell export is acceptable only for a
+one-off release smoke test. The proxy defaults to `https://api.anthropic.com` upstream.
+Use `--upstream` only for a controlled local capture proxy or a compatible provider
+endpoint; do not commit raw captures.
 
 ## Local policy
 

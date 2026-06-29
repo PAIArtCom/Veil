@@ -1,5 +1,6 @@
-// Package service exposes the engine over the network (HTTP and gRPC) for non-Go
-// hosts. Planned for Phase 1.
+// Package service builds and executes OS user-service plans for keeping the
+// Veil localhost proxy running in the background.
 //
-// Status: Phase 1 scaffold only; no behavior yet.
+// It owns service-manager integration only. The network proxy behavior remains
+// in internal/proxy, and command-line parsing remains in cmd/veil.
 package service

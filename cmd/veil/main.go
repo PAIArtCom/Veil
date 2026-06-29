@@ -8,6 +8,9 @@
 // Commands:
 //
 //	proxy     run the base-URL local proxy (Claude Code and Codex Responses)
+//	service   install/start/stop/restart/status the background proxy service
+//	status    check whether the local proxy is reachable
+//	restart   restart the background proxy service
 //	version   print build version metadata
 //	serve     run the HTTP/gRPC service (Phase 1)
 //	console   run the local web console (localhost-only)
@@ -25,14 +28,18 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	veil "github.com/PAIArtCom/Veil"
 	localconfig "github.com/PAIArtCom/Veil/internal/config"
 	"github.com/PAIArtCom/Veil/internal/proxy"
+	"github.com/PAIArtCom/Veil/internal/service"
 )
 
 var (
@@ -50,6 +57,21 @@ func main() {
 	case "proxy":
 		if err := runProxy(os.Args[2:], os.Stderr); err != nil {
 			fmt.Fprintf(os.Stderr, "veil proxy: %v\n", err)
+			os.Exit(1)
+		}
+	case "service":
+		if err := runService(os.Args[2:], os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "veil service: %v\n", err)
+			os.Exit(1)
+		}
+	case "status":
+		if err := runStatus(os.Args[2:], os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "veil status: %v\n", err)
+			os.Exit(1)
+		}
+	case "restart":
+		if err := runService([]string{"restart"}, os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintf(os.Stderr, "veil restart: %v\n", err)
 			os.Exit(1)
 		}
 	case "version", "-v", "--version":
@@ -133,8 +155,9 @@ func runProxy(args []string, stderr io.Writer) error {
 	} else {
 		fmt.Fprintln(stderr, "  policy: built-in defaults")
 	}
-	fmt.Fprintf(stderr, "  Claude Code: set ANTHROPIC_BASE_URL=http://%s\n", *addr)
+	fmt.Fprintf(stderr, "  Claude Code: set ~/.claude/settings.json env.ANTHROPIC_BASE_URL=\"http://%s\"\n", *addr)
 	fmt.Fprintf(stderr, "  Codex CLI: set model_providers.<name>.base_url=\"http://%s/v1\"\n", *addr)
+	fmt.Fprintf(stderr, "  Dynamic upstream: use http://%s/veil/upstream=https://provider.example/v1\n", *addr)
 
 	// Graceful shutdown on SIGINT/SIGTERM: stop accepting, drain in-flight.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -160,6 +183,121 @@ func runProxy(args []string, stderr io.Writer) error {
 		}
 		return nil
 	}
+}
+
+func runService(args []string, stdout, stderr io.Writer) error {
+	if len(args) == 0 || isHelpToken(args[0]) {
+		printServiceUsage(stdout)
+		return nil
+	}
+
+	actionArg, flagArgs, err := splitServiceArgs(args)
+	if err != nil {
+		printServiceUsage(stderr)
+		return err
+	}
+
+	fs := flag.NewFlagSet("service", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	addr := fs.String("addr", "127.0.0.1:8787", "loopback address the background proxy listens on")
+	upstream := fs.String("upstream", "https://api.anthropic.com", "default upstream provider base URL")
+	policyPath := fs.String("policy", "", "local policy JSON path for the background proxy")
+	binaryPath := fs.String("bin", "", "path to veil binary (default: current executable)")
+	force := fs.Bool("force", false, "overwrite an existing service definition")
+	dryRun := fs.Bool("dry-run", false, "print service-manager actions without executing them")
+	timeout := fs.Duration("timeout", 30*time.Second, "overall timeout for service-manager commands")
+	stdoutPath := fs.String("stdout", defaultLogPath("out"), "macOS launchd stdout log path")
+	stderrPath := fs.String("stderr", defaultLogPath("err"), "macOS launchd stderr log path")
+	if err := fs.Parse(flagArgs); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			printServiceUsage(stdout)
+			return nil
+		}
+		return err
+	}
+
+	action, err := service.ParseAction(actionArg)
+	if err != nil {
+		printServiceUsage(stderr)
+		return err
+	}
+	if !isLoopbackAddr(*addr) {
+		return fmt.Errorf("refusing non-loopback service address %q", *addr)
+	}
+	if u, err := url.Parse(*upstream); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return fmt.Errorf("invalid upstream URL %q", *upstream)
+	}
+
+	bin := *binaryPath
+	if strings.TrimSpace(bin) == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("determine executable path: %w", err)
+		}
+		if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+			exe = resolved
+		}
+		bin = exe
+	}
+
+	opts := service.Options{
+		Addr:       *addr,
+		Upstream:   *upstream,
+		PolicyPath: *policyPath,
+		BinaryPath: bin,
+		Force:      *force,
+		DryRun:     *dryRun,
+		StdoutPath: *stdoutPath,
+		StderrPath: *stderrPath,
+	}
+	plan, err := service.DefaultManager().Plan(action, opts)
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	out, err := service.ExecutePlan(ctx, plan, opts.DryRun)
+	if out != "" {
+		fmt.Fprint(stdout, out)
+	}
+	return err
+}
+
+func runStatus(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("status", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	addr := fs.String("addr", "127.0.0.1:8787", "loopback address to check")
+	timeout := fs.Duration("timeout", 2*time.Second, "HTTP probe timeout")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+	if !isLoopbackAddr(*addr) {
+		return fmt.Errorf("refusing non-loopback status address %q", *addr)
+	}
+
+	target := "http://" + *addr + "/healthz"
+	client := &http.Client{Timeout: *timeout}
+	resp, err := client.Get(target)
+	if err != nil {
+		fmt.Fprintf(stdout, "Veil proxy: not reachable at %s\n", target)
+		fmt.Fprintln(stdout, "Hint: run `veil service install` once, then `veil status` again.")
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(stdout, "Veil proxy: reachable at %s, but returned HTTP %d\n", target, resp.StatusCode)
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Fprintf(stdout, "Veil proxy: running at http://%s\n", *addr)
+	if len(body) > 0 {
+		fmt.Fprintf(stdout, "%s", body)
+	}
+	return nil
 }
 
 func enginePolicyProvider(provider *localconfig.Provider) veil.PolicyProvider {
@@ -200,6 +338,9 @@ usage: veil <command> [flags]
 
 commands:
   proxy     run the base-URL local proxy (Claude Code and Codex Responses)
+  service   install/start/stop/restart/status the background proxy service
+  status    check whether the local proxy is reachable
+  restart   restart the background proxy service
   version   print build version metadata
   serve     run the HTTP/gRPC service (Phase 1)
   console   run the local web console (localhost-only)
@@ -209,5 +350,102 @@ proxy flags:
   --addr      loopback listen address (default 127.0.0.1:8787)
   --upstream  upstream provider base URL (default https://api.anthropic.com)
   --policy    local policy JSON path (default VEIL_POLICY or ~/.veil/policy.json)
+
+service examples:
+  veil service install
+  veil service install --addr 127.0.0.1:8788 --upstream https://api.openai.com
+  veil service restart
+  veil status
 `)
+}
+
+func printServiceUsage(w io.Writer) {
+	fmt.Fprint(w, `usage: veil service [flags] <install|uninstall|start|stop|restart|status>
+
+examples:
+  veil service install
+  veil service install --addr 127.0.0.1:8788 --upstream https://api.openai.com
+  veil service install --force
+  veil service status
+  veil restart
+
+flags:
+  --addr      loopback listen address for the background proxy (default 127.0.0.1:8787)
+  --upstream  default upstream provider base URL (default https://api.anthropic.com)
+  --policy    local policy JSON path
+  --force     overwrite an existing service definition
+  --dry-run   print service-manager actions without executing them
+`)
+}
+
+func isHelpToken(s string) bool {
+	switch strings.TrimSpace(s) {
+	case "help", "-h", "--help":
+		return true
+	default:
+		return false
+	}
+}
+
+func splitServiceArgs(args []string) (action string, flagArgs []string, err error) {
+	needsValue := map[string]bool{
+		"addr":     true,
+		"upstream": true,
+		"policy":   true,
+		"bin":      true,
+		"timeout":  true,
+		"stdout":   true,
+		"stderr":   true,
+	}
+
+	var haveAction bool
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			if i+1 >= len(args) {
+				return "", nil, fmt.Errorf("missing action")
+			}
+			if haveAction {
+				return "", nil, fmt.Errorf("unexpected argument %q", args[i+1])
+			}
+			action = args[i+1]
+			haveAction = true
+			if i+2 < len(args) {
+				return "", nil, fmt.Errorf("unexpected argument %q", args[i+2])
+			}
+			break
+		}
+		if !strings.HasPrefix(a, "-") {
+			if haveAction {
+				return "", nil, fmt.Errorf("unexpected argument %q", a)
+			}
+			action = a
+			haveAction = true
+			continue
+		}
+		flagArgs = append(flagArgs, a)
+		name := strings.TrimLeft(a, "-")
+		if eq := strings.IndexByte(name, '='); eq >= 0 {
+			name = name[:eq]
+		}
+		if needsValue[name] && !strings.Contains(a, "=") {
+			if i+1 >= len(args) {
+				return "", nil, fmt.Errorf("flag %s needs a value", a)
+			}
+			i++
+			flagArgs = append(flagArgs, args[i])
+		}
+	}
+	if !haveAction {
+		return "", nil, fmt.Errorf("missing action")
+	}
+	return action, flagArgs, nil
+}
+
+func defaultLogPath(kind string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".veil", "logs", "veil."+kind+".log")
 }

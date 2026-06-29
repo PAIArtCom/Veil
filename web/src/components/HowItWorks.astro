@@ -3,11 +3,9 @@ import { useTranslations } from '../i18n';
 
 const t = useTranslations(Astro.currentLocale);
 
-// Single source for the proxy address so the two commands can't drift.
-const addr = '127.0.0.1:8788';
 const codes = [
-  `veil proxy --addr ${addr}`,
-  `export ANTHROPIC_BASE_URL=http://${addr}`,
+  'veil service install',
+  '~/.claude/settings.json -> ANTHROPIC_BASE_URL=http://127.0.0.1:8787',
   null,
 ];
 ---

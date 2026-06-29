@@ -24,23 +24,27 @@ Supported platforms:
 
 ## Quickstart
 
-Start the local proxy:
+Install the background service once:
 
 ```sh
-veil proxy --addr 127.0.0.1:8788
+veil service install
+veil status
 ```
 
-Point Claude Code at it:
+Point Claude Code at it in `~/.claude/settings.json`:
 
-```sh
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-claude
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"
+  }
+}
 ```
 
-For Codex CLI, start Veil with the OpenAI upstream:
+For Codex CLI, make OpenAI the service default upstream:
 
 ```sh
-veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+veil service install --force --upstream https://api.openai.com
 ```
 
 Then add this provider to `~/.codex/config.toml`:
@@ -50,10 +54,30 @@ model_provider = "veil"
 
 [model_providers.veil]
 name     = "Veil"
-base_url = "http://127.0.0.1:8788/v1"
+base_url = "http://127.0.0.1:8787/v1"
 wire_api = "responses"
 env_key  = "OPENAI_API_KEY"
 ```
+
+For OpenRouter, put the upstream directly in the local base URL:
+
+```sh
+export OPENAI_API_KEY="sk-or-v1-..."
+```
+
+```toml
+model_provider = "veil-openrouter"
+
+[model_providers.veil-openrouter]
+name     = "Veil OpenRouter"
+base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"
+wire_api = "responses"
+env_key  = "OPENAI_API_KEY"
+```
+
+Codex appends `/responses`; Veil forwards to `https://openrouter.ai/api/v1/responses`.
+
+Do not send Chat Completions clients through Veil yet; unsupported endpoints fail closed.
 
 ## What It Protects
 

@@ -11,41 +11,65 @@ request/response body fields only.
 
 - Go installed for source builds.
 - Claude Code already installed and authenticated.
-- A local shell where you can set `ANTHROPIC_BASE_URL`.
+- Access to your Claude Code settings file at `~/.claude/settings.json`.
 
-## 1. Build Veil
+## 1. Install or build Veil
 
-From the repository root:
+Use a release install for normal use:
+
+```sh
+npm install -g @paiart/veil
+```
+
+Or build from the repository root when testing a checkout:
 
 ```sh
 go build -o ./bin/veil ./cmd/veil
 ./bin/veil version
-./bin/veil proxy --help
 ```
 
-## 2. Start the local proxy
+## 2. Keep Veil running in the background
 
 ```sh
-./bin/veil proxy --addr 127.0.0.1:8788
+veil service install
+veil status
 ```
 
 Notes:
 
 - `--upstream` defaults to `https://api.anthropic.com`.
-- The proxy refuses non-loopback listen addresses.
+- macOS uses a `launchd` user service; Linux uses `systemd --user`; Windows uses Task Scheduler.
+- The service runs the same proxy and refuses non-loopback listen addresses.
 - On first run, Veil creates a local HMAC key at `~/.veil/key` with restrictive file
   permissions.
-- Add `--policy /path/to/policy.json` when you want local per-type `token`, `ignore`, or
-  `block` behavior.
+- Add `--policy /path/to/policy.json` to `veil service install` when you want local
+  per-type `token`, `ignore`, or `block` behavior.
 
 ## 3. Point Claude Code at Veil
 
-In the shell where you start Claude Code:
+For long-term use, configure Claude Code once in `~/.claude/settings.json`:
 
-```sh
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-claude
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"
+  }
+}
 ```
+
+For an Anthropic-compatible gateway, put the upstream directly in the local base URL:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787/veil/upstream=https://your-gateway.example/api"
+  }
+}
+```
+
+Claude Code appends `/v1/messages`; Veil forwards that to
+`https://your-gateway.example/api/v1/messages`. No URL escaping or extra upstream
+command is required.
 
 Authentication stays with Claude Code:
 
@@ -75,7 +99,8 @@ Expected result:
 
 | Symptom | Check |
 |---|---|
-| Claude Code bypasses Veil | Confirm `ANTHROPIC_BASE_URL=http://127.0.0.1:8788` is set in the same shell that launches `claude`. |
+| Claude Code bypasses Veil | Confirm `~/.claude/settings.json` contains `env.ANTHROPIC_BASE_URL` and restart Claude Code. |
+| Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check whether the request uses an unsupported endpoint or a strict local policy selected `block`. |
 | Tokens remain visible locally | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |

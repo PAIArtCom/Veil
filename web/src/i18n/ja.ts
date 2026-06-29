@@ -155,6 +155,13 @@ export default {
       description:
         'OpenAIをアップストリームにVeilを起動し、Codex CLIを向けるだけ。APIキーのLLMへの漏洩を防ぎます。',
     },
+    openRouter: {
+      title: 'OpenRouter',
+      guide: 'ガイドを見る',
+      description:
+        'Responses APIとしてOpenRouterへ接続します。VeilはBearer tokenをそのまま転送し、対応済みのrequest/response bodyだけを書き換えます。',
+      note: 'base_urlはhttp://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1にします。Codexが/responsesを追加します。Chat Completionsは未対応です。',
+    },
     copied: 'コピーしました！',
   },
 
@@ -166,16 +173,17 @@ export default {
     sub: 'Veilはカバレッジを正直に示します。Claude CodeとCodex CLIのリクエストは保護対象です。対応できない形式は明示するか、fail-closedでブロックします。',
     ctaDownload: '最新リリースをダウンロード',
     ctaTypes: '保護対象の型を確認',
-    supportedTitle: '対応済み（v0.1.0）',
+    supportedTitle: '対応済み（v0.1.2）',
     notYetTitle: '近日対応予定',
     supported: [
       'Claude Code（Anthropic Messages）',
       'Codex CLI（OpenAI Responses）',
+      'Codex Responses経由のOpenRouter',
       'Go SDKインテグレーション',
       'サポート対象形式のテキスト・tool-useフィールド',
     ],
     notYet: [
-      'OpenAI Chat Completions',
+      'Chat Completionsクライアント',
       'Gemini',
       'OCR・添付ファイル・ドキュメント解析',
       'リモートMCPツールトラフィック',
@@ -241,8 +249,12 @@ export default {
         a: 'Veilはプロバイダーの認証情報を保存も参照もしません。リクエストとレスポンスのボディの内容のみを書き換え、APIキーはそのまま通過します。',
       },
       {
+        q: 'OpenRouterなどのゲートウェイは使えますか？',
+        a: 'Veilが対応するAPI形状なら使えます。OpenRouterではbase_urlをhttp://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1にし、Codexをwire_api="responses"で設定します。Codexが/responsesを追加し、VeilはOpenRouterの/api/v1/responsesへ転送します。Chat CompletionsはまだVeilに送らないでください。未対応エンドポイントはfail-closedで止まります。',
+      },
+      {
         q: 'どのAIコーディングエージェントに対応していますか？',
-        a: 'v0.1.0ではClaude Code（Anthropic Messages）とCodex CLI（OpenAI Responses）、さらにGo SDK連携に対応。OpenAI Chat CompletionsやGeminiなどはロードマップにあります。',
+        a: 'Claude Code（Anthropic Messages）、Codex CLI（OpenAI Responses）、Codex Responses経由のOpenRouter、Go SDK連携に対応しています。Chat CompletionsクライアントやGeminiなどはロードマップにあります。',
       },
       {
         q: 'Veilをアンインストールするには？',

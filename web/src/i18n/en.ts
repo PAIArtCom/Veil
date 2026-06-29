@@ -109,13 +109,13 @@ export default {
     title: 'Point your agent at',
     titleAccent: 'a local proxy.',
     titleEnd: '',
-    sub: 'No dashboard, no account. Change one environment variable to route your agent through localhost — your tools and workflow stay exactly the same.',
-    link: 'Run the proxy',
+    sub: 'No dashboard, no account. Install the local background service once, then route your agent through localhost — your tools and workflow stay exactly the same.',
+    link: 'Install the service',
     steps: [
       {
-        title: 'Start Veil',
+        title: 'Install Veil service',
         description:
-          'One command starts the proxy on localhost. That\'s your new privacy boundary.',
+          'One command keeps the localhost proxy running in the background. That\'s your new privacy boundary.',
       },
       {
         title: 'Point your agent',
@@ -132,10 +132,10 @@ export default {
 
   install: {
     eyebrow: 'Get started',
-    title: 'Install and run in',
+    title: 'Install once,',
     titleAccent: 'one command.',
-    titleEnd: '',
-    sub: 'Pick your platform — the binary lands on your machine in seconds. Then point your agent at the proxy.',
+    titleEnd: 'keep working.',
+    sub: 'Pick your platform, install the background service, then point your agent at localhost. No separate proxy terminal.',
     link: 'All releases',
     curl: { label: 'macOS & Linux', hint: 'curl — no dependencies' },
     npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
@@ -147,13 +147,20 @@ export default {
       title: 'Claude Code',
       guide: 'View guide',
       description:
-        'Start Veil, export one variable, launch Claude.',
+        'Install the Veil service once, add the base URL to ~/.claude/settings.json, launch Claude Code.',
     },
     codex: {
       title: 'Codex CLI',
       guide: 'View guide',
       description:
-        'Start Veil with the OpenAI upstream, point Codex at it.',
+        'Set OpenAI as the service upstream, then point Codex at the local Responses base URL.',
+    },
+    openRouter: {
+      title: 'OpenRouter',
+      guide: 'View guide',
+      description:
+        'Put the OpenRouter upstream directly in the local base_url path. Veil splits it locally and rewrites supported request and response body fields.',
+      note: 'Use base_url http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1. Codex appends /responses. Chat Completions is not supported.',
     },
     copied: 'Copied!',
   },
@@ -166,16 +173,17 @@ export default {
     sub: 'Veil is honest about its coverage. If it can\'t protect a format, it says so — or blocks it.',
     ctaDownload: 'Download latest release',
     ctaTypes: 'See protected types',
-    supportedTitle: 'Works now (v0.1.0)',
+    supportedTitle: 'Works now (v0.1.2)',
     notYetTitle: 'Coming soon',
     supported: [
       'Claude Code (Anthropic Messages)',
       'Codex CLI (OpenAI Responses)',
+      'OpenRouter via Codex Responses',
       'Go SDK integrations',
       'Text and tool-use fields in supported formats',
     ],
     notYet: [
-      'OpenAI Chat Completions',
+      'Chat Completions clients',
       'Gemini',
       'OCR, attachments, document parsing',
       'Remote MCP tool traffic',
@@ -219,7 +227,8 @@ export default {
       { q: 'Does Veil add latency?', a: 'It runs on localhost and only rewrites the request and response body, so the overhead is a single local hop — negligible next to the network round-trip to your provider.' },
       { q: 'Will it change the model’s output?', a: 'No. Placeholders are deterministic and format-preserving, so the model reasons over stable, well-formed values. Veil restores the real values in the response before your tools see them.' },
       { q: 'Does Veil see my API keys?', a: 'Veil never stores or touches your provider credentials. It only rewrites content in the request and response body; your API keys pass through untouched.' },
-      { q: 'Which agents are supported?', a: 'Claude Code (Anthropic Messages) and Codex CLI (OpenAI Responses) in v0.1.0, plus Go SDK integrations. OpenAI Chat Completions, Gemini, and more are on the roadmap.' },
+      { q: 'Can I use OpenRouter or another gateway?', a: 'Yes when the client uses an API shape Veil supports. For OpenRouter, set Codex base_url to http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1 and wire_api="responses". Codex appends /responses, and Veil forwards to OpenRouter /api/v1/responses. Do not send Chat Completions through Veil yet; unsupported endpoints fail closed.' },
+      { q: 'Which agents are supported?', a: 'Claude Code (Anthropic Messages), Codex CLI (OpenAI Responses), OpenRouter through Codex Responses, and Go SDK integrations. Chat Completions clients, Gemini, and more are on the roadmap.' },
       { q: 'How do I remove it?', a: 'Unset the environment variable. Veil is just a local process — there is no account, agent, or daemon to uninstall.' },
     ],
   },

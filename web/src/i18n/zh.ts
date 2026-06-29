@@ -109,13 +109,13 @@ export default {
     title: '把你的助手指向',
     titleAccent: '本地 proxy。',
     titleEnd: '',
-    sub: '没有控制台，无需注册。改一个环境变量，让 Claude Code 或 Codex CLI 经由本地脱敏代理发起请求——你的工具和工作流完全不变。',
-    link: '启动 proxy',
+    sub: '没有控制台，无需注册。安装一次本地后台服务，让 Claude Code 或 Codex CLI 经由 localhost 发起请求——你的工具和工作流完全不变。',
+    link: '安装后台服务',
     steps: [
       {
-        title: '启动 Veil',
+        title: '安装 Veil 服务',
         description:
-          '一条命令在 localhost 启动 proxy。这就是你的隐私边界。',
+          '一条命令让 localhost 代理在后台常驻。这就是你的隐私边界。',
       },
       {
         title: '配置你的助手',
@@ -132,10 +132,10 @@ export default {
 
   install: {
     eyebrow: '开始使用',
-    title: '一条命令',
+    title: '安装一次，',
     titleAccent: '即可上手。',
-    titleEnd: '',
-    sub: '选择你的平台，二进制几秒内就到位。然后把你的 AI 助手指向代理即可。',
+    titleEnd: '持续可用。',
+    sub: '选择你的平台，安装后台服务，然后把 AI 助手指向 localhost。不需要单独开一个 proxy 终端。',
     link: '全部版本',
     curl: { label: 'macOS 和 Linux', hint: 'curl — 无需其他依赖' },
     npm: { label: 'npm', hint: 'macOS · Linux · Windows 通用' },
@@ -147,13 +147,20 @@ export default {
       title: 'Claude Code',
       guide: '查看指南',
       description:
-        '启动 Veil 本地代理，export 一个变量，打开 Claude Code——Claude Code 密钥脱敏即刻生效。',
+        '安装一次 Veil 后台服务，把 base URL 写进 ~/.claude/settings.json，再打开 Claude Code。',
     },
     codex: {
       title: 'Codex CLI',
       guide: '查看指南',
       description:
-        '用 OpenAI 上游启动 Veil 本地代理，把 Codex CLI 的请求指向 127.0.0.1——API key 自动脱敏，无需改动代码。',
+        '把 OpenAI 配成后台服务 upstream，再把 Codex CLI 指向本地 Responses base URL。',
+    },
+    openRouter: {
+      title: 'OpenRouter',
+      guide: '查看指南',
+      description:
+        '把 OpenRouter upstream 直接写进本地 base_url 路径。Veil 会在本地拆分它，只重写已支持的请求和响应 body 字段。',
+      note: 'base_url 使用 http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1。Codex 会追加 /responses。Chat Completions 暂不支持。',
     },
     copied: '已复制！',
   },
@@ -166,16 +173,17 @@ export default {
     sub: 'Veil 对脱敏覆盖范围实话实说——当前支持 Claude Code 和 Codex CLI 的大模型网关流量。保护不了的格式，要么失败即拦截，要么明确告诉你。',
     ctaDownload: '下载最新版本',
     ctaTypes: '查看受保护类型',
-    supportedTitle: '现已支持 (v0.1.0)',
+    supportedTitle: '现已支持 (v0.1.2)',
     notYetTitle: '即将支持',
     supported: [
       'Claude Code (Anthropic Messages)',
       'Codex CLI (OpenAI Responses)',
+      '通过 Codex Responses 接入 OpenRouter',
       'Go SDK 集成',
       '已支持格式中的文本和工具调用字段',
     ],
     notYet: [
-      'OpenAI Chat Completions',
+      'Chat Completions 客户端',
       'Gemini',
       'OCR、附件、文档解析',
       '远程 MCP 工具流量',
@@ -241,12 +249,16 @@ export default {
         a: 'Veil 从不存储或接触你的提供商凭据。它只重写请求和响应 body 中的内容，你的 API key 原样透传。',
       },
       {
+        q: '能用 OpenRouter 或其他第三方网关吗？',
+        a: '可以，但前提是客户端使用 Veil 已支持的 API 形态。OpenRouter 推荐用 Codex 的 Responses 路径：base_url 写 http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1，并配置 wire_api="responses"。Codex 会追加 /responses，Veil 会转发到 OpenRouter 的 /api/v1/responses。不要把 Chat Completions 请求直接打到 Veil；不支持的端点会失败即拦截。',
+      },
+      {
         q: '支持哪些 AI 编程助手和大模型客户端？',
-        a: 'v0.1.0 支持 Claude Code（Anthropic Messages API）和 Codex CLI（OpenAI Responses API），以及 Go SDK 集成。这两个 AI 编程助手的 API key 脱敏和 PII 脱敏均已覆盖。OpenAI Chat Completions、Gemini 等大模型客户端在路线图上。',
+        a: '支持 Claude Code（Anthropic Messages API）、Codex CLI（OpenAI Responses API）、通过 Codex Responses 接入 OpenRouter，以及 Go SDK 集成。Chat Completions 客户端、Gemini 等仍在路线图上。',
       },
       {
         q: '如何移除？',
-        a: '取消那个环境变量即可。Veil 只是一个本地脱敏代理进程——没有要卸载的账号、后台 agent 或守护进程，不留任何痕迹。',
+        a: '取消那个环境变量即可。如安装过后台服务，执行 veil service uninstall。Veil 没有账号、云端中继或远程后台进程。',
       },
     ],
   },

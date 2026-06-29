@@ -115,9 +115,9 @@ const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
             <span class="dot green"></span>
             <span class="window-title">bash</span>
           </div>
-          <pre><code id="cmd-claude"><span class="prompt">$</span> veil proxy --addr 127.0.0.1:8788 &
-<span class="prompt">$</span> export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-<span class="prompt">$</span> claude</code></pre>
+          <pre><code id="cmd-claude"><span class="prompt">$</span> veil service install
+<span class="comment"># ~/.claude/settings.json</span>
+"ANTHROPIC_BASE_URL": "http://127.0.0.1:8787"</code></pre>
           <button type="button" class="copy-btn" data-target="cmd-claude" data-copied={t.install.copied} aria-label="Copy Claude Code commands">
             <Fragment set:html={copyIcon} />
           </button>
@@ -137,13 +137,37 @@ const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" st
             <span class="dot green"></span>
             <span class="window-title">bash</span>
           </div>
-          <pre><code id="cmd-codex"><span class="prompt">$</span> veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+          <pre><code id="cmd-codex"><span class="prompt">$</span> veil service install --force --upstream https://api.openai.com
 <span class="comment"># ~/.codex/config.toml</span>
-model_provider = "veil"</code></pre>
+base_url = "http://127.0.0.1:8787/v1"</code></pre>
           <button type="button" class="copy-btn" data-target="cmd-codex" data-copied={t.install.copied} aria-label="Copy Codex commands">
             <Fragment set:html={copyIcon} />
           </button>
         </div>
+      </div>
+
+      <div class="install-card">
+        <div class="card-header">
+          <h3>{t.install.openRouter.title}</h3>
+          <a class="inline-link" href="https://github.com/PAIArtCom/Veil/blob/main/docs/guides/openrouter.md" target="_blank" rel="noopener noreferrer">{t.install.openRouter.guide} &rarr;</a>
+        </div>
+        <p>{t.install.openRouter.description}</p>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="window-title">bash</span>
+          </div>
+          <pre><code id="cmd-openrouter"><span class="prompt">$</span> veil service install
+<span class="comment"># ~/.codex/config.toml</span>
+model_provider = "veil-openrouter"
+base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-openrouter" data-copied={t.install.copied} aria-label="Copy OpenRouter commands">
+            <Fragment set:html={copyIcon} />
+          </button>
+        </div>
+        <p class="compat-note">{t.install.openRouter.note}</p>
       </div>
     </div>
 
@@ -257,7 +281,7 @@ model_provider = "veil"</code></pre>
   /* ── One-liner methods grid ─────────────────────────────────────────────── */
   .methods-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-4);
     margin-bottom: var(--space-12);
   }
@@ -270,6 +294,7 @@ model_provider = "veil"</code></pre>
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+    min-width: 0;
     transition: border-color var(--transition-base);
   }
 
@@ -331,6 +356,7 @@ model_provider = "veil"</code></pre>
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    min-width: 0;
     transition: border-color var(--transition-base);
   }
 
@@ -355,6 +381,13 @@ model_provider = "veil"</code></pre>
     color: var(--color-muted);
     line-height: 1.6;
     margin-bottom: var(--space-2);
+  }
+
+  .install-card .compat-note {
+    margin: 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-subtle);
   }
 
   .inline-link {
@@ -391,6 +424,7 @@ model_provider = "veil"</code></pre>
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     margin-top: auto;
+    min-width: 0;
     overflow: hidden;
   }
 
@@ -476,10 +510,10 @@ model_provider = "veil"</code></pre>
 
   @media (max-width: 768px) {
     .methods-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
     .install-options {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>

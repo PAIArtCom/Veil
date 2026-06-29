@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -214,9 +215,9 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 		}
 		body, _ := io.ReadAll(r.Body)
 		rec.record(body, r.Header)
-		tok := tokenRe.FindString(string(body))
+		tok := mixedPlaceholderRe.FindString(string(body))
 		if tok == "" {
-			t.Errorf("upstream: masked request had no PAIArtVeil_ token: %s", body)
+			t.Errorf("upstream: masked request had no Veil placeholder: %s", body)
 		}
 		resp := `{"id":"resp_1","output":[` +
 			`{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Using ` + tok + `"}]},` +
@@ -273,6 +274,267 @@ func TestOpenAIResponsesBufferedRoundTrip(t *testing.T) {
 	}
 	if rec.headers().Get("Authorization") != authHdr {
 		t.Fatalf("Authorization header = %q, want pass-through", rec.headers().Get("Authorization"))
+	}
+}
+
+func TestVeilPrefixedRouteCanOverrideUpstream(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var defaultReceived atomic.Int64
+	defaultUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defaultReceived.Add(1)
+		http.Error(w, "default upstream should not be used", http.StatusTeapot)
+	}))
+	defer defaultUpstream.Close()
+
+	var dynamicReceived atomic.Int64
+	var rec recorder
+	dynamicUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dynamicReceived.Add(1)
+		if r.URL.Path != "/api/v1/responses" {
+			t.Errorf("upstream path = %q, want /api/v1/responses", r.URL.Path)
+		}
+		if strings.Contains(r.URL.RawQuery, "upstream") {
+			t.Errorf("upstream query leaked Veil routing parameter: %q", r.URL.RawQuery)
+		}
+		body, _ := io.ReadAll(r.Body)
+		rec.record(body, r.Header)
+		tok := mixedPlaceholderRe.FindString(string(body))
+		if tok == "" {
+			t.Errorf("upstream: masked request had no Veil placeholder: %s", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"resp_1","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok `+tok+`"}]}]}`)
+	}))
+	defer dynamicUpstream.Close()
+
+	px, _ := newTestProxy(t, engine, defaultUpstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"openai/gpt-4o","input":"email ` + email + `"}`
+	endpoint := front.URL + "/veil/v1/responses?upstream=" + url.QueryEscape(dynamicUpstream.URL+"/api")
+	resp, err := http.Post(endpoint, "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if defaultReceived.Load() != 0 {
+		t.Fatalf("default upstream received %d requests, want 0", defaultReceived.Load())
+	}
+	if dynamicReceived.Load() != 1 {
+		t.Fatalf("dynamic upstream received %d requests, want 1", dynamicReceived.Load())
+	}
+	if bytes.Contains(rec.lastBody(), []byte(email)) {
+		t.Fatalf("plaintext email leaked to dynamic upstream: %s", rec.lastBody())
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("client status = %d, want 200; body=%s", resp.StatusCode, clientBody)
+	}
+	if !bytes.Contains(clientBody, []byte(email)) {
+		t.Fatalf("client response did not restore original email: %s", clientBody)
+	}
+}
+
+func TestVeilPathUpstreamRouteCanOverrideUpstreamWithoutEscaping(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var defaultReceived atomic.Int64
+	defaultUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defaultReceived.Add(1)
+		http.Error(w, "default upstream should not be used", http.StatusTeapot)
+	}))
+	defer defaultUpstream.Close()
+
+	var dynamicReceived atomic.Int64
+	var rec recorder
+	dynamicUpstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dynamicReceived.Add(1)
+		if r.URL.Path != "/api/v1/responses" {
+			t.Errorf("upstream path = %q, want /api/v1/responses", r.URL.Path)
+		}
+		body, _ := io.ReadAll(r.Body)
+		rec.record(body, r.Header)
+		tok := mixedPlaceholderRe.FindString(string(body))
+		if tok == "" {
+			t.Errorf("upstream: masked request had no Veil placeholder: %s", body)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":"resp_1","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok `+tok+`"}]}]}`)
+	}))
+	defer dynamicUpstream.Close()
+
+	px, _ := newTestProxy(t, engine, defaultUpstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	reqBody := `{"model":"openai/gpt-4o","input":"email ` + email + `"}`
+	endpoint := front.URL + "/veil/upstream=" + dynamicUpstream.URL + "/api/v1/responses"
+	resp, err := http.Post(endpoint, "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	clientBody, _ := io.ReadAll(resp.Body)
+
+	if defaultReceived.Load() != 0 {
+		t.Fatalf("default upstream received %d requests, want 0", defaultReceived.Load())
+	}
+	if dynamicReceived.Load() != 1 {
+		t.Fatalf("dynamic upstream received %d requests, want 1", dynamicReceived.Load())
+	}
+	if bytes.Contains(rec.lastBody(), []byte(email)) {
+		t.Fatalf("plaintext email leaked to dynamic upstream: %s", rec.lastBody())
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("client status = %d, want 200; body=%s", resp.StatusCode, clientBody)
+	}
+	if !bytes.Contains(clientBody, []byte(email)) {
+		t.Fatalf("client response did not restore original email: %s", clientBody)
+	}
+}
+
+func TestVeilPathUpstreamRouteRejectsBadUpstreamBeforeForwarding(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Post(front.URL+"/veil/upstream=ftp://example.com/v1/responses", "application/json", strings.NewReader(`{"input":"`+email+`"}`))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 0 {
+		t.Fatalf("upstream received %d requests, want 0", received.Load())
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", resp.StatusCode, body)
+	}
+	if !bytes.Contains(body, []byte(`"error"`)) {
+		t.Fatalf("bad upstream response should be OpenAI-shaped: %s", body)
+	}
+}
+
+func TestVeilPathUpstreamUnsupportedEndpointFailsClosed(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Post(front.URL+"/veil/upstream="+upstream.URL+"/v1/chat/completions", "application/json", strings.NewReader(`{"messages":[{"role":"user","content":"`+email+`"}]}`))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if received.Load() != 0 {
+		t.Fatalf("unsupported endpoint reached upstream %d times, want 0", received.Load())
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, want 404; body=%s", resp.StatusCode, body)
+	}
+}
+
+func TestVeilPrefixedRouteRejectsBadUpstreamBeforeForwarding(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Post(front.URL+"/veil/v1/responses?upstream=ftp%3A%2F%2Fexample.com", "application/json", strings.NewReader(`{"input":"`+email+`"}`))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if received.Load() != 0 {
+		t.Fatalf("upstream received %d requests, want 0", received.Load())
+	}
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", resp.StatusCode, body)
+	}
+	if !bytes.Contains(body, []byte(`"error"`)) {
+		t.Fatalf("bad upstream response should be OpenAI-shaped: %s", body)
+	}
+}
+
+func TestVeilPrefixedUnsupportedEndpointFailsClosed(t *testing.T) {
+	engine := newTestEngine(t)
+
+	var received atomic.Int64
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		received.Add(1)
+	}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Post(front.URL+"/veil/v1/chat/completions?upstream="+url.QueryEscape(upstream.URL), "application/json", strings.NewReader(`{"messages":[{"role":"user","content":"`+email+`"}]}`))
+	if err != nil {
+		t.Fatalf("client POST: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if received.Load() != 0 {
+		t.Fatalf("unsupported endpoint reached upstream %d times, want 0", received.Load())
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("status = %d, want 404; body=%s", resp.StatusCode, body)
+	}
+}
+
+func TestHealthz(t *testing.T) {
+	engine := newTestEngine(t)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer upstream.Close()
+
+	px, _ := newTestProxy(t, engine, upstream.URL)
+	front := httptest.NewServer(px)
+	defer front.Close()
+
+	resp, err := http.Get(front.URL + "/healthz")
+	if err != nil {
+		t.Fatalf("GET /healthz: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", resp.StatusCode, body)
+	}
+	if !bytes.Contains(body, []byte(`"status":"ok"`)) || !bytes.Contains(body, []byte(`"/veil/upstream=https://example.com/v1/responses"`)) {
+		t.Fatalf("health body missing expected fields: %s", body)
 	}
 }
 

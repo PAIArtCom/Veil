@@ -9,6 +9,29 @@ release.
 
 No changes yet.
 
+## [0.1.2] - 2026-06-29
+
+### Added
+- Added `veil service` management for background localhost proxy startup on macOS
+  `launchd`, Linux `systemd --user`, and Windows Task Scheduler, plus `veil status` and
+  `veil restart` shortcuts.
+- Added the human-readable dynamic upstream base URL form
+  `/veil/upstream=https://provider.example/api/v1`, so clients can configure upstreams in
+  `base_url` without URL escaping or extra Veil commands.
+- Added `/healthz` proxy status output for local setup checks.
+
+### Changed
+- Updated Claude Code guidance to use persistent `~/.claude/settings.json` configuration
+  instead of shell `export` as the long-term setup path.
+- Updated Codex and OpenRouter guidance, npm README, and website copy to use
+  `base_url = "http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1"` and
+  removed model-selection lines from Veil-specific examples.
+
+### Fixed
+- Kept unsupported dynamic-upstream endpoints fail-closed before upstream egress.
+- Preserved existing provider-native `/v1/messages`, `/v1/responses`, and `/responses`
+  routing while adding the new readable upstream path.
+
 ## [0.1.1] - 2026-06-29
 
 ### Fixed
