@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="web/public/favicon.svg" alt="Veil logo mark" width="72">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/logo-dark.svg">
+    <img src="web/public/logo.svg" alt="Veil" width="170">
+  </picture>
 </p>
-
-<h1 align="center">Veil</h1>
 
 <p align="center">
   <strong>Local de-identification for AI coding agents.</strong>
