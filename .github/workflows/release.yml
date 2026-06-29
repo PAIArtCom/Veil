@@ -90,7 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
-          npm version "${version}" --no-git-tag-version
+          npm version "${version}" --no-git-tag-version --allow-same-version
 
           pack_json="$(npm pack --json --pack-destination "${RUNNER_TEMP}")"
           tarball="$(node -e 'const p = JSON.parse(process.argv[1]); console.log(p[0].filename)' "${pack_json}")"
