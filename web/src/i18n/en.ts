@@ -2,9 +2,9 @@ export default {
   meta: {
     title: 'Stop leaking secrets to AI providers',
     description:
-      'Veil is a local proxy that masks your credentials before AI coding agents send them to the cloud.',
+      'Veil is a local de-identification proxy that masks secrets and PII before Claude Code or Codex traffic leaves your machine.',
     defaultDescription:
-      'Your AI coding agent sends your secrets to the cloud. Veil stops that.',
+      'Local de-identification for AI coding agents.',
   },
 
   header: {

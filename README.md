@@ -1,23 +1,22 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="brand/Veil%20Design%20System/assets/logo-dark.svg">
-    <img src="brand/Veil%20Design%20System/assets/logo.svg" alt="Veil" width="170">
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/logo-dark.svg">
+    <img src="web/public/logo.svg" alt="Veil" width="170">
   </picture>
 </p>
 
 <h1 align="center">Veil</h1>
 
 <p align="center">
-  <strong>Your AI coding agent reads your secrets. Veil masks them before they leave your machine.</strong>
+  <strong>Local de-identification for AI coding agents.</strong>
 </p>
 
 English | [简体中文](README.zh-CN.md)
 
-When you use Claude Code or Codex, your prompts carry everything in context: environment
-variables, database URLs, API keys, connection strings. That traffic goes to a third-party
-model provider's servers. Veil intercepts it on localhost, replaces every sensitive value
-with a deterministic reversible token, and restores real values locally on the way back.
-The provider sees only tokens. Your workflow stays unchanged.
+Veil is a local de-identification proxy for AI coding agents. It masks secrets and PII
+before Claude Code or Codex traffic leaves your machine, then restores real values locally
+on the way back. The provider sees only deterministic reversible tokens. Your workflow
+stays unchanged.
 
 | Status | License | Platform |
 |---|---|---|
@@ -229,4 +228,4 @@ Individual value is open; organizational control is paid. See the
 | SDK | [Contract](docs/sdk/contract.md), [API reference](docs/sdk/api-reference.md), [Integration guide](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
 | Architecture | [Overview](docs/architecture/overview.md), [Threat model](docs/architecture/threat-model.md), [ADRs](docs/architecture/decisions/README.md) |
 | Project | [Roadmap](docs/product/roadmap.md), [Open-core boundary](docs/product/open-core-boundary.md), [Support](SUPPORT.md), [Security](SECURITY.md), [Changelog](CHANGELOG.md) |
-| Brand | [Design system](brand/Veil%20Design%20System/readme.md), [Logo](brand/Veil%20Design%20System/assets/logo.svg), [Dark logo](brand/Veil%20Design%20System/assets/logo-dark.svg), [Favicon](brand/Veil%20Design%20System/assets/favicon.svg) |
+| Brand assets | [Logo](web/public/logo.svg), [Dark logo](web/public/logo-dark.svg), [Favicon](web/public/favicon.svg), [Open Graph image](web/public/og.png) |

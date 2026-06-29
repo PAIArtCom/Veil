@@ -7,7 +7,8 @@
 // transports live under cmd/veil (proxy, serve, console). The integration contract
 // is documented in docs/sdk/contract.md.
 //
-// Status: Phase 0 implements the text engine, Anthropic Messages wire masking/
-// restore, streaming restore, and the loopback proxy. Non-Anthropic providers,
-// the service API, and the console remain Phase 1+.
+// Status: v0.1.0 implements the text engine, streaming restore, the loopback
+// proxy for Anthropic Messages and OpenAI Responses, local policy files, and
+// the maintained SDK embed reference path. OpenAI Chat Completions, Gemini, the
+// service API, and the console remain Phase 1+.
 package veil

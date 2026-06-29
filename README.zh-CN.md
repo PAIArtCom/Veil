@@ -1,8 +1,19 @@
-# Veil
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="web/public/logo-dark.svg">
+    <img src="web/public/logo.svg" alt="Veil" width="170">
+  </picture>
+</p>
+
+<h1 align="center">Veil</h1>
+
+<p align="center">
+  <strong>面向 AI 编程助手的本地脱敏代理。</strong>
+</p>
 
 [English](README.md) | 简体中文
 
-用 Claude Code、Codex 写代码，你的 API 密钥、数据库密码、内网地址都会随 prompt 一起发给模型厂商。Veil 在发出去之前把这些敏感内容换成占位符，响应回来后再还原——厂商只看到占位符，你的工具一切照旧。
+Veil 是面向 AI 编程助手的本地脱敏代理。在 Claude Code 或 Codex 请求离开本机前，它把 API key、数据库连接串和 PII 替换成确定性、可逆的安全占位符，并在响应返回本地后还原真实值。模型厂商只看到占位符，你的工具和工作流保持不变。
 
 | 状态 | 许可证 | 平台 |
 |---|---|---|
