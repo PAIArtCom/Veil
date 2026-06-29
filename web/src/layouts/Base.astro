@@ -26,7 +26,7 @@ const basePath = Astro.url.pathname.replace(/^\/(zh|ja|es)(?=\/|$)/, '') || '/';
 const isLocalized = basePath === '/';
 const ogLocaleMap = { en: 'en_US', zh: 'zh_CN', ja: 'ja_JP', es: 'es_ES' };
 
-const siteUrl = Astro.site?.href.replace(/\/$/, '') ?? 'https://veil.sh';
+const siteUrl = Astro.site?.href.replace(/\/$/, '') ?? 'https://veil.paiart.com';
 const githubUrl = 'https://github.com/PAIArtCom/Veil';
 
 const jsonLdBase = JSON.stringify([

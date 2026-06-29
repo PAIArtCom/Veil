@@ -8,7 +8,7 @@
 
 class Veil < Formula
   desc "Local de-identification proxy for AI coding agents"
-  homepage "https://veil.sh"
+  homepage "https://veil.paiart.com"
   version "0.1.0"
   license "Apache-2.0"
 

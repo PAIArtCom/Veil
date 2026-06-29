@@ -1,13 +1,28 @@
 {
   "name": "@paiart/veil",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Local de-identification proxy for AI coding agents",
   "license": "Apache-2.0",
-  "homepage": "https://veil.sh",
+  "homepage": "https://veil.paiart.com",
   "repository": {
     "type": "git",
     "url": "https://github.com/PAIArtCom/Veil.git"
   },
+  "bugs": {
+    "url": "https://github.com/PAIArtCom/Veil/issues"
+  },
+  "keywords": [
+    "ai",
+    "privacy",
+    "security",
+    "proxy",
+    "pii",
+    "secrets",
+    "redaction",
+    "de-identification",
+    "claude",
+    "codex"
+  ],
   "bin": {
     "veil": "bin/veil.js"
   },
@@ -18,6 +33,7 @@
     "node": ">=18"
   },
   "files": [
+    "README.md",
     "bin/",
     "postinstall.js"
   ]

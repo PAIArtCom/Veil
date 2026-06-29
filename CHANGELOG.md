@@ -9,6 +9,17 @@ release.
 
 No changes yet.
 
+## [0.1.1] - 2026-06-29
+
+### Fixed
+- Renamed the npm distribution to the `@paiart/veil` organization scope.
+- Added a detailed npm package README and metadata so the public npm page explains
+  Veil's purpose, install path, supported platforms, quickstart, and protection surface.
+- Updated the canonical website and installer URLs from `veil.sh` to
+  `https://veil.paiart.com`.
+- Added npm publish visibility checks so a successful publish is followed by registry
+  confirmation for `@paiart/veil`.
+
 ## [0.1.0] - 2026-06-29
 
 ### Added

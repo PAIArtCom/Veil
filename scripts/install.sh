@@ -2,7 +2,7 @@
 # Veil installer — Linux and macOS
 #
 # Usage:
-#   curl -fsSL https://veil.sh/install.sh | sh
+#   curl -fsSL https://veil.paiart.com/install.sh | sh
 #
 # Environment:
 #   VEIL_VERSION     - specific version tag, e.g. v0.1.0 (default: latest)

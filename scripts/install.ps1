@@ -1,7 +1,7 @@
 # Veil installer — Windows (PowerShell)
 #
 # Usage:
-#   irm https://veil.sh/install.ps1 | iex
+#   irm https://veil.paiart.com/install.ps1 | iex
 #
 # Environment variables:
 #   $env:VEIL_VERSION     - specific version tag, e.g. v0.1.0 (default: latest)

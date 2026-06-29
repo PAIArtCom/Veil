@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://veil.sh/sitemap-index.xml
+Sitemap: https://veil.paiart.com/sitemap-index.xml

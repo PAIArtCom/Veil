@@ -28,14 +28,14 @@ you are working from an unreleased checkout, use [Build from source](#build-from
 ### macOS and Linux
 
 ```sh
-curl -fsSL https://veil.sh/install.sh | sh
+curl -fsSL https://veil.paiart.com/install.sh | sh
 ```
 
 Install a specific version or to a custom directory:
 
 ```sh
-curl -fsSL https://veil.sh/install.sh | VEIL_VERSION=v0.1.0 sh
-curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.1 sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
 
 ### npm / Node.js toolchains
@@ -60,7 +60,7 @@ The tap is published by stable release automation to
 ### Windows — PowerShell
 
 ```powershell
-irm https://veil.sh/install.ps1 | iex
+irm https://veil.paiart.com/install.ps1 | iex
 ```
 
 The binary is placed in `%USERPROFILE%\.veil\bin` and added to your user `PATH`.

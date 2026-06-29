@@ -25,14 +25,14 @@ checkout，请使用[源码编译](#源码编译)。
 ### macOS 和 Linux
 
 ```sh
-curl -fsSL https://veil.sh/install.sh | sh
+curl -fsSL https://veil.paiart.com/install.sh | sh
 ```
 
 安装指定版本或自定义目录：
 
 ```sh
-curl -fsSL https://veil.sh/install.sh | VEIL_VERSION=v0.1.0 sh
-curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.1 sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
 
 ### npm / Node.js
@@ -56,7 +56,7 @@ brew install veil
 ### Windows — PowerShell
 
 ```powershell
-irm https://veil.sh/install.ps1 | iex
+irm https://veil.paiart.com/install.ps1 | iex
 ```
 
 二进制文件安装到 `%USERPROFILE%\.veil\bin`，并自动加入用户 `PATH`。
