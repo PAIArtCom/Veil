@@ -135,8 +135,14 @@ export default {
     title: 'Install and run in',
     titleAccent: 'one command.',
     titleEnd: '',
-    sub: 'Download the binary, set one env var, done. Remove it by unsetting the variable.',
-    link: 'Download release',
+    sub: 'Pick your platform — the binary lands on your machine in seconds. Then point your agent at the proxy.',
+    link: 'All releases',
+    curl: { label: 'macOS & Linux', hint: 'curl — no dependencies' },
+    npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
+    brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
+    winps: { label: 'Windows', hint: 'PowerShell — auto-adds to PATH' },
+    agentsLabel: 'Then wire up your agent',
+    sourceLink: 'More options (go install, build from source)',
     claudeCode: {
       title: 'Claude Code',
       guide: 'View guide',
@@ -148,11 +154,6 @@ export default {
       guide: 'View guide',
       description:
         'Start Veil with the OpenAI upstream, point Codex at it.',
-    },
-    source: {
-      title: 'Build from source',
-      badge: 'Requires Go 1.22+',
-      description: 'Read every line before you trust it.',
     },
     copied: 'Copied!',
   },

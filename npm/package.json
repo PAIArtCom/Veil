@@ -1,0 +1,24 @@
+{
+  "name": "@paiartcom/veil",
+  "version": "0.1.0",
+  "description": "Local de-identification proxy for AI coding agents",
+  "license": "Apache-2.0",
+  "homepage": "https://veil.sh",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PAIArtCom/Veil.git"
+  },
+  "bin": {
+    "veil": "bin/veil.js"
+  },
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/",
+    "postinstall.js"
+  ]
+}

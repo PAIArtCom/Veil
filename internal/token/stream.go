@@ -36,7 +36,11 @@ const PartialSuffixPattern = `PAIArtVeil_[A-Z0-9]+_[0-9a-f]*$`
 // package consumes it rather than re-deriving the shape of a token prefix.
 func PartialSuffixStart(b []byte) int {
 	s := string(b)
-	for start := 0; start < len(s); start++ {
+	startAt := len(s) - MaxTokenLen
+	if startAt < 0 {
+		startAt = 0
+	}
+	for start := startAt; start < len(s); start++ {
 		if isTokenPrefixSuffix(s[start:]) {
 			return start
 		}

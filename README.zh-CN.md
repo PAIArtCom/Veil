@@ -17,6 +17,68 @@ Veil 是面向 AI 编程助手的本地脱敏代理。在 Claude Code 或 Codex 
 |---|---|---|
 | v0.1.0 | Apache-2.0 | macOS · Linux · Windows（amd64 / arm64） |
 
+## 安装
+
+Release 安装器依赖对应版本的 GitHub Release 产物已经发布。如果你正在使用尚未发布的
+checkout，请使用[源码编译](#源码编译)。
+
+### macOS 和 Linux
+
+```sh
+curl -fsSL https://veil.sh/install.sh | sh
+```
+
+安装指定版本或自定义目录：
+
+```sh
+curl -fsSL https://veil.sh/install.sh | VEIL_VERSION=v0.1.0 sh
+curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
+```
+
+### npm / Node.js
+
+```sh
+npm install -g @paiartcom/veil
+```
+
+macOS、Linux、Windows 通用。安装时从对应版本的 GitHub Release 自动下载当前平台二进制。
+
+### macOS — Homebrew
+
+```sh
+brew tap PAIArtCom/veil
+brew install veil
+```
+
+稳定版本的 release automation 会把 formula 发布到
+[`PAIArtCom/homebrew-veil`](https://github.com/PAIArtCom/homebrew-veil)。
+
+### Windows — PowerShell
+
+```powershell
+irm https://veil.sh/install.ps1 | iex
+```
+
+二进制文件安装到 `%USERPROFILE%\.veil\bin`，并自动加入用户 `PATH`。
+
+### Go install
+
+```sh
+go install github.com/PAIArtCom/Veil/cmd/veil@latest
+```
+
+### 源码编译
+
+```sh
+git clone https://github.com/PAIArtCom/Veil.git
+cd Veil
+go build -o ./bin/veil ./cmd/veil
+```
+
+各平台预编译包见 [releases 页面](https://github.com/PAIArtCom/Veil/releases/latest)。
+
+---
+
 ## 让 AI 帮你装
 
 不想手动操作？把下面这段话发给你的 AI 助手，让它替你完成所有步骤：
@@ -53,21 +115,13 @@ Codex 接入方式不同，参考[快速开始](#跑起来)手动配置。
 
 ## 跑起来
 
-从 [releases 页面](https://github.com/PAIArtCom/Veil/releases/latest) 下载预编译包，
-或者自己构建：
-
-```sh
-git clone https://github.com/PAIArtCom/Veil.git
-cd Veil
-go build -o ./bin/veil ./cmd/veil
-./bin/veil version
-```
+[安装](#安装) Veil 后，启动代理并把 AI 工具指向它。
 
 **Claude Code 接入——两条命令：**
 
 ```sh
 # 终端 1：把代理跑起来
-./bin/veil proxy --addr 127.0.0.1:8788
+veil proxy --addr 127.0.0.1:8788
 
 # 终端 2：把 Claude Code 指过来
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
@@ -78,7 +132,7 @@ claude
 
 ```sh
 # 终端 1
-./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 ```
 
 在 `~/.codex/config.toml` 里加上：

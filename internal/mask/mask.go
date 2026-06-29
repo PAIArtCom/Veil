@@ -215,7 +215,11 @@ func restoreDelimitedSurrogateCandidate(candidate string, lookup func(string) (s
 // len(b) means no holdback is needed.
 func PartialSurrogateSuffixStart(b []byte) int {
 	s := string(b)
-	for start := 0; start < len(s); start++ {
+	startAt := len(s) - MaxSurrogateLen
+	if startAt < 0 {
+		startAt = 0
+	}
+	for start := startAt; start < len(s); start++ {
 		if isSurrogatePrefixSuffix(s[start:]) {
 			return start
 		}

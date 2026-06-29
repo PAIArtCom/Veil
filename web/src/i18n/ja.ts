@@ -135,8 +135,14 @@ export default {
     title: '',
     titleAccent: 'コマンドひとつ',
     titleEnd: 'で試せる。',
-    sub: 'バイナリをダウンロードして環境変数をひとつ設定するだけ。AIエージェントのAPIキー漏洩対策がすぐに始まります。元に戻したいときは変数を解除するだけです。',
-    link: 'リリースをダウンロード',
+    sub: 'プラットフォームを選ぶだけ。数秒でバイナリが手元に届きます。あとはエージェントをプロキシに向けるだけです。',
+    link: '全リリース一覧',
+    curl: { label: 'macOS & Linux', hint: 'curl — 依存なし' },
+    npm: { label: 'npm', hint: 'macOS · Linux · Windows 対応' },
+    brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
+    winps: { label: 'Windows', hint: 'PowerShell — PATHに自動追加' },
+    agentsLabel: 'エージェントの設定',
+    sourceLink: 'その他の方法（go install、ソースビルド）',
     claudeCode: {
       title: 'Claude Code',
       guide: 'ガイドを見る',
@@ -148,11 +154,6 @@ export default {
       guide: 'ガイドを見る',
       description:
         'OpenAIをアップストリームにVeilを起動し、Codex CLIを向けるだけ。APIキーのLLMへの漏洩を防ぎます。',
-    },
-    source: {
-      title: 'ソースからビルド',
-      badge: 'Go 1.22+が必要',
-      description: '信頼する前に、すべての行を読めます。',
     },
     copied: 'コピーしました！',
   },

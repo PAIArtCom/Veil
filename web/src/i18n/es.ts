@@ -135,8 +135,14 @@ export default {
     title: 'Instala y ejecuta con',
     titleAccent: 'un comando.',
     titleEnd: '',
-    sub: 'Descarga el binario, configura una variable de entorno, listo. Para quitarlo, solo elimina la variable.',
-    link: 'Descargar release',
+    sub: 'Elige tu plataforma — el binario llega en segundos. Luego apunta tu agente al proxy.',
+    link: 'Todos los releases',
+    curl: { label: 'macOS y Linux', hint: 'curl — sin dependencias' },
+    npm: { label: 'npm', hint: 'macOS · Linux · Windows' },
+    brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
+    winps: { label: 'Windows', hint: 'PowerShell — se añade al PATH' },
+    agentsLabel: 'Configura tu agente',
+    sourceLink: 'Más opciones (go install, compilar)',
     claudeCode: {
       title: 'Claude Code',
       guide: 'Ver guía',
@@ -147,11 +153,6 @@ export default {
       guide: 'Ver guía',
       description:
         'Inicia Veil con el upstream de OpenAI y apunta Codex hacia él.',
-    },
-    source: {
-      title: 'Compilar desde el código fuente',
-      badge: 'Requiere Go 1.22+',
-      description: 'Lee cada línea antes de confiar en él.',
     },
     copied: '¡Copiado!',
   },

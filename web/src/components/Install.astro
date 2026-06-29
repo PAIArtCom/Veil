@@ -2,6 +2,8 @@
 import { useTranslations } from '../i18n';
 
 const t = useTranslations(Astro.currentLocale);
+
+const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
 ---
 <section class="section" id="install">
   <div class="container">
@@ -22,6 +24,83 @@ const t = useTranslations(Astro.currentLocale);
       </a>
     </div>
 
+    <!-- One-liner install methods -->
+    <div class="methods-grid">
+      <div class="method-card">
+        <div class="method-header">
+          <span class="method-label">{t.install.curl.label}</span>
+          <span class="method-hint">{t.install.curl.hint}</span>
+        </div>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="window-title">sh</span>
+          </div>
+          <pre><code id="cmd-curl">curl -fsSL https://veil.sh/install.sh | sh</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-curl" data-copied={t.install.copied} aria-label="Copy curl install command">
+            <Fragment set:html={copyIcon} />
+          </button>
+        </div>
+      </div>
+
+      <div class="method-card">
+        <div class="method-header">
+          <span class="method-label">{t.install.npm.label}</span>
+          <span class="method-hint">{t.install.npm.hint}</span>
+        </div>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="window-title">sh</span>
+          </div>
+          <pre><code id="cmd-npm">npm install -g @paiartcom/veil</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-npm" data-copied={t.install.copied} aria-label="Copy npm install command">
+            <Fragment set:html={copyIcon} />
+          </button>
+        </div>
+      </div>
+
+      <div class="method-card">
+        <div class="method-header">
+          <span class="method-label">{t.install.brew.label}</span>
+          <span class="method-hint">{t.install.brew.hint}</span>
+        </div>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="window-title">sh</span>
+          </div>
+          <pre><code id="cmd-brew">brew install PAIArtCom/veil/veil</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-brew" data-copied={t.install.copied} aria-label="Copy Homebrew install command">
+            <Fragment set:html={copyIcon} />
+          </button>
+        </div>
+      </div>
+
+      <div class="method-card">
+        <div class="method-header">
+          <span class="method-label">{t.install.winps.label}</span>
+          <span class="method-hint">{t.install.winps.hint}</span>
+        </div>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            <span class="window-title">powershell</span>
+          </div>
+          <pre><code id="cmd-winps">irm https://veil.sh/install.ps1 | iex</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-winps" data-copied={t.install.copied} aria-label="Copy PowerShell install command">
+            <Fragment set:html={copyIcon} />
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="agents-divider">
+      <span>{t.install.agentsLabel}</span>
+    </div>
+
+    <!-- Agent setup cards -->
     <div class="install-options">
       <div class="install-card">
         <div class="card-header">
@@ -36,11 +115,11 @@ const t = useTranslations(Astro.currentLocale);
             <span class="dot green"></span>
             <span class="window-title">bash</span>
           </div>
-          <pre><code id="cmd-claude"><span class="prompt">$</span> ./bin/veil proxy --addr 127.0.0.1:8788 &
+          <pre><code id="cmd-claude"><span class="prompt">$</span> veil proxy --addr 127.0.0.1:8788 &
 <span class="prompt">$</span> export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 <span class="prompt">$</span> claude</code></pre>
           <button type="button" class="copy-btn" data-target="cmd-claude" data-copied={t.install.copied} aria-label="Copy Claude Code commands">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <Fragment set:html={copyIcon} />
           </button>
         </div>
       </div>
@@ -58,38 +137,22 @@ const t = useTranslations(Astro.currentLocale);
             <span class="dot green"></span>
             <span class="window-title">bash</span>
           </div>
-          <pre><code id="cmd-codex"><span class="prompt">$</span> ./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+          <pre><code id="cmd-codex"><span class="prompt">$</span> veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 <span class="comment"># ~/.codex/config.toml</span>
 model_provider = "veil"</code></pre>
           <button type="button" class="copy-btn" data-target="cmd-codex" data-copied={t.install.copied} aria-label="Copy Codex commands">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="install-card install-card-wide">
-        <div class="card-header">
-          <h3>{t.install.source.title}</h3>
-          <span class="badge-go">{t.install.source.badge}</span>
-        </div>
-        <p>{t.install.source.description}</p>
-        <div class="code-window">
-          <div class="window-header">
-            <span class="dot red"></span>
-            <span class="dot yellow"></span>
-            <span class="dot green"></span>
-            <span class="window-title">bash</span>
-          </div>
-          <pre><code id="cmd-source"><span class="prompt">$</span> git clone https://github.com/PAIArtCom/Veil.git
-<span class="prompt">$</span> cd Veil
-<span class="prompt">$</span> go build -o ./bin/veil ./cmd/veil
-<span class="prompt">$</span> ./bin/veil version</code></pre>
-          <button type="button" class="copy-btn" data-target="cmd-source" data-copied={t.install.copied} aria-label="Copy source build commands">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <Fragment set:html={copyIcon} />
           </button>
         </div>
       </div>
     </div>
+
+    <p class="source-note">
+      <a href="https://github.com/PAIArtCom/Veil#install" target="_blank" rel="noopener noreferrer">
+        {t.install.sourceLink} &rarr;
+      </a>
+    </p>
+
     <span class="visually-hidden" role="status" aria-live="polite" data-copy-status></span>
   </div>
 </section>
@@ -149,14 +212,12 @@ model_provider = "veil"</code></pre>
     }
   }
 
-
   h2 {
     font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
     line-height: 1.1;
     margin-bottom: var(--space-6);
     color: var(--color-ink);
   }
-
 
   .section-sub {
     font-size: var(--text-lg);
@@ -176,6 +237,7 @@ model_provider = "veil"</code></pre>
     border: 1px solid var(--line);
     border-radius: var(--radius-pill);
     transition: background var(--transition-base), border-color var(--transition-base);
+    white-space: nowrap;
   }
 
   .section-link:hover {
@@ -192,10 +254,73 @@ model_provider = "veil"</code></pre>
     stroke: var(--color-primary);
   }
 
+  /* ── One-liner methods grid ─────────────────────────────────────────────── */
+  .methods-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-12);
+  }
+
+  .method-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    transition: border-color var(--transition-base);
+  }
+
+  .method-card:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .method-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .method-label {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .method-hint {
+    font-size: var(--text-xs);
+    color: var(--color-subtle);
+    text-align: right;
+  }
+
+  /* ── Agents divider ─────────────────────────────────────────────────────── */
+  .agents-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .agents-divider::before,
+  .agents-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border);
+  }
+
+  /* ── Agent setup cards ──────────────────────────────────────────────────── */
   .install-options {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .install-card {
@@ -225,18 +350,6 @@ model_provider = "veil"</code></pre>
     font-weight: 600;
   }
 
-  .badge-go {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    padding: 4px 8px;
-    background: rgba(0, 173, 216, 0.1);
-    color: #00ADD8;
-    border: 1px solid rgba(0, 173, 216, 0.2);
-    border-radius: var(--radius-sm);
-  }
-
   .install-card p {
     font-size: var(--text-sm);
     color: var(--color-muted);
@@ -255,6 +368,23 @@ model_provider = "veil"</code></pre>
     color: var(--color-ink);
   }
 
+  /* ── Source note ────────────────────────────────────────────────────────── */
+  .source-note {
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--color-subtle);
+  }
+
+  .source-note a {
+    color: var(--color-muted);
+    transition: color var(--transition-fast);
+  }
+
+  .source-note a:hover {
+    color: var(--color-ink);
+  }
+
+  /* ── Code windows (shared) ──────────────────────────────────────────────── */
   .code-window {
     position: relative;
     background: var(--color-bg);
@@ -338,13 +468,16 @@ model_provider = "veil"</code></pre>
     letter-spacing: 0.02em;
     white-space: nowrap;
   }
-  /* a copied button needs room for the word; let it auto-size */
+
   .copy-btn:has(.copy-feedback) {
     width: auto;
     padding-inline: var(--space-2);
   }
 
   @media (max-width: 768px) {
+    .methods-grid {
+      grid-template-columns: 1fr;
+    }
     .install-options {
       grid-template-columns: 1fr;
     }

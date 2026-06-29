@@ -135,8 +135,14 @@ export default {
     title: '一条命令',
     titleAccent: '即可上手。',
     titleEnd: '',
-    sub: '下载二进制，设一个环境变量，Veil 这个 AI DLP 代理就运行起来了。卸载只需删掉那个变量——没有守护进程，没有残留。',
-    link: '下载发布版',
+    sub: '选择你的平台，二进制几秒内就到位。然后把你的 AI 助手指向代理即可。',
+    link: '全部版本',
+    curl: { label: 'macOS 和 Linux', hint: 'curl — 无需其他依赖' },
+    npm: { label: 'npm', hint: 'macOS · Linux · Windows 通用' },
+    brew: { label: 'Homebrew', hint: 'tap PAIArtCom/veil' },
+    winps: { label: 'Windows', hint: 'PowerShell — 自动加入 PATH' },
+    agentsLabel: '然后接入你的 AI 助手',
+    sourceLink: '更多方式（go install、源码编译）',
     claudeCode: {
       title: 'Claude Code',
       guide: '查看指南',
@@ -148,11 +154,6 @@ export default {
       guide: '查看指南',
       description:
         '用 OpenAI 上游启动 Veil 本地代理，把 Codex CLI 的请求指向 127.0.0.1——API key 自动脱敏，无需改动代码。',
-    },
-    source: {
-      title: '从源码构建',
-      badge: '需要 Go 1.22+',
-      description: '审查每一行源码，再决定是否部署这个开源 LLM 安全工具。',
     },
     copied: '已复制！',
   },

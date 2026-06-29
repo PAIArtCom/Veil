@@ -21,6 +21,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
       - name: Run Go release checks
         shell: bash
         run: |
@@ -44,6 +50,63 @@ jobs:
           set -euo pipefail
           ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
           cat dist/release/checksums.txt
+
+      - name: Smoke test Linux installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          port=8765
+          python3 -m http.server "${port}" --bind 127.0.0.1 --directory dist/release &
+          server_pid="$!"
+          trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+          sleep 1
+
+          install_dir="${RUNNER_TEMP}/veil-install"
+          mkdir -p "${install_dir}"
+          VEIL_VERSION="${GITHUB_REF_NAME}" \
+          VEIL_INSTALL_DIR="${install_dir}" \
+          VEIL_DOWNLOAD_BASE="http://127.0.0.1:${port}" \
+            sh scripts/install.sh
+          "${install_dir}/veil" version
+
+      - name: Prepare Homebrew formula
+        if: ${{ !contains(github.ref_name, '-') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHECKSUMS_FILE=dist/release/checksums.txt \
+          VERSION="${GITHUB_REF_NAME}" \
+            ./scripts/gen-homebrew-formula.sh > "${RUNNER_TEMP}/veil.rb"
+
+          grep -q 'PLACEHOLDER_' "${RUNNER_TEMP}/veil.rb" && {
+            echo "generated formula still contains placeholders" >&2
+            exit 1
+          }
+          ruby -c "${RUNNER_TEMP}/veil.rb"
+
+      - name: Smoke test npm package
+        if: ${{ !contains(github.ref_name, '-') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          npm version "${version}" --no-git-tag-version
+
+          pack_json="$(npm pack --json --pack-destination "${RUNNER_TEMP}")"
+          tarball="$(node -e 'const p = JSON.parse(process.argv[1]); console.log(p[0].filename)' "${pack_json}")"
+          mv "${RUNNER_TEMP}/${tarball}" "${RUNNER_TEMP}/veil-npm-package.tgz"
+
+          port=8766
+          python3 -m http.server "${port}" --bind 127.0.0.1 --directory ../dist/release &
+          server_pid="$!"
+          trap 'kill "${server_pid}" 2>/dev/null || true' EXIT
+          sleep 1
+
+          prefix="${RUNNER_TEMP}/veil-npm-smoke"
+          VEIL_DOWNLOAD_BASE="http://127.0.0.1:${port}" \
+            npm install -g "${RUNNER_TEMP}/veil-npm-package.tgz" --prefix "${prefix}"
+          "${prefix}/bin/veil" version
+        working-directory: npm
 
       - name: Prepare release notes
         shell: bash
@@ -84,3 +147,43 @@ jobs:
           fi
 
           gh release create "${release_args[@]}"
+
+      - name: Publish to npm
+        if: ${{ !contains(github.ref_name, '-') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm publish "${RUNNER_TEMP}/veil-npm-package.tgz" --access public
+        working-directory: npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish Homebrew formula
+        if: ${{ !contains(github.ref_name, '-') }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${HOMEBREW_TAP_REPO}" || -z "${HOMEBREW_TAP_TOKEN}" ]]; then
+            echo "HOMEBREW_TAP_REPO and HOMEBREW_TAP_TOKEN are required to publish the Homebrew formula." >&2
+            exit 1
+          fi
+
+          work="${RUNNER_TEMP}/homebrew-tap"
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" "${work}"
+          mkdir -p "${work}/Formula"
+          cp "${RUNNER_TEMP}/veil.rb" "${work}/Formula/veil.rb"
+
+          cd "${work}"
+          git checkout -B main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- Formula/veil.rb; then
+            echo "Homebrew formula is already up to date."
+            exit 0
+          fi
+          git add Formula/veil.rb
+          git commit -m "Update veil to ${GITHUB_REF_NAME}"
+          git push origin HEAD:main
+        env:
+          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

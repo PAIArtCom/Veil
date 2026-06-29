@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'web/**'
+      - 'scripts/install.sh'
+      - 'scripts/install.ps1'
   workflow_dispatch:
 
 jobs:
@@ -20,6 +22,11 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
+
+      - name: Copy install scripts to web
+        run: |
+          cp scripts/install.sh web/public/install.sh
+          cp scripts/install.ps1 web/public/install.ps1
 
       - name: Install dependencies
         run: npm ci

@@ -1,8 +1,9 @@
 # Guide: Deployment & Operations
 
 **Status: v0.1.0 operations baseline.** The standalone proxy ships from source and
-release binaries for Claude Code and local Codex CLI Responses paths; package-manager
-distribution and service manager units remain planned.
+release binaries for Claude Code and local Codex CLI Responses paths. Package-manager
+installers are release-channel conveniences backed by the same GitHub Release assets;
+service manager units remain planned.
 
 ## Run model
 
@@ -13,11 +14,16 @@ self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scop
 
 ## Install
 
-v0.1.0 supports source builds and release binaries. Package-manager distribution and
-service-manager units are planned but not shipped yet.
+v0.1.0 supports source builds, release binaries, curl/PowerShell installers, and npm
+distribution backed by release assets. Homebrew formula generation is automated for stable
+tags and publishes to `PAIArtCom/homebrew-veil` when `HOMEBREW_TAP_REPO` is set to that
+repository and `HOMEBREW_TAP_TOKEN` is configured.
 
 | Method | Use when | Steps |
 |---|---|---|
+| curl / PowerShell installer | You want the shortest end-user install path | Run the platform installer; it downloads the matching release binary and verifies `checksums.txt`. |
+| npm | You are in a Node.js toolchain | Install `@paiartcom/veil`; postinstall downloads and verifies the matching release binary. |
+| Homebrew | You use Homebrew on macOS or Linux | `brew tap PAIArtCom/veil`, then `brew install veil`. |
 | Source build | You have Go installed or want to verify from source | Clone, build `./cmd/veil`, run `veil version`. |
 | Release binary | You want the smallest end-user install path | Download the asset for your OS/architecture, verify its checksum, put it on `PATH`. |
 
@@ -76,9 +82,9 @@ Expected release asset names:
 
 | Platform | Artifact path |
 |---|---|
-| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64` |
-| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64` |
-| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe` |
+| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64`, and matching `.tar.gz` archives |
+| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64`, and matching `.tar.gz` archives |
+| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe`, and matching `.zip` archives |
 | Checksums | `dist/release/checksums.txt` |
 
 ## Upgrade
@@ -102,7 +108,7 @@ from being restored.
 ## Run the Claude Code proxy
 
 ```sh
-./bin/veil proxy --addr 127.0.0.1:8788
+veil proxy --addr 127.0.0.1:8788
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
 claude
 ```
@@ -202,5 +208,5 @@ sanitized summaries.
 - Any aggregate reporting to a control plane (PAIArt) is opt-in and subject to
   audit-data minimization ([open-core boundary](../product/open-core-boundary.md)).
 
-_This page will gain service-manager units and package-manager installation notes when
-distribution packaging ships._
+_This page will gain service-manager units when those become part of the shipped release
+scope._

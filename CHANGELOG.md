@@ -9,7 +9,7 @@ release.
 
 No changes yet.
 
-## [0.1.0] - 2026-06-21
+## [0.1.0] - 2026-06-29
 
 ### Added
 - Local Veil engine with L1 detection, conflict resolution, deterministic reversible
@@ -38,6 +38,8 @@ No changes yet.
 - Multi-platform release automation: local scripts and a tag-triggered GitHub Release
   workflow build darwin/linux/windows amd64/arm64 binaries with SHA-256 checksums, race
   tests, and release notes sliced to the current changelog section.
+- End-user install paths: curl and PowerShell installers, npm package distribution, and
+  Homebrew formula generation/publishing backed by the same GitHub Release checksums.
 
 ### Security
 - Hardened L1 secret suppressors so provider-prefixed credentials in `*_id` fields,

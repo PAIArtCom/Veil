@@ -85,9 +85,9 @@ Expected release assets:
 
 | Platform | Artifact path |
 |---|---|
-| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64` |
-| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64` |
-| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe` |
+| macOS | `dist/release/veil-<version>-darwin-amd64`, `dist/release/veil-<version>-darwin-arm64`, and matching `.tar.gz` archives |
+| Linux | `dist/release/veil-<version>-linux-amd64`, `dist/release/veil-<version>-linux-arm64`, and matching `.tar.gz` archives |
+| Windows | `dist/release/veil-<version>-windows-amd64.exe`, `dist/release/veil-<version>-windows-arm64.exe`, and matching `.zip` archives |
 | Checksums | `dist/release/checksums.txt` |
 
 ## Release Cut
@@ -110,6 +110,9 @@ git tag -d v0.1.0
 
 The tag-triggered GitHub Actions workflow runs the Go release gate including race tests,
 builds the same assets, extracts the current changelog version section as release notes,
-and publishes the GitHub Release automatically. If an artifact is built from the wrong
-commit or with the wrong version metadata, delete `dist/release` and rebuild from a clean,
-verified tree.
+smoke-tests the shell installer, npm package, and generated Homebrew formula, then
+publishes the GitHub Release automatically. Stable tags also publish npm and publish the
+Homebrew formula to the configured `HOMEBREW_TAP_REPO` (`PAIArtCom/homebrew-veil`) when
+`HOMEBREW_TAP_TOKEN` is configured. If an
+artifact is built from the wrong commit or with the wrong version metadata, delete
+`dist/release` and rebuild from a clean, verified tree.

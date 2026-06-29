@@ -20,6 +20,70 @@ stays unchanged.
 |---|---|---|
 | v0.1.0 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
 
+## Install
+
+Release installers require published GitHub Release assets for the selected version. If
+you are working from an unreleased checkout, use [Build from source](#build-from-source).
+
+### macOS and Linux
+
+```sh
+curl -fsSL https://veil.sh/install.sh | sh
+```
+
+Install a specific version or to a custom directory:
+
+```sh
+curl -fsSL https://veil.sh/install.sh | VEIL_VERSION=v0.1.0 sh
+curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
+```
+
+### npm / Node.js toolchains
+
+```sh
+npm install -g @paiartcom/veil
+```
+
+Works on macOS, Linux, and Windows. The correct binary for your platform is
+downloaded automatically from the matching GitHub Release during install.
+
+### macOS — Homebrew
+
+```sh
+brew tap PAIArtCom/veil
+brew install veil
+```
+
+The tap is published by stable release automation to
+[`PAIArtCom/homebrew-veil`](https://github.com/PAIArtCom/homebrew-veil).
+
+### Windows — PowerShell
+
+```powershell
+irm https://veil.sh/install.ps1 | iex
+```
+
+The binary is placed in `%USERPROFILE%\.veil\bin` and added to your user `PATH`.
+
+### Go install
+
+```sh
+go install github.com/PAIArtCom/Veil/cmd/veil@latest
+```
+
+### Build from source
+
+```sh
+git clone https://github.com/PAIArtCom/Veil.git
+cd Veil
+go build -o ./bin/veil ./cmd/veil
+```
+
+Pre-built binaries for all platforms are also available on the
+[releases page](https://github.com/PAIArtCom/Veil/releases/latest).
+
+---
+
 ## Let your AI agent set it up
 
 Paste this into your AI assistant and it will handle the full installation:
@@ -60,21 +124,13 @@ Real values are restored locally before your terminal, files, or tool calls see 
 
 ## Quickstart
 
-Download a pre-built binary from the [releases page](https://github.com/PAIArtCom/Veil/releases/latest),
-or build from source:
-
-```sh
-git clone https://github.com/PAIArtCom/Veil.git
-cd Veil
-go build -o ./bin/veil ./cmd/veil
-./bin/veil version
-```
+After [installing](#install) Veil, start the proxy and point your AI tool at it.
 
 **Claude Code — two commands to get started:**
 
 ```sh
 # Terminal 1: start the local proxy
-./bin/veil proxy --addr 127.0.0.1:8788
+veil proxy --addr 127.0.0.1:8788
 
 # Terminal 2: point Claude Code at it
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
@@ -85,7 +141,7 @@ claude
 
 ```sh
 # Terminal 1
-./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
 ```
 
 Add to `~/.codex/config.toml`:

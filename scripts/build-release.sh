@@ -51,7 +51,8 @@ for target in ${targets}; do
     exit 2
   fi
 
-  name="veil-${version}-${os}-${arch}"
+  base="veil-${version}-${os}-${arch}"
+  name="${base}"
   if [[ "${os}" == "windows" ]]; then
     name="${name}.exe"
   fi
@@ -67,6 +68,21 @@ for target in ${targets}; do
   if [[ "${os}" != "windows" ]]; then
     chmod +x "${path}"
   fi
+
+  # Create archive (Homebrew and package managers need an extractable archive)
+  arc_tmp="${out_dir}/.arc_${os}_${arch}"
+  mkdir -p "${arc_tmp}"
+  if [[ "${os}" == "windows" ]]; then
+    cp "${path}" "${arc_tmp}/veil.exe"
+    arc="${out_dir}/${base}.zip"
+    (cd "${arc_tmp}" && zip -q "../${base}.zip" "veil.exe")
+  else
+    cp "${path}" "${arc_tmp}/veil"
+    arc="${out_dir}/${base}.tar.gz"
+    tar -czf "${arc}" -C "${arc_tmp}" "veil"
+  fi
+  rm -rf "${arc_tmp}"
+  echo "Archive:  ${arc}"
 done
 
 echo
