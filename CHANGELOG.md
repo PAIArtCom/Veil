@@ -9,6 +9,17 @@ release.
 
 No changes yet.
 
+## [0.1.3] - 2026-06-30
+
+### Changed
+- Added simple next-step guidance after npm, curl, and PowerShell installs so users know
+  to run `veil service install`, check `veil status`, and configure their AI tool base
+  URL.
+- Added clearer success guidance after `veil service install`, `start`, `restart`,
+  `stop`, `uninstall`, and `status` actions.
+- Added Claude Code, Codex CLI, and OpenRouter base URL hints to successful
+  `veil status` output.
+
 ## [0.1.2] - 2026-06-29
 
 ### Added

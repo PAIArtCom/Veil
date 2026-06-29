@@ -105,6 +105,15 @@ function sha256(file) {
   if (PLATFORM !== "windows") fs.chmodSync(DEST, 0o755);
 
   console.log(`veil: installed ${TAG} (${PLATFORM}/${ARCH})`);
+  console.log("");
+  console.log("Next steps:");
+  console.log("  1. Start Veil in the background: veil service install");
+  console.log("  2. Check it is running:          veil status");
+  console.log("  3. Configure your AI tool base URL:");
+  console.log("     Claude Code: http://127.0.0.1:8787");
+  console.log("     Codex CLI:   http://127.0.0.1:8787/v1");
+  console.log("     OpenRouter:  http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1");
+  console.log("Guide: https://veil.paiart.com/#install");
 })().catch((err) => {
   console.error(`veil: install failed — ${err.message}`);
   console.error(`      Download manually: https://github.com/${REPO}/releases/tag/${TAG}`);

@@ -261,7 +261,11 @@ func runService(args []string, stdout, stderr io.Writer) error {
 	if out != "" {
 		fmt.Fprint(stdout, out)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	printServiceNextSteps(stdout, action, opts)
+	return nil
 }
 
 func runStatus(args []string, stdout, stderr io.Writer) error {
@@ -297,7 +301,58 @@ func runStatus(args []string, stdout, stderr io.Writer) error {
 	if len(body) > 0 {
 		fmt.Fprintf(stdout, "%s", body)
 	}
+	fmt.Fprintln(stdout)
+	printAgentConfigHint(stdout, *addr)
 	return nil
+}
+
+func printServiceNextSteps(w io.Writer, action service.Action, opts service.Options) {
+	addr := strings.TrimSpace(opts.Addr)
+	if addr == "" {
+		addr = "127.0.0.1:8787"
+	}
+	if opts.DryRun {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Dry run complete. No service changes were made.")
+		fmt.Fprintln(w, "Next: re-run the same command without --dry-run to apply it.")
+		return
+	}
+
+	switch action {
+	case service.ActionInstall:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Veil service installed and started.")
+		fmt.Fprintln(w, "Next: run `veil status`, then configure your AI tool with this local base URL.")
+		printAgentConfigHint(w, addr)
+	case service.ActionStart:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Veil service started.")
+		fmt.Fprintln(w, "Next: run `veil status` to confirm the local proxy is reachable.")
+	case service.ActionRestart:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Veil service restarted.")
+		fmt.Fprintln(w, "Next: run `veil status` to confirm the new settings are active.")
+	case service.ActionStop:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Veil service stopped.")
+		fmt.Fprintln(w, "Start it again with: veil service start")
+	case service.ActionUninstall:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "Veil service removed.")
+		fmt.Fprintln(w, "Next: remove the Veil base URL from Claude Code or Codex if you no longer want to use it.")
+	case service.ActionStatus:
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "For proxy health, run: veil status")
+	}
+}
+
+func printAgentConfigHint(w io.Writer, addr string) {
+	fmt.Fprintln(w, "Claude Code: set ~/.claude/settings.json env.ANTHROPIC_BASE_URL to:")
+	fmt.Fprintf(w, "  http://%s\n", addr)
+	fmt.Fprintln(w, "Codex CLI: set ~/.codex/config.toml model provider base_url to:")
+	fmt.Fprintf(w, "  http://%s/v1\n", addr)
+	fmt.Fprintln(w, "OpenRouter via Codex:")
+	fmt.Fprintf(w, "  http://%s/veil/upstream=https://openrouter.ai/api/v1\n", addr)
 }
 
 func enginePolicyProvider(provider *localconfig.Provider) veil.PolicyProvider {

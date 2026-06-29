@@ -115,23 +115,23 @@ Expected result:
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check whether the request uses an unsupported endpoint or a strict local policy selected `block`. |
 | Tokens remain visible locally | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |
-| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.2. |
+| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.3. |
 
 ## Known Limits
 
 - Claude Code support covers Anthropic Messages (`/v1/messages`) only.
 - Other Anthropic endpoints, such as `count_tokens`, fail closed until they are
   wire-aware.
-- v0.1.2 protects text and tool I/O, not OCR, document parsing, attachment rewriting, or
+- v0.1.3 protects text and tool I/O, not OCR, document parsing, attachment rewriting, or
   regenerated media/document payloads.
 - Provider thinking/control traces keep provider-native semantics and are outside the
   masking contract.
 - SSE framing assumes LF (`\n\n`), which matches Anthropic's emitted stream shape.
-- Bedrock and Vertex egress paths are separate and out of scope for v0.1.2.
+- Bedrock and Vertex egress paths are separate and out of scope for v0.1.3.
 
 ## Validation Evidence
 
-The Claude Code path is live-accepted for v0.1.2. Maintainers can review the release
+The Claude Code path is live-accepted for v0.1.3. Maintainers can review the release
 evidence in the [Phase 0 acceptance report](../architecture/phase-0-acceptance.md). The
 proxy behavior is grounded in [ADR-0001](../architecture/decisions/0001-base-url-proxy-over-hooks.md),
 [ADR-0004](../architecture/decisions/0004-auth-pass-through.md), and

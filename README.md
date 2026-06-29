@@ -18,7 +18,7 @@ stays unchanged.
 
 | Status | License | Platform |
 |---|---|---|
-| v0.1.2 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
+| v0.1.3 | Apache-2.0 | macOS · Linux · Windows (amd64 / arm64) |
 
 ## Install
 
@@ -43,7 +43,7 @@ curl -fsSL https://veil.paiart.com/install.sh | sh
 Install a specific version or to a custom directory:
 
 ```sh
-curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.2 sh
+curl -fsSL https://veil.paiart.com/install.sh | VEIL_VERSION=v0.1.3 sh
 curl -fsSL https://veil.paiart.com/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ```
 
@@ -223,7 +223,7 @@ Veil detects and masks these types before provider egress, then restores them lo
 | **Dates** | Off by default — opt in via policy if needed |
 | **Names / addresses** | Off by default — opt-in L2 semantic detection |
 
-Supported in v0.1.2:
+Supported in v0.1.3:
 - **Claude Code** via Anthropic Messages (`/v1/messages`)
 - **Codex CLI** via OpenAI Responses (`/v1/responses`)
 - **OpenRouter** via Codex CLI and OpenRouter Responses (`/api/v1/responses`)

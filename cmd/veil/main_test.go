@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	veil "github.com/PAIArtCom/Veil"
+	"github.com/PAIArtCom/Veil/internal/service"
 )
 
 func TestVersionStringDefaultsAreStable(t *testing.T) {
@@ -166,6 +167,9 @@ func TestRunServiceDryRunInstallBuildsBackgroundProxyPlan(t *testing.T) {
 	if !strings.Contains(out, "launchctl") && !strings.Contains(out, "systemctl") {
 		t.Fatalf("dry-run output missing service-manager command: %s", out)
 	}
+	if !strings.Contains(out, "Dry run complete") || !strings.Contains(out, "without --dry-run") {
+		t.Fatalf("dry-run output missing user guidance: %s", out)
+	}
 }
 
 func TestRunServiceRejectsNonLoopbackAddr(t *testing.T) {
@@ -202,4 +206,28 @@ func TestRunStatusReportsRunningProxy(t *testing.T) {
 	if !strings.Contains(stdout.String(), "running") || !strings.Contains(stdout.String(), `"status":"ok"`) {
 		t.Fatalf("status output missing running health: %s", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "Claude Code") || !strings.Contains(stdout.String(), "http://"+addr+"/v1") {
+		t.Fatalf("status output missing setup guidance: %s", stdout.String())
+	}
+}
+
+func TestPrintServiceNextStepsInstallGuidesUser(t *testing.T) {
+	var stdout bytes.Buffer
+	printServiceNextSteps(&stdout, "install", serviceOptionsForTest("127.0.0.1:8787"))
+	out := stdout.String()
+	for _, want := range []string{
+		"Veil service installed and started.",
+		"veil status",
+		"~/.claude/settings.json",
+		"http://127.0.0.1:8787/v1",
+		"/veil/upstream=https://openrouter.ai/api/v1",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("install guidance missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func serviceOptionsForTest(addr string) service.Options {
+	return service.Options{Addr: addr}
 }

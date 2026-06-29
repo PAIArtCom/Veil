@@ -121,3 +121,16 @@ esac
 
 echo ""
 "${DEST}" version
+
+cat <<'EOF'
+
+Next steps:
+  1. Start Veil in the background: veil service install
+  2. Check it is running:          veil status
+  3. Configure your AI tool base URL:
+     Claude Code: http://127.0.0.1:8787
+     Codex CLI:   http://127.0.0.1:8787/v1
+     OpenRouter:  http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1
+
+Guide: https://veil.paiart.com/#install
+EOF

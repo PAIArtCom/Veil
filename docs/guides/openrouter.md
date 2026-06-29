@@ -8,7 +8,7 @@ unchanged and rewrites only supported request/response body fields.
 
 ## What works
 
-OpenRouter exposes several API shapes. Veil v0.1.2 supports the Responses shape:
+OpenRouter exposes several API shapes. Veil v0.1.3 supports the Responses shape:
 
 ```text
 client -> Veil:       POST http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1/responses
@@ -130,7 +130,7 @@ Expected result:
 
 ## Current limits
 
-- Chat Completions clients are not supported by Veil v0.1.2.
+- Chat Completions clients are not supported by Veil v0.1.3.
 - OpenRouter's provider-specific routing, transforms, and model support can vary by model;
   if a model does not support Responses, choose a model that does.
 - Anthropic Messages through OpenRouter may be possible only when the client sends

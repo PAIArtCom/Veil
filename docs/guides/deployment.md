@@ -1,6 +1,6 @@
 # Guide: Deployment & Operations
 
-**Status: v0.1.2 operations baseline.** Veil ships release binaries, npm, Homebrew,
+**Status: v0.1.3 operations baseline.** Veil ships release binaries, npm, Homebrew,
 curl/PowerShell installers, and user-level background services for Claude Code, local
 Codex CLI Responses, and Codex Responses through OpenRouter.
 
@@ -13,7 +13,7 @@ self-healing ([ADR-0009](../architecture/decisions/0009-state-lifecycle-and-scop
 
 ## Install
 
-v0.1.2 supports npm, Homebrew, curl/PowerShell installers, source builds, and release
+v0.1.3 supports npm, Homebrew, curl/PowerShell installers, source builds, and release
 binaries backed by GitHub Release assets. Homebrew formula generation is automated for
 stable tags and publishes to `PAIArtCom/homebrew-veil` when `HOMEBREW_TAP_REPO` is set to
 that repository and `HOMEBREW_TAP_TOKEN` is configured.
@@ -77,7 +77,7 @@ veil version
 Maintainers can build multi-platform release artifacts locally:
 
 ```sh
-VERSION=v0.1.2 ./scripts/build-release.sh
+VERSION=v0.1.3 ./scripts/build-release.sh
 ./scripts/gen-checksums.sh dist/release > dist/release/checksums.txt
 ```
 
@@ -164,7 +164,7 @@ Minimal safe config:
 }
 ```
 
-Supported v0.1.2 operators are `token`, `ignore`, and `block`. `redact`,
+Supported v0.1.3 operators are `token`, `ignore`, and `block`. `redact`,
 `format_preserving`, and non-empty `rule_sets` are reserved and fail closed. Unknown keys
 also fail closed, including `comment`, `label`, `metadata`, provider labels, analytics
 labels, customer labels, raw payload references, dotenv paths, or secret-looking values.
@@ -226,6 +226,6 @@ sanitized summaries.
 | Proxy refuses to bind | Use a loopback address such as `127.0.0.1:8788`; non-loopback addresses are rejected. |
 | Tool bypasses Veil | Confirm the tool-specific base URL points at Veil: `ANTHROPIC_BASE_URL` for Claude Code or custom `model_providers` for Codex. |
 | Veil is not running | Run `veil status`, then `veil service install` or `veil restart`. |
-| Policy file blocks startup | Remove unknown keys and unsupported operators; v0.1.2 supports only `token`, `ignore`, and `block`. |
+| Policy file blocks startup | Remove unknown keys and unsupported operators; v0.1.3 supports only `token`, `ignore`, and `block`. |
 | Requests are blocked | The request may use an unsupported endpoint or unsupported provider JSON shape. This is fail-closed behavior. |
 | Tokens appear in local files | Treat this as a bug or unsupported surface; see [Support](../../SUPPORT.md) and [Security policy](../../SECURITY.md). |

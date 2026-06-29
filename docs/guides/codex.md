@@ -79,7 +79,7 @@ Codex appends `/responses`; Veil forwards the request to
 `https://openrouter.ai/api/v1/responses`, not to the default service upstream.
 
 Do not configure a Chat Completions client or `/v1/chat/completions` base URL through
-Veil. Chat Completions is not a supported wire adapter in v0.1.2, so Veil fails closed
+Veil. Chat Completions is not a supported wire adapter in v0.1.3, so Veil fails closed
 instead of forwarding plaintext it cannot verify.
 
 ## 3. Configure Codex
@@ -158,7 +158,7 @@ Expected result:
 | Proxy refuses to start | Confirm `--addr` uses a loopback host such as `127.0.0.1`. |
 | Request is blocked | Check for unsupported Responses input item shapes or a local policy selecting `block`. |
 | OpenRouter returns 404 | Confirm `base_url` is `http://127.0.0.1:8787/veil/upstream=https://openrouter.ai/api/v1`, so Codex's `/responses` append reaches `/api/v1/responses`. |
-| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.2. |
+| Policy file is rejected | Remove unknown keys and use only `token`, `ignore`, or `block` operators in v0.1.3. |
 
 ## Known Limits
 
@@ -169,7 +169,7 @@ Expected result:
   shape, currently Responses or Anthropic Messages. Chat Completions is still out of
   scope.
 - A separate direct `https://api.openai.com` official-service run is not claimed for
-  v0.1.2; the local Codex CLI Responses path is the release evidence boundary.
+  v0.1.3; the local Codex CLI Responses path is the release evidence boundary.
 - AWS Bedrock, where SigV4 signs body and host, cannot be served by a rewrite proxy.
 - Avoid `CODEX_SANDBOX=seatbelt` interactions with OS-level proxies; the explicit
   `base_url` route is unaffected.
