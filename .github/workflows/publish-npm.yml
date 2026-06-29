@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           npm publish "${RUNNER_TEMP}/veil-npm-package.tgz" --access public
-          npm access public @paiart/veil
+          npm access set status=public @paiart/veil
           version="$(node -p 'require("./package.json").version')"
           for i in 1 2 3 4 5 6; do
             npm view @paiart/veil@"${version}" version --registry=https://registry.npmjs.org && exit 0
