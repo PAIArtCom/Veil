@@ -1,5 +1,5 @@
 {
-  "name": "@paiartcom/veil",
+  "name": "@paiart/veil",
   "version": "0.1.0",
   "description": "Local de-identification proxy for AI coding agents",
   "license": "Apache-2.0",

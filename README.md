@@ -41,7 +41,7 @@ curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ### npm / Node.js toolchains
 
 ```sh
-npm install -g @paiartcom/veil
+npm install -g @paiart/veil
 ```
 
 Works on macOS, Linux, and Windows. The correct binary for your platform is

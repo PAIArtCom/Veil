@@ -1,0 +1,40 @@
+name: publish-npm
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Pack and smoke test npm package
+        shell: bash
+        run: |
+          set -euo pipefail
+          pack_json="$(npm pack --json --pack-destination "${RUNNER_TEMP}")"
+          tarball="$(node -e 'const p = JSON.parse(process.argv[1]); console.log(p[0].filename)' "${pack_json}")"
+          mv "${RUNNER_TEMP}/${tarball}" "${RUNNER_TEMP}/veil-npm-package.tgz"
+
+          prefix="${RUNNER_TEMP}/veil-npm-smoke"
+          npm install -g "${RUNNER_TEMP}/veil-npm-package.tgz" --prefix "${prefix}"
+          "${prefix}/bin/veil" version
+        working-directory: npm
+
+      - name: Publish to npm
+        shell: bash
+        run: npm publish "${RUNNER_TEMP}/veil-npm-package.tgz" --access public
+        working-directory: npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

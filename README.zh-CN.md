@@ -38,7 +38,7 @@ curl -fsSL https://veil.sh/install.sh | VEIL_INSTALL_DIR="$HOME/bin" sh
 ### npm / Node.js
 
 ```sh
-npm install -g @paiartcom/veil
+npm install -g @paiart/veil
 ```
 
 macOS、Linux、Windows 通用。安装时从对应版本的 GitHub Release 自动下载当前平台二进制。

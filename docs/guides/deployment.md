@@ -22,7 +22,7 @@ repository and `HOMEBREW_TAP_TOKEN` is configured.
 | Method | Use when | Steps |
 |---|---|---|
 | curl / PowerShell installer | You want the shortest end-user install path | Run the platform installer; it downloads the matching release binary and verifies `checksums.txt`. |
-| npm | You are in a Node.js toolchain | Install `@paiartcom/veil`; postinstall downloads and verifies the matching release binary. |
+| npm | You are in a Node.js toolchain | Install `@paiart/veil`; postinstall downloads and verifies the matching release binary. |
 | Homebrew | You use Homebrew on macOS or Linux | `brew tap PAIArtCom/veil`, then `brew install veil`. |
 | Source build | You have Go installed or want to verify from source | Clone, build `./cmd/veil`, run `veil version`. |
 | Release binary | You want the smallest end-user install path | Download the asset for your OS/architecture, verify its checksum, put it on `PATH`. |
