@@ -1,0 +1,59 @@
+name: publish-homebrew
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to publish, e.g. v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate Homebrew formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.version }}" ./scripts/gen-homebrew-formula.sh > "${RUNNER_TEMP}/veil.rb"
+          grep -q 'PLACEHOLDER_' "${RUNNER_TEMP}/veil.rb" && {
+            echo "generated formula still contains placeholders" >&2
+            exit 1
+          }
+          ruby -c "${RUNNER_TEMP}/veil.rb"
+
+      - name: Publish Homebrew formula
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${HOMEBREW_TAP_REPO}" || -z "${HOMEBREW_TAP_TOKEN}" ]]; then
+            echo "HOMEBREW_TAP_REPO and HOMEBREW_TAP_TOKEN are required to publish the Homebrew formula." >&2
+            exit 1
+          fi
+
+          work="${RUNNER_TEMP}/homebrew-tap"
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" "${work}"
+          mkdir -p "${work}/Formula"
+          cp "${RUNNER_TEMP}/veil.rb" "${work}/Formula/veil.rb"
+
+          cd "${work}"
+          git checkout -B main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/veil.rb
+          if git diff --cached --quiet -- Formula/veil.rb; then
+            echo "Homebrew formula is already up to date."
+            exit 0
+          fi
+          git commit -m "Update veil to ${{ inputs.version }}"
+          git push origin HEAD:main
+        env:
+          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

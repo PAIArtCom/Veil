@@ -177,11 +177,11 @@ jobs:
           git checkout -B main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- Formula/veil.rb; then
+          git add Formula/veil.rb
+          if git diff --cached --quiet -- Formula/veil.rb; then
             echo "Homebrew formula is already up to date."
             exit 0
           fi
-          git add Formula/veil.rb
           git commit -m "Update veil to ${GITHUB_REF_NAME}"
           git push origin HEAD:main
         env:
