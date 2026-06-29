@@ -1,0 +1,469 @@
+---
+---
+<div class="trace-demo" data-trace-demo role="img" aria-label="Animated demo: Veil masks secrets before they reach the LLM provider and restores them locally">
+  <div class="amb" aria-hidden="true"></div>
+  <div class="trace-topline">
+    <span class="topline-label">EGRESS BOUNDARY</span>
+    <span class="topline-status">
+      <span class="status-dot"></span>
+      <span data-stage-label>Idle</span>
+    </span>
+  </div>
+
+  <div class="stage" data-stage>
+    <!-- TOP: LLM Provider — only ever sees masked conversation -->
+    <article class="layer layer-provider" data-layer="provider">
+      <div class="layer-head">
+        <span class="layer-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6 19z"/></svg>
+        </span>
+        <span class="layer-name">LLM Provider</span>
+        <span class="layer-tag tag-safe">sees only placeholders</span>
+      </div>
+      <div class="prov-window" data-prov-window>
+        <div class="prov-log" data-prov-log></div>
+      </div>
+    </article>
+
+    <!-- MIDDLE: Veil — a luminous boundary seam the message passes through -->
+    <div class="veil-seam" data-veil>
+      <span class="seam-line"></span>
+      <span class="seam-sheen" data-sheen></span>
+      <span class="seam-mark" title="Veil">
+        <svg width="17" height="17" viewBox="0 0 60 60" fill="none">
+          <rect x="20" y="20" width="32" height="32" rx="8" fill="currentColor" opacity="0.22"/>
+          <rect x="14" y="14" width="32" height="32" rx="8" fill="currentColor" opacity="0.5"/>
+          <rect x="8" y="8" width="32" height="32" rx="8" fill="currentColor"/>
+        </svg>
+      </span>
+    </div>
+
+    <!-- BOTTOM: Local Agent — real values, never leave the machine -->
+    <article class="layer layer-local" data-layer="local">
+      <div class="layer-head">
+        <span class="layer-icon">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </span>
+        <span class="layer-name">Local Agent</span>
+        <span class="layer-tag tag-danger">real values</span>
+      </div>
+      <div class="local-slot" data-local-slot></div>
+    </article>
+
+    <!-- The single in-flight message (reused for request ↑ and response ↓) -->
+    <div class="flying" data-flying aria-hidden="true"></div>
+  </div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-trace-demo]');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // A realistic agent⇄model conversation. Outbound: only `sens` is masked to
+  // `mask`. The reply references the SAME placeholder (`rMask`) the provider
+  // saw, and Veil restores it to the real `rReal` locally. Formats match
+  // internal/mask (URL/DSN, secret token, email, IPv4).
+  const MESSAGES = [
+    {
+      pre: 'List all tables in ', sens: 'postgresql://app:s3cr3t@db.internal:5432/mydb', post: '',
+      mask: 'postgresql://user-a1b2c3d4e5f6:password-a1b2c3d4e5f6@db-a1b2c3d4e5f6.veil.paiart.com:5432/mydb',
+      rPre: 'Connecting to ', rMask: 'db-a1b2c3d4e5f6.veil.paiart.com', rReal: 'db.internal', rPost: ':5432 → found 4 tables',
+    },
+    {
+      pre: 'Deploy the build with key ', sens: 'AKIAIOSFODNN7EXAMPLE', post: '',
+      mask: 'PAIArtVeil_SECRET_e5f6a7b8c9d0',
+      rPre: 'Deploying with credential ', rMask: 'PAIArtVeil_SECRET_e5f6a7b8c9d0', rReal: 'AKIAIOSFODNN7EXAMPLE', rPost: ' ✓',
+    },
+    {
+      pre: 'Email the summary to ', sens: 'ops@example.com', post: ' when done',
+      mask: 'user-91c0ff42ab12@veil.paiart.com',
+      rPre: 'Draft queued to ', rMask: 'user-91c0ff42ab12@veil.paiart.com', rReal: 'ops@example.com', rPost: '',
+    },
+    {
+      pre: 'Fetch ', sens: 'https://api.internal.corp/v1/users', post: ' and summarize',
+      mask: 'https://api-7a3b9c2d1e0f.veil.paiart.com/v1/users',
+      rPre: 'Fetched ', rMask: 'https://api-7a3b9c2d1e0f.veil.paiart.com/v1/users', rReal: 'https://api.internal.corp/v1/users', rPost: ' → 128 records',
+    },
+    {
+      pre: 'SSH into ', sens: '192.168.1.50', post: ' and restart',
+      mask: '192.168.4.7',
+      rPre: 'Reached ', rMask: '192.168.4.7', rReal: '192.168.1.50', rPost: ' — worker restarted',
+    },
+  ];
+
+  const MAX_ENTRIES = 5;
+  const LANE = 44; // horizontal lane offset: request hugs right, response hugs left
+
+  // Easing for fades/entrances (the glide uses its own flow curve inline)
+  const E_IN = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+  if (root) {
+    const stage = root.querySelector('[data-stage]');
+    const stageLabel = root.querySelector('[data-stage-label]');
+    const veil = root.querySelector('[data-veil]');
+    const sheen = root.querySelector('[data-sheen]');
+    const fly = root.querySelector('[data-flying]');
+    const localSlot = root.querySelector('[data-local-slot]');
+    const provWindow = root.querySelector('[data-prov-window]');
+    const provLog = root.querySelector('[data-prov-log]');
+
+    const span = (cls, txt) => `<span class="${cls}">${txt}</span>`;
+    const reqHTML = (m, masked) =>
+      span('m-pre', m.pre) +
+      span('m-sens' + (masked ? ' masked' : ''), masked ? m.mask : m.sens) +
+      span('m-post', m.post);
+    const repHTML = (m, masked) =>
+      span('m-pre', m.rPre) +
+      span('m-sens' + (masked ? ' masked' : ''), masked ? m.rMask : m.rReal) +
+      span('m-post', m.rPost);
+    const setLocal = (html, cls = '') => { localSlot.innerHTML = html ? `<div class="msg ${cls}">${html}</div>` : ''; };
+
+    if (reduceMotion) {
+      root.classList.add('revealed-local', 'revealed-veil', 'revealed-provider', 'settled');
+      const m = MESSAGES[0];
+      [reqHTML(m, true), repHTML(m, true)].forEach(html => {
+        const e = document.createElement('div');
+        e.className = 'prov-entry';
+        e.innerHTML = html;
+        provLog.appendChild(e);
+      });
+      setLocal(repHTML(m, false), 'home');
+      stageLabel.textContent = 'Protected';
+    } else {
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      const sRect = () => stage.getBoundingClientRect();
+      const rel = el => {
+        const r = el.getBoundingClientRect(), s = sRect();
+        return { x: r.left - s.left, y: r.top - s.top, w: r.width, bottom: r.bottom - s.top };
+      };
+
+      // ---- the single flying mover (CSS transitions, never awaited) ----
+      const setFly = (left, width) => { fly.style.left = `${left}px`; fly.style.width = `${width}px`; };
+      const placeY = y => { fly.style.transition = 'none'; fly.style.transform = `translateY(${y}px)`; void fly.offsetWidth; };
+      const fadeFly = (op, dur = 300, ease = 'ease') => { fly.style.transition = `opacity ${dur}ms ${ease}`; fly.style.opacity = String(op); };
+      // One fluid glide across the boundary; the mask/restore flip is triggered
+      // mid-flight as the message crosses the seam, so there is no stop-and-go.
+      const glide = (fromY, toY, dur, flipText, dir, seamY) => {
+        const frac = Math.min(0.85, Math.max(0.15, (seamY - fromY) / (toY - fromY)));
+        fly.style.transition = `transform ${dur}ms cubic-bezier(0.45, 0.02, 0.25, 1)`;
+        fly.style.transform = `translateY(${toY}px)`;
+        // fire so the in-place swap (flip + ~180ms) lands as the token reaches the seam
+        setTimeout(() => flip(flipText, dir), Math.max(40, Math.round(dur * frac - 240)));
+        return sleep(dur);
+      };
+
+      const innerBox = () => {
+        const r = rel(localSlot);
+        return { left: r.x + 16, width: r.w - 32 };
+      };
+      const veilMidY = () => {
+        const v = rel(veil);
+        return v.y + (veil.getBoundingClientRect().height - fly.offsetHeight) / 2;
+      };
+
+      // ---- membrane reaction: restrained — directional sheen + arrow only ----
+      const sweepSheen = dir => {
+        const from = dir === 'up' ? '-130%' : '130%';
+        const to = dir === 'up' ? '130%' : '-130%';
+        sheen.style.transition = 'none';
+        sheen.style.opacity = '1';
+        sheen.style.transform = `translate(${from}, -50%)`;
+        void sheen.offsetWidth;
+        sheen.style.transition = 'transform 660ms ease-in-out';
+        sheen.style.transform = `translate(${to}, -50%)`;
+        setTimeout(() => { sheen.style.transition = 'opacity 320ms ease'; sheen.style.opacity = '0'; }, 600);
+      };
+      const flip = async (toText, dir) => {
+        const up = dir === 'up';
+        const dirClass = up ? 'flow-up' : 'flow-down';
+        veil.classList.add(dirClass);
+        sweepSheen(dir);
+        const sens = fly.querySelector('.m-sens');
+        // flash colour matches the OUTCOME: green when masking, red when restoring
+        sens.classList.add('flipping', up ? 'to-mask' : 'to-real');
+        setTimeout(() => {
+          sens.textContent = toText;
+          sens.classList.toggle('masked', up); // up→masked(green), down→real(red)
+          fly.classList.toggle('glow-mask', up); // glow follows the new colour
+          fly.classList.toggle('glow-real', !up);
+        }, 180);
+        await sleep(560);
+        sens.classList.remove('flipping', 'to-mask', 'to-real');
+        veil.classList.remove(dirClass);
+      };
+
+      // ---- provider transcript ----
+      const addEntry = (html, cls = '') => {
+        const e = document.createElement('div');
+        e.className = `prov-entry entering ${cls}`.trim();
+        e.innerHTML = html;
+        provLog.appendChild(e);
+        while (provLog.children.length > MAX_ENTRIES) provLog.removeChild(provLog.firstChild);
+        setTimeout(() => e.classList.remove('entering'), 40);
+        return e;
+      };
+
+      // One coherent turn = compose · rise-through-membrane · think · fall-through-membrane.
+      // Two long continuous glides (up, down) flipping in-flight — a steady breath,
+      // not a sequence of move/stop/move steps.
+      const turn = async m => {
+        const ib = innerBox();
+        const lane = ib.width < 360 ? 26 : LANE; // narrower lane on small screens → fewer wraps
+
+        // ---- compose at local (brief) ----
+        setLocal(reqHTML(m, false), 'sent'); // ghost copy left behind on the local surface
+        setFly(ib.left + lane, ib.width - lane);
+        fly.innerHTML = reqHTML(m, false);
+        fly.className = 'flying glow-real';
+        const localY = rel(localSlot).y + 12;
+        placeY(localY);
+        fadeFly(0, 0); void fly.offsetWidth;
+        fly.style.transition = `opacity 320ms ${E_IN}`;
+        fly.style.opacity = '1';
+        stageLabel.textContent = 'Outgoing';
+        await sleep(620);
+
+        // ---- one fluid rise through the seam into the provider ----
+        stageLabel.textContent = 'Masking ↑';
+        const dockY = rel(provWindow).bottom - fly.offsetHeight - 12;
+        await glide(localY, dockY, 1500, m.mask, 'up', veilMidY());
+        addEntry(reqHTML(m, true), 'accent-in');
+        fadeFly(0, 240);
+
+        // ---- provider turns the request around (keeps the beat) ----
+        stageLabel.textContent = 'Processing';
+        const thinking = addEntry('<span class="dots"><i></i><i></i><i></i></span>', 'thinking');
+        await sleep(780);
+        thinking.classList.remove('thinking');
+        thinking.innerHTML = repHTML(m, true);
+
+        // ---- reply emerges and flows back down through the seam, restored ----
+        const re = rel(thinking);
+        setFly(ib.left, ib.width);
+        fly.innerHTML = repHTML(m, true);
+        fly.className = 'flying glow-mask';
+        const startY = re.y - 4;
+        placeY(startY);
+        fadeFly(0, 0); void fly.offsetWidth;
+        fly.style.transition = `opacity 320ms ${E_IN}`;
+        fly.style.opacity = '1';
+        await sleep(360);
+        stageLabel.textContent = 'Restoring ↓';
+        const homeY = rel(localSlot).y + 12;
+        await glide(startY, homeY, 1500, m.rReal, 'down', veilMidY());
+        setLocal(repHTML(m, false), 'home');
+        fadeFly(0, 240);
+        stageLabel.textContent = 'Protected';
+        await sleep(900);
+      };
+
+      const intro = async () => {
+        await sleep(300);
+        root.classList.add('revealed-local');
+        setLocal('<span class="caret">▍</span>', 'idle');
+        stageLabel.textContent = 'Local agent ready';
+        await sleep(1200);
+        root.classList.add('revealed-veil');
+        stageLabel.textContent = 'Veil active';
+        await sleep(1100);
+        root.classList.add('revealed-provider', 'settled');
+        stageLabel.textContent = 'Connected';
+        await sleep(1000);
+      };
+
+      const run = async () => {
+        await intro();
+        let i = 0;
+        while (true) { await turn(MESSAGES[i % MESSAGES.length]); i++; }
+      };
+      setTimeout(run, 120); // setTimeout (not rAF) so it runs in headless tabs too
+    }
+  }
+</script>
+
+<style>
+  .trace-demo {
+    position: relative;
+    background:
+      radial-gradient(130% 90% at 50% -10%, rgba(43, 191, 126, 0.06), transparent 55%),
+      rgba(13, 13, 15, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: var(--space-5) var(--space-6) var(--space-6);
+    overflow: hidden;
+    backdrop-filter: blur(22px);
+    box-shadow: 0 44px 90px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* Ambient living glow — slow, event-independent (lightness, not a slot machine) */
+  .amb {
+    position: absolute; left: 50%; top: 52%; width: 78%; height: 44%;
+    transform: translate(-50%, -50%); z-index: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(43, 191, 126, 0.12), transparent 70%);
+    filter: blur(6px); opacity: 0.5; animation: ambBreath 7s ease-in-out infinite;
+  }
+  @keyframes ambBreath { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.78; } }
+
+  .trace-topline { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5); }
+  .topline-label { font-size: 10px; font-weight: 600; letter-spacing: 0.16em; color: var(--color-subtle); }
+  .topline-status { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 500; color: var(--color-primary); min-width: 96px; justify-content: flex-end; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary); animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 0.45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.35); } }
+
+  /* ===================== Stage (fixed geometry — no reflow) ===================== */
+  .stage { position: relative; z-index: 1; display: flex; flex-direction: column; }
+
+  /* Panels — translucent planes separated by light, not hard borders */
+  .layer {
+    position: relative; border-radius: 15px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.006));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.22);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .revealed-local .layer-local, .revealed-provider .layer-provider { opacity: 1; transform: translateY(0); }
+  .layer-provider { background: linear-gradient(180deg, rgba(43, 191, 126, 0.05), rgba(43, 191, 126, 0.012)); }
+
+  .layer-head { display: flex; align-items: center; gap: 10px; padding: 11px 15px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04); }
+  .layer-icon { width: 23px; height: 23px; flex-shrink: 0; display: grid; place-items: center; border-radius: 7px; background: rgba(255, 255, 255, 0.05); color: var(--color-subtle); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+  .layer-local .layer-icon  { background: rgba(224, 90, 58, 0.14); color: var(--color-secret); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 14px rgba(224, 90, 58, 0.14); }
+  .layer-provider .layer-icon { background: rgba(43, 191, 126, 0.14); color: var(--color-primary); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 14px rgba(43, 191, 126, 0.16); }
+  .layer-name { font-size: 12px; font-weight: 600; color: rgba(240, 237, 230, 0.92); flex: 1; white-space: nowrap; }
+  .layer-tag { font-size: 9.5px; font-weight: 500; letter-spacing: 0.04em; white-space: nowrap; }
+  .tag-danger { color: rgba(224, 90, 58, 0.78); }
+  .tag-safe   { color: rgba(43, 191, 126, 0.82); }
+
+  /* Provider transcript — fixed window; top dissolves via mask (no hard clip) */
+  .prov-window {
+    position: relative; height: 150px; overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 26px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 26px);
+  }
+  .prov-log { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 13px; display: flex; flex-direction: column; gap: 11px; }
+  /* .prov-entry* rules live in the is:global block (JS-created elements) */
+
+  /* Local — live surface (current turn only); .msg/.caret styled in is:global */
+  .local-slot { position: relative; height: 58px; overflow: hidden; padding: 12px 16px; }
+
+  /* Conversation text rules live in the is:global block below — the transcript
+     entries and message spans are created in JS (innerHTML) so they don't carry
+     Astro's scoped attribute and scoped selectors would not match them. */
+
+  /* ===================== Veil — a luminous boundary seam (above the message) ===================== */
+  /* z-index ABOVE the flying message so the seam visibly slices through it as it
+     crosses, instead of a tall card covering the message. */
+  .veil-seam {
+    position: relative; z-index: 7; height: 26px; margin: 24px 0;
+    display: grid; place-items: center;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .revealed-veil .veil-seam { opacity: 1; transform: translateY(0); }
+  .seam-line {
+    position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; transform: translateY(-50%);
+    background: linear-gradient(90deg, transparent, rgba(43, 191, 126, 0.4) 18%, rgba(43, 191, 126, 0.4) 82%, transparent);
+    box-shadow: 0 0 14px rgba(43, 191, 126, 0.22);
+    transition: box-shadow 0.4s ease, background 0.4s ease;
+  }
+  .veil-seam.flow-up .seam-line {
+    background: linear-gradient(90deg, transparent, rgba(43, 191, 126, 0.6) 18%, rgba(43, 191, 126, 0.6) 82%, transparent);
+    box-shadow: 0 0 22px rgba(43, 191, 126, 0.5);
+  }
+  .veil-seam.flow-down .seam-line {
+    background: linear-gradient(90deg, transparent, rgba(224, 90, 58, 0.5) 18%, rgba(224, 90, 58, 0.5) 82%, transparent);
+    box-shadow: 0 0 22px rgba(224, 90, 58, 0.4);
+  }
+  .seam-sheen {
+    position: absolute; left: 4px; right: 4px; top: 50%; height: 3px; transform: translate(-130%, -50%);
+    background: linear-gradient(90deg, transparent, rgba(43, 191, 126, 0.85), transparent);
+    border-radius: 2px; opacity: 0; pointer-events: none;
+  }
+  /* sheen colour matches the crossing direction */
+  .veil-seam.flow-down .seam-sheen { background: linear-gradient(90deg, transparent, rgba(224, 90, 58, 0.8), transparent); }
+  .seam-mark {
+    position: relative; z-index: 1; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px;
+    background: rgba(12, 16, 13, 0.94); color: var(--color-primary); backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 0 1px rgba(43, 191, 126, 0.3), 0 4px 16px rgba(0, 0, 0, 0.45), 0 0 14px rgba(43, 191, 126, 0.2);
+  }
+
+  /* ===================== Flying message (single protagonist) ===================== */
+  .flying {
+    position: absolute; top: 0; left: 0; z-index: 6;
+    font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; overflow-wrap: anywhere; word-break: normal;
+    padding: 7px 11px; border-radius: 9px;
+    background: rgba(18, 20, 24, 0.72); backdrop-filter: blur(13px);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    opacity: 0; pointer-events: none; overflow: hidden; will-change: transform, opacity;
+  }
+  /* glow tracks the message's current colour (real = red, masked = green) */
+  .flying.glow-real { box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46), 0 0 28px rgba(224, 90, 58, 0.16), inset 0 0 0 1px rgba(224, 90, 58, 0.14); }
+  .flying.glow-mask { box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46), 0 0 28px rgba(43, 191, 126, 0.18), inset 0 0 0 1px rgba(43, 191, 126, 0.16); }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .layer, .veil-seam { transition: none; opacity: 1; transform: none; }
+    .amb, .status-dot { animation: none; }
+    .flying { display: none; }
+    .prov-entry.thinking .dots i, .caret { animation: none; }
+  }
+
+  /* ===================== Responsive ===================== */
+  @media (max-width: 540px) {
+    .flying { font-size: 10.5px; }
+    .prov-window { height: 142px; }
+    .layer-name { font-size: 11px; }
+    .layer-tag { font-size: 9px; }
+  }
+</style>
+
+<!-- Rules for elements created at runtime via innerHTML (transcript entries,
+     message spans, caret). They cannot carry Astro's scoped attribute, so they
+     are scoped manually under .trace-demo instead. -->
+<style is:global>
+  .trace-demo .prov-entry {
+    position: relative; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+    overflow-wrap: anywhere; word-break: normal;
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .trace-demo .prov-entry.entering { opacity: 0; transform: translateY(9px); }
+  .trace-demo .prov-entry.accent-in::before {
+    content: ''; position: absolute; left: -11px; top: 3px; bottom: 3px; width: 2px; border-radius: 2px;
+    background: var(--color-primary); box-shadow: 0 0 8px rgba(43, 191, 126, 0.6); opacity: 0.9; animation: veilAccent 1.6s ease forwards;
+  }
+  @keyframes veilAccent { to { opacity: 0; } }
+  .trace-demo .prov-entry.thinking .dots { display: inline-flex; gap: 5px; padding: 3px 0; }
+  .trace-demo .prov-entry.thinking .dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 6px rgba(43, 191, 126, 0.5); opacity: 0.35; animation: veilDot 1.2s ease-in-out infinite; }
+  .trace-demo .prov-entry.thinking .dots i:nth-child(2) { animation-delay: 0.2s; }
+  .trace-demo .prov-entry.thinking .dots i:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes veilDot { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+
+  .trace-demo .local-slot .msg { font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6; overflow-wrap: anywhere; word-break: normal; transition: opacity 0.4s ease; }
+  .trace-demo .local-slot .msg.sent { opacity: 0.4; }
+  .trace-demo .local-slot .msg.idle { color: var(--color-subtle); }
+  .trace-demo .local-slot .msg.home { animation: veilHome 0.7s ease; }
+  @keyframes veilHome { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
+  .trace-demo .caret { color: var(--color-primary); animation: veilBlink 1.15s step-end infinite; }
+  @keyframes veilBlink { 50% { opacity: 0; } }
+
+  /* prose recedes; the sensitive token is the hero */
+  .trace-demo .m-pre, .trace-demo .m-post { color: rgba(240, 237, 230, 0.46); }
+  .trace-demo .m-sens { color: var(--color-secret); border-radius: 3px; padding: 0 1px; transition: color 0.25s ease; }
+  .trace-demo .m-sens.masked { color: var(--color-primary); text-shadow: 0 0 14px rgba(43, 191, 126, 0.45); }
+  /* flash colour matches the outcome: masking → green, restoring → red */
+  .trace-demo .m-sens.flipping.to-mask { animation: veilFlipMask 0.62s ease; }
+  .trace-demo .m-sens.flipping.to-real { animation: veilFlipReal 0.62s ease; }
+  @keyframes veilFlipMask {
+    0%   { background: rgba(43, 191, 126, 0); }
+    45%  { background: rgba(43, 191, 126, 0.2); box-shadow: 0 0 0 3px rgba(43, 191, 126, 0.28); }
+    100% { background: rgba(43, 191, 126, 0); box-shadow: 0 0 0 0 transparent; }
+  }
+  @keyframes veilFlipReal {
+    0%   { background: rgba(224, 90, 58, 0); }
+    45%  { background: rgba(224, 90, 58, 0.2); box-shadow: 0 0 0 3px rgba(224, 90, 58, 0.28); }
+    100% { background: rgba(224, 90, 58, 0); box-shadow: 0 0 0 0 transparent; }
+  }
+
+  @media (max-width: 540px) {
+    .trace-demo .prov-entry, .trace-demo .local-slot .msg { font-size: 10.5px; }
+  }
+</style>

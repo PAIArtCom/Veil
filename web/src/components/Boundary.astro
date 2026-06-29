@@ -1,0 +1,175 @@
+---
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
+---
+<section class="section boundary" id="support">
+  <div class="container">
+    <div class="boundary-shell">
+      <div class="boundary-copy">
+        <p class="eyebrow">{t.boundary.eyebrow}</p>
+        <h2>{t.boundary.title} <em>{t.boundary.titleAccent}</em> {t.boundary.titleEnd}</h2>
+        <p class="section-sub">{t.boundary.sub}</p>
+        <div class="boundary-actions">
+          <a
+            class="btn btn-primary"
+            href="https://github.com/PAIArtCom/Veil/releases/latest"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t.boundary.ctaDownload}
+          </a>
+          <a
+            class="btn btn-secondary"
+            href="https://github.com/PAIArtCom/Veil/blob/main/README.md#what-veil-protects"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {t.boundary.ctaTypes}
+          </a>
+        </div>
+      </div>
+      <div class="boundary-lists">
+        <section class="list-card supported-card">
+          <h3>{t.boundary.supportedTitle}</h3>
+          <ul role="list">
+            {t.boundary.supported.map((item) => (
+              <li>
+                <svg class="icon icon-check" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+                  <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section class="list-card notyet-card">
+          <h3>{t.boundary.notYetTitle}</h3>
+          <ul role="list">
+            {t.boundary.notYet.map((item) => (
+              <li>
+                <svg class="icon icon-x" viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+                  <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    position: relative;
+    padding: var(--space-32) 0;
+  }
+
+  .boundary-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: var(--space-10);
+    padding: var(--space-10);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+  }
+
+
+  h2 {
+    font-size: clamp(var(--text-2xl), 4vw, var(--text-4xl));
+    line-height: 1.15;
+    margin-bottom: var(--space-6);
+    color: var(--color-ink);
+  }
+
+
+  .section-sub {
+    color: var(--color-muted);
+    font-size: var(--text-lg);
+    line-height: 1.7;
+    margin-top: var(--space-2);
+    max-width: 48ch;
+  }
+
+  .boundary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
+  }
+
+  .boundary-lists {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .list-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    background: var(--color-bg);
+    transition: border-color var(--transition-base);
+  }
+
+  .list-card:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .supported-card:hover {
+    border-color: var(--line-primary);
+  }
+
+  .notyet-card:hover {
+    border-color: rgba(224, 90, 58, 0.3);
+  }
+
+  .boundary-lists h3 {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-ink);
+    margin-bottom: var(--space-5);
+    letter-spacing: 0.01em;
+  }
+
+  .boundary-lists ul {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .boundary-lists li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+  }
+
+  .icon {
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  .icon-check {
+    color: var(--color-primary);
+  }
+
+  .icon-x {
+    color: var(--color-secret);
+  }
+
+  @media (max-width: 1024px) {
+    .boundary-shell {
+      grid-template-columns: 1fr;
+      padding: var(--space-6);
+    }
+
+    .boundary-lists {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

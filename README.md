@@ -1,8 +1,17 @@
-# Veil
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/Veil%20Design%20System/assets/logo-dark.svg">
+    <img src="brand/Veil%20Design%20System/assets/logo.svg" alt="Veil" width="170">
+  </picture>
+</p>
+
+<h1 align="center">Veil</h1>
+
+<p align="center">
+  <strong>Your AI coding agent reads your secrets. Veil masks them before they leave your machine.</strong>
+</p>
 
 English | [简体中文](README.zh-CN.md)
-
-**Your AI coding agent reads your secrets. Veil masks them before they leave your machine.**
 
 When you use Claude Code or Codex, your prompts carry everything in context: environment
 variables, database URLs, API keys, connection strings. That traffic goes to a third-party
@@ -220,3 +229,4 @@ Individual value is open; organizational control is paid. See the
 | SDK | [Contract](docs/sdk/contract.md), [API reference](docs/sdk/api-reference.md), [Integration guide](docs/sdk/integration-guide.md), [`examples/embed`](examples/embed/) |
 | Architecture | [Overview](docs/architecture/overview.md), [Threat model](docs/architecture/threat-model.md), [ADRs](docs/architecture/decisions/README.md) |
 | Project | [Roadmap](docs/product/roadmap.md), [Open-core boundary](docs/product/open-core-boundary.md), [Support](SUPPORT.md), [Security](SECURITY.md), [Changelog](CHANGELOG.md) |
+| Brand | [Design system](brand/Veil%20Design%20System/readme.md), [Logo](brand/Veil%20Design%20System/assets/logo.svg), [Dark logo](brand/Veil%20Design%20System/assets/logo-dark.svg), [Favicon](brand/Veil%20Design%20System/assets/favicon.svg) |

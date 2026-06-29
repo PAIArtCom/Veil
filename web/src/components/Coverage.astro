@@ -1,0 +1,105 @@
+---
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
+---
+<section class="section" id="coverage">
+  <div class="container">
+    <div class="heading">
+      <p class="eyebrow">{t.coverage.eyebrow}</p>
+      <h2>{t.coverage.title}</h2>
+      <p class="section-sub">{t.coverage.sub}</p>
+    </div>
+
+    <ul class="types" role="list">
+      {t.coverage.types.map((ty) => (
+        <li class="type">
+          <div class="type-top">
+            <span class="type-label">{ty.label}</span>
+            {'optIn' in ty && ty.optIn && <span class="type-badge">{t.coverage.optIn}</span>}
+          </div>
+          <code class="type-example">{ty.example}</code>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .section {
+    position: relative;
+    padding: var(--space-32) 0;
+  }
+
+  .heading {
+    max-width: 640px;
+    margin-bottom: var(--space-16);
+  }
+
+  h2 {
+    font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    color: var(--color-ink);
+  }
+
+  .section-sub {
+    font-size: var(--text-lg);
+    color: var(--color-muted);
+    line-height: 1.6;
+  }
+
+  .types {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .type {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-5);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    transition: border-color var(--transition-base);
+  }
+
+  .type:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .type-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .type-label {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-ink);
+  }
+
+  .type-badge {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    padding: 2px 7px;
+    white-space: nowrap;
+  }
+
+  .type-example {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--color-muted);
+    word-break: break-all;
+    line-height: 1.5;
+  }
+</style>

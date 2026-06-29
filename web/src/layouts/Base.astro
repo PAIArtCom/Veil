@@ -1,43 +1,121 @@
 ---
 import '@fontsource-variable/plus-jakarta-sans';
 import '../styles/global.css';
+import { useTranslations, locales, getLocalePath } from '../i18n';
 
 interface Props {
   title: string;
   description?: string;
+  noindex?: boolean;
 }
+
+const t = useTranslations(Astro.currentLocale);
+const locale = Astro.currentLocale ?? 'en';
 
 const {
   title,
-  description = 'Your AI coding agent reads your secrets. Veil masks them before they leave your machine.',
+  description = t.meta.defaultDescription,
+  noindex = false,
 } = Astro.props;
 
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('/og.png', Astro.site);
+
+// hreflang alternates — only the home page is localized (/, /es/, /ja/, /zh/).
+const basePath = Astro.url.pathname.replace(/^\/(zh|ja|es)(?=\/|$)/, '') || '/';
+const isLocalized = basePath === '/';
+const ogLocaleMap = { en: 'en_US', zh: 'zh_CN', ja: 'ja_JP', es: 'es_ES' };
+
+const siteUrl = Astro.site?.href.replace(/\/$/, '') ?? 'https://veil.sh';
+const githubUrl = 'https://github.com/PAIArtCom/Veil';
+
+const jsonLdBase = JSON.stringify([
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Veil',
+    url: siteUrl,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Veil',
+    url: siteUrl,
+    sameAs: [githubUrl],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Veil',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'macOS, Linux, Windows',
+    license: 'https://opensource.org/licenses/Apache-2.0',
+    url: siteUrl,
+    downloadUrl: `${githubUrl}/releases`,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  },
+]);
+
+const jsonLdFaq = isLocalized ? JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: t.faq.items.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.a,
+    },
+  })),
+}) : null;
 ---
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1C1A17" />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
     <meta name="generator" content={Astro.generator} />
     <link rel="canonical" href={canonicalUrl} />
+    {isLocalized && locales.map((l) => (
+      <link rel="alternate" hreflang={l} href={new URL(getLocalePath(l, '/'), Astro.site)} />
+    ))}
+    {isLocalized && <link rel="alternate" hreflang="x-default" href={new URL('/', Astro.site)} />}
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Veil" />
+    <meta property="og:locale" content={ogLocaleMap[locale] ?? 'en_US'} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={`${title} | Veil`} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={t.meta.title} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={`${title} | Veil`} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={t.meta.title} />
 
     <title>{title} | Veil</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/avatar.png" />
+
+    <script type="application/ld+json" set:html={jsonLdBase} />
+    {jsonLdFaq && <script type="application/ld+json" set:html={jsonLdFaq} />}
 
   </head>
   <body>
+    <a href="#main" class="skip-link">{t.a11y.skipToContent}</a>
     <slot />
   </body>
 </html>

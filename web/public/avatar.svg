@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Veil avatar</title>
+  <desc id="desc">The Veil mark centered on a dark brand background.</desc>
+  <rect width="1024" height="1024" rx="220" fill="#1C1A17"/>
+  <rect x="72" y="72" width="880" height="880" rx="188" fill="none" stroke="#3A3835" stroke-width="4"/>
+  <g transform="translate(246 246)">
+    <rect x="180" y="180" width="352" height="352" rx="88" fill="#F0EDE6"/>
+    <rect x="114" y="114" width="352" height="352" rx="88" fill="#2BBF7E" opacity="0.45"/>
+    <rect x="48" y="48" width="352" height="352" rx="88" fill="#2BBF7E"/>
+  </g>
+</svg>

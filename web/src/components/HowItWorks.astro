@@ -1,107 +1,250 @@
 ---
-const steps = [
-  {
-    number: '01',
-    title: 'Start the proxy',
-    description: 'Veil runs a local proxy on your machine. Nothing leaves without going through it.',
-    code: 'veil proxy --addr 127.0.0.1:8788',
-  },
-  {
-    number: '02',
-    title: 'Point your agent at it',
-    description: 'Set one environment variable. Claude Code, Codex, and any OpenAI-compatible tool work out of the box.',
-    code: 'export ANTHROPIC_BASE_URL=http://127.0.0.1:8788',
-  },
-  {
-    number: '03',
-    title: 'Work freely',
-    description: 'Veil masks secrets on the way out and restores real values in every response. The model sees only tokens.',
-    code: null,
-  },
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
+
+// Single source for the proxy address so the two commands can't drift.
+const addr = '127.0.0.1:8788';
+const codes = [
+  `./bin/veil proxy --addr ${addr}`,
+  `export ANTHROPIC_BASE_URL=http://${addr}`,
+  null,
 ];
 ---
 <section class="section" id="how-it-works">
   <div class="container">
-    <h2>How it works</h2>
-    <p class="section-sub">
-      Three steps. No config files. No changes to your workflow.
-    </p>
-    <ol class="steps" role="list">
-      {steps.map((step) => (
-        <li class="step">
-          <span class="step-number" aria-hidden="true">{step.number}</span>
-          <div class="step-body">
-            <h3>{step.title}</h3>
-            <p>{step.description}</p>
-            {step.code && (
-              <pre class="step-code"><code>{step.code}</code></pre>
-            )}
-          </div>
-        </li>
-      ))}
-    </ol>
+    <div class="section-heading">
+      <div class="heading-content">
+        <p class="eyebrow">{t.howItWorks.eyebrow}</p>
+        <h2>{t.howItWorks.title} <em>{t.howItWorks.titleAccent}</em> {t.howItWorks.titleEnd}</h2>
+        <p class="section-sub">{t.howItWorks.sub}</p>
+      </div>
+      <a href="#install" class="section-link">
+        {t.howItWorks.link}
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="link-arrow"><path d="M5 12l7-7m0 0v6m0-6H6"/></svg>
+      </a>
+    </div>
+
+    <div class="steps-container">
+      <div class="steps-line"></div>
+      <ol class="steps">
+        {t.howItWorks.steps.map((step, i) => (
+          <li class="step">
+            <div class="step-indicator">
+              <div class="step-dot"></div>
+              <span class="step-number" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            </div>
+            <div class="step-body">
+              <h3 class="step-title">{step.title}</h3>
+              <p class="step-desc">{step.description}</p>
+              {codes[i] && (
+                <div class="step-code-wrapper">
+                  <pre class="step-code"><code><span class="prompt">$</span> {codes[i]}</code></pre>
+                </div>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
   </div>
 </section>
 
 <style>
   .section {
-    padding: var(--space-24) 0;
-    border-top: 1px solid var(--color-border);
+    position: relative;
+    padding: var(--space-32) 0;
   }
+
+  .section-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+    margin-bottom: var(--space-20);
+  }
+
+  @media (min-width: 1024px) {
+    .section-heading {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .heading-content {
+      max-width: 60%;
+    }
+  }
+
+
+  h2 {
+    font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    color: var(--color-ink);
+  }
+
 
   .section-sub {
     font-size: var(--text-lg);
     color: var(--color-muted);
-    margin-top: var(--space-4);
-    margin-bottom: var(--space-16);
-    max-width: 48ch;
+    line-height: 1.6;
+  }
+
+  .section-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-3) var(--space-6);
+    background: var(--fill-hover);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    transition: background var(--transition-base), border-color var(--transition-base);
+  }
+
+  .section-link:hover {
+    background: var(--line);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .link-arrow {
+    transition: transform var(--transition-fast);
+  }
+
+  .section-link:hover .link-arrow {
+    transform: translate(2px, -2px);
+    stroke: var(--color-primary);
+  }
+
+  .steps-container {
+    position: relative;
+    padding-top: var(--space-10);
+  }
+
+  .steps-line {
+    position: absolute;
+    top: 24px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-border);
+    z-index: 0;
   }
 
   .steps {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: var(--space-8);
+    position: relative;
+    z-index: 1;
   }
 
   .step {
     display: flex;
     flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: center;
     gap: var(--space-4);
   }
 
+  .step-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-bg);
+    border: 3px solid var(--color-primary);
+  }
+
   .step-number {
-    font-size: var(--text-xs);
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: var(--color-primary-dark);
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    font-weight: 700;
+    color: var(--line-strong);
+    letter-spacing: 0.05em;
   }
 
   .step-body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    height: 100%;
+    transition: border-color var(--transition-base);
   }
 
-  .step-body p {
+  .step-body:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .step-title {
+    font-size: var(--text-xl);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .step-desc {
     font-size: var(--text-sm);
     color: var(--color-muted);
     line-height: 1.7;
+    flex-grow: 1;
+  }
+
+  .step-code-wrapper {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
   }
 
   .step-code {
-    background: var(--color-dark);
-    color: var(--color-code-text);
+    font-family: var(--font-mono);
+    color: var(--color-ink);
     font-size: var(--text-xs);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
     overflow-x: auto;
-    white-space: pre;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    margin: 0;
   }
 
-  @media (max-width: 768px) {
+  .prompt {
+    color: var(--color-primary);
+    margin-right: var(--space-2);
+  }
+
+  /* Wrap long commands rather than trap a hidden horizontal scroll on phones */
+  @media (max-width: 540px) {
+    .step-code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .steps-line {
+      top: 0;
+      bottom: 0;
+      left: 24px;
+      width: 2px;
+      height: auto;
+      background: var(--color-border);
+    }
+
     .steps {
       grid-template-columns: 1fr;
       gap: var(--space-10);
+    }
+
+    .step-indicator {
+      margin-left: 17px;
     }
   }
 </style>

@@ -1,22 +1,32 @@
 :root {
-  /* Brand colors */
-  --color-bg:           #FAF8F4;
-  --color-surface:      #FFFFFF;
+  /* Brand colors — dark-first */
+  --color-bg:           #1C1A17;
+  --color-surface:      #2C2A27;
   --color-primary:      #2BBF7E;
   --color-primary-dark: #1A9B5E;
-  --color-ink:          #1C1A17;
-  --color-muted:        #6E6B63;
-  --color-subtle:       #A8A49A;
-  --color-border:       #E0DDD6;
-  --color-border-strong:#C8C4BA;
+  --color-ink:          #F0EDE6;
+  --color-muted:        #9A938A;
+  --color-subtle:       #6E6B63;
+  --color-border:       #3A3835;
+  --color-border-strong:#4A4844;
 
-  /* Dark / code surfaces */
-  --color-dark:         #1C1A17;
-  --color-dark-surface: #2C2A27;
-  --color-dark-muted:   #4A4742;
-  --color-code-text:    #F0EDE6;
-  --color-token:        #2BBF7E;
+  /* Semantic */
+  --color-token:        var(--color-primary);
   --color-secret:       #E05A3A;
+
+  /* Lines & fills — white overlays on the dark base */
+  --hairline:        rgba(255, 255, 255, 0.06);
+  --line:            rgba(255, 255, 255, 0.1);
+  --line-strong:     rgba(255, 255, 255, 0.2);
+  --line-hover:      rgba(255, 255, 255, 0.25);
+  --fill-faint:      rgba(255, 255, 255, 0.03);
+  --fill-hover:      rgba(255, 255, 255, 0.05);
+
+  /* Brand tints */
+  --tint-primary:        rgba(43, 191, 126, 0.1);
+  --tint-primary-strong: rgba(43, 191, 126, 0.2);
+  --line-primary:        rgba(43, 191, 126, 0.3);
+  --tint-secret:         rgba(224, 90, 58, 0.14);
 
   /* Typography */
   --font-sans: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
@@ -60,8 +70,8 @@
   --radius-pill: 9999px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(28, 26, 23, 0.06);
-  --shadow-md: 0 4px 16px rgba(28, 26, 23, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
 
   /* Transitions */
   --transition-fast: 120ms ease;

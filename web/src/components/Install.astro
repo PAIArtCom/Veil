@@ -1,42 +1,103 @@
 ---
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
 ---
 <section class="section" id="install">
   <div class="container">
-    <h2>Get started in seconds</h2>
-    <p class="section-sub">
-      Download a pre-built binary or build from source. Both take under a minute.
-    </p>
+    <div class="install-heading">
+      <div class="heading-content">
+        <p class="eyebrow">{t.install.eyebrow}</p>
+        <h2>{t.install.title} <em>{t.install.titleAccent}</em> {t.install.titleEnd}</h2>
+        <p class="section-sub">{t.install.sub}</p>
+      </div>
+      <a
+        class="section-link"
+        href="https://github.com/PAIArtCom/Veil/releases/latest"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {t.install.link}
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="link-arrow"><path d="M5 12l7-7m0 0v6m0-6H6"/></svg>
+      </a>
+    </div>
 
     <div class="install-options">
-      <div class="install-option">
-        <h3>Binary (recommended)</h3>
-        <p>Download from the <a href="https://github.com/PAIArtCom/Veil/releases/latest" target="_blank" rel="noopener noreferrer" class="inline-link">releases page</a>, then:</p>
-        <div class="code-block">
-          <pre><code id="cmd-binary"># Claude Code
-veil proxy --addr 127.0.0.1:8788 &
-export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
-claude</code></pre>
-          <button class="copy-btn" data-target="cmd-binary" aria-label="Copy command">Copy</button>
+      <div class="install-card">
+        <div class="card-header">
+          <h3>{t.install.claudeCode.title}</h3>
+          <a class="inline-link" href="https://github.com/PAIArtCom/Veil/blob/main/docs/guides/claude-code.md" target="_blank" rel="noopener noreferrer">{t.install.claudeCode.guide} &rarr;</a>
+        </div>
+        <p>{t.install.claudeCode.description}</p>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="window-title">bash</span>
+          </div>
+          <pre><code id="cmd-claude"><span class="prompt">$</span> ./bin/veil proxy --addr 127.0.0.1:8788 &
+<span class="prompt">$</span> export ANTHROPIC_BASE_URL=http://127.0.0.1:8788
+<span class="prompt">$</span> claude</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-claude" data-copied={t.install.copied} aria-label="Copy Claude Code commands">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
         </div>
       </div>
 
-      <div class="install-option">
-        <h3>Build from source</h3>
-        <p>Requires <a href="https://go.dev/dl/" target="_blank" rel="noopener noreferrer" class="inline-link">Go 1.22+</a>.</p>
-        <div class="code-block">
-          <pre><code id="cmd-source">git clone https://github.com/PAIArtCom/Veil.git
-cd Veil
-go build -o ./bin/veil ./cmd/veil
-./bin/veil version</code></pre>
-          <button class="copy-btn" data-target="cmd-source" aria-label="Copy command">Copy</button>
+      <div class="install-card">
+        <div class="card-header">
+          <h3>{t.install.codex.title}</h3>
+          <a class="inline-link" href="https://github.com/PAIArtCom/Veil/blob/main/docs/guides/codex.md" target="_blank" rel="noopener noreferrer">{t.install.codex.guide} &rarr;</a>
+        </div>
+        <p>{t.install.codex.description}</p>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="window-title">bash</span>
+          </div>
+          <pre><code id="cmd-codex"><span class="prompt">$</span> ./bin/veil proxy --addr 127.0.0.1:8788 --upstream https://api.openai.com
+<span class="comment"># ~/.codex/config.toml</span>
+model_provider = "veil"</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-codex" data-copied={t.install.copied} aria-label="Copy Codex commands">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="install-card install-card-wide">
+        <div class="card-header">
+          <h3>{t.install.source.title}</h3>
+          <span class="badge-go">{t.install.source.badge}</span>
+        </div>
+        <p>{t.install.source.description}</p>
+        <div class="code-window">
+          <div class="window-header">
+            <span class="dot red"></span>
+            <span class="dot yellow"></span>
+            <span class="dot green"></span>
+            <span class="window-title">bash</span>
+          </div>
+          <pre><code id="cmd-source"><span class="prompt">$</span> git clone https://github.com/PAIArtCom/Veil.git
+<span class="prompt">$</span> cd Veil
+<span class="prompt">$</span> go build -o ./bin/veil ./cmd/veil
+<span class="prompt">$</span> ./bin/veil version</code></pre>
+          <button type="button" class="copy-btn" data-target="cmd-source" data-copied={t.install.copied} aria-label="Copy source build commands">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </button>
         </div>
       </div>
     </div>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-status></span>
   </div>
 </section>
 
 <script>
   import { stripTrailingNewline } from '../scripts/copy-code.js';
+
+  const status = document.querySelector('[data-copy-status]');
 
   document.querySelectorAll('.copy-btn').forEach((btn) => {
     btn.addEventListener('click', async () => {
@@ -44,14 +105,19 @@ go build -o ./bin/veil ./cmd/veil
       const codeEl = document.getElementById(targetId);
       if (!codeEl) return;
 
-      const text = stripTrailingNewline(codeEl.textContent ?? '');
+      const clone = codeEl.cloneNode(true);
+      clone.querySelectorAll('.prompt').forEach(el => el.remove());
+      const text = stripTrailingNewline(clone.textContent ?? '');
+      const copiedLabel = btn.getAttribute('data-copied') || 'Copied';
+
       try {
         await navigator.clipboard.writeText(text);
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        const originalHTML = btn.innerHTML;
+        btn.innerHTML = `<span class="copy-feedback">${copiedLabel}</span>`;
+        if (status) status.textContent = copiedLabel;
+        setTimeout(() => { btn.innerHTML = originalHTML; if (status) status.textContent = ''; }, 2000);
       } catch {
-        btn.textContent = 'Failed';
-        setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        if (status) status.textContent = 'Copy failed';
       }
     });
   });
@@ -59,80 +125,226 @@ go build -o ./bin/veil ./cmd/veil
 
 <style>
   .section {
-    padding: var(--space-24) 0;
+    position: relative;
+    padding: var(--space-32) 0;
     border-top: 1px solid var(--color-border);
   }
+
+  .install-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+    margin-bottom: var(--space-20);
+  }
+
+  @media (min-width: 1024px) {
+    .install-heading {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .heading-content {
+      max-width: 60%;
+    }
+  }
+
+
+  h2 {
+    font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    color: var(--color-ink);
+  }
+
 
   .section-sub {
     font-size: var(--text-lg);
     color: var(--color-muted);
-    margin-top: var(--space-4);
-    margin-bottom: var(--space-16);
-    max-width: 48ch;
+    line-height: 1.6;
+  }
+
+  .section-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-ink);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-3) var(--space-6);
+    background: var(--fill-hover);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    transition: background var(--transition-base), border-color var(--transition-base);
+  }
+
+  .section-link:hover {
+    background: var(--line);
+    border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  .link-arrow {
+    transition: transform var(--transition-fast);
+  }
+
+  .section-link:hover .link-arrow {
+    transform: translate(2px, -2px);
+    stroke: var(--color-primary);
   }
 
   .install-options {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
     gap: var(--space-6);
   }
 
-  .install-option {
+  .install-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    transition: border-color var(--transition-base);
   }
 
-  .install-option p {
+  .install-card:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-header h3 {
+    font-size: var(--text-xl);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .badge-go {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 8px;
+    background: rgba(0, 173, 216, 0.1);
+    color: #00ADD8;
+    border: 1px solid rgba(0, 173, 216, 0.2);
+    border-radius: var(--radius-sm);
+  }
+
+  .install-card p {
     font-size: var(--text-sm);
     color: var(--color-muted);
+    line-height: 1.6;
+    margin-bottom: var(--space-2);
   }
 
   .inline-link {
-    color: var(--color-primary-dark);
-    text-decoration: underline;
-    text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
-    text-underline-offset: 2px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-primary);
+    transition: color var(--transition-fast);
   }
 
   .inline-link:hover {
     color: var(--color-ink);
   }
 
-  .code-block {
+  .code-window {
     position: relative;
-    background: var(--color-dark);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
+    margin-top: auto;
     overflow: hidden;
   }
 
-  .code-block pre {
-    padding: var(--space-5) var(--space-5);
-    font-size: var(--text-sm);
-    color: var(--color-code-text);
+  .window-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--fill-faint);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.red { background: #FF5F56; }
+  .dot.yellow { background: #FFBD2E; }
+  .dot.green { background: #27C93F; }
+
+  .window-title {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .code-window pre {
+    padding: var(--space-4) var(--space-5);
+    margin: 0;
     overflow-x: auto;
+  }
+
+  .code-window code {
+    font-family: var(--font-mono);
+    font-size: 13px;
     line-height: 1.7;
+    color: var(--color-ink);
+  }
+
+  .prompt {
+    color: var(--color-primary);
+    user-select: none;
+    margin-right: 8px;
+  }
+
+  .comment {
+    color: var(--color-muted);
   }
 
   .copy-btn {
     position: absolute;
-    top: var(--space-3);
+    bottom: var(--space-3);
     right: var(--space-3);
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    color: var(--color-subtle);
-    background: var(--color-dark-surface);
-    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--fill-hover);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    color: var(--color-muted);
     transition: color var(--transition-fast), background var(--transition-fast);
   }
 
   .copy-btn:hover {
-    color: var(--color-code-text);
-    background: var(--color-dark-muted);
+    color: var(--color-ink);
+    background: var(--color-primary);
+    border-color: var(--color-primary);
   }
 
-  @media (max-width: 720px) {
+  .copy-feedback {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  /* a copied button needs room for the word; let it auto-size */
+  .copy-btn:has(.copy-feedback) {
+    width: auto;
+    padding-inline: var(--space-2);
+  }
+
+  @media (max-width: 768px) {
     .install-options {
       grid-template-columns: 1fr;
     }

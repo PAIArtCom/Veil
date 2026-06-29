@@ -1,23 +1,29 @@
 ---
 import Logo from './Logo.astro';
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
 const year = new Date().getFullYear();
 ---
 <footer class="footer">
   <div class="container">
+    <div class="footer-divider"></div>
     <div class="footer-inner">
-      <Logo size={24} />
-      <p class="footer-copy">
-        © {year} Veil contributors. Apache-2.0.
-      </p>
-      <nav class="footer-links" aria-label="Footer navigation">
+      <div class="footer-brand">
+        <Logo size={22} />
+        <p class="footer-copy">
+          &copy; {year} {t.footer.copyright}
+        </p>
+      </div>
+      <nav class="footer-links" aria-label={t.a11y.footerNav}>
         <a href="https://github.com/PAIArtCom/Veil" target="_blank" rel="noopener noreferrer">
-          GitHub
+          {t.footer.github}
         </a>
         <a href="https://github.com/PAIArtCom/Veil/releases" target="_blank" rel="noopener noreferrer">
-          Releases
+          {t.footer.releases}
         </a>
         <a href="https://github.com/PAIArtCom/Veil/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer">
-          Security
+          {t.footer.security}
         </a>
       </nav>
     </div>
@@ -26,29 +32,44 @@ const year = new Date().getFullYear();
 
 <style>
   .footer {
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-10) 0;
-    margin-top: var(--space-24);
+    padding: var(--space-16) 0 var(--space-10);
+    margin-top: var(--space-16);
+  }
+
+  .footer-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin-bottom: var(--space-10);
   }
 
   .footer-inner {
     display: flex;
     align-items: center;
-    gap: var(--space-6);
+    justify-content: space-between;
     flex-wrap: wrap;
+    gap: var(--space-6);
+  }
+
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
   }
 
   .footer-copy {
     font-size: var(--text-sm);
-    color: var(--color-subtle);
-    margin-right: auto;
+    color: var(--color-muted);
   }
 
   .footer-links {
     display: flex;
-    gap: var(--space-5);
+    gap: var(--space-6);
     font-size: var(--text-sm);
+  }
+
+  .footer-links a {
     color: var(--color-muted);
+    transition: color var(--transition-fast);
   }
 
   .footer-links a:hover {

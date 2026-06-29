@@ -1,13 +1,31 @@
 ---
 import Logo from './Logo.astro';
+import { useTranslations, locales, localeLabels, getLocalePath } from '../i18n';
+import type { Locale } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
+const currentLocale = (Astro.currentLocale ?? 'en') as Locale;
 ---
 <header class="header">
   <div class="container">
-    <nav class="nav" aria-label="Main navigation">
+    <nav class="nav" aria-label={t.a11y.mainNav}>
       <Logo size={28} />
-      <ul class="nav-links" role="list">
-        <li><a href="#how-it-works">How it works</a></li>
-        <li><a href="#install">Install</a></li>
+      <button
+        type="button"
+        class="nav-toggle"
+        aria-label={t.a11y.menu}
+        aria-expanded="false"
+        aria-controls="primary-nav"
+      >
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+        <span class="nav-toggle-bar"></span>
+      </button>
+      <ul class="nav-links" id="primary-nav" role="list">
+        <li><a href="#features">{t.header.features}</a></li>
+        <li><a href="#trust">{t.header.trust}</a></li>
+        <li><a href="#how-it-works">{t.header.howItWorks}</a></li>
+        <li><a href="#install">{t.header.install}</a></li>
         <li>
           <a
             href="https://github.com/PAIArtCom/Veil"
@@ -15,13 +33,88 @@ import Logo from './Logo.astro';
             rel="noopener noreferrer"
             class="nav-github"
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
             GitHub
           </a>
+        </li>
+        <li class="lang-switcher">
+          <button
+            class="lang-current"
+            aria-label={t.a11y.switchLanguage}
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="lang-menu"
+          >
+            {localeLabels[currentLocale]}
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.5 4L5 6.5L7.5 4"/></svg>
+          </button>
+          <ul class="lang-menu" id="lang-menu" role="list">
+            {locales.filter(l => l !== currentLocale).map((l) => (
+              <li><a href={getLocalePath(l)}>{localeLabels[l as Locale]}</a></li>
+            ))}
+          </ul>
         </li>
       </ul>
     </nav>
   </div>
 </header>
+
+<script>
+  // Mobile navigation menu
+  const navToggle = document.querySelector('.nav-toggle');
+  const navMenu = document.getElementById('primary-nav');
+  if (navToggle && navMenu) {
+    const closeNav = () => {
+      navToggle.setAttribute('aria-expanded', 'false');
+      navMenu.classList.remove('open');
+    };
+    navToggle.addEventListener('click', () => {
+      const open = navToggle.getAttribute('aria-expanded') === 'true';
+      navToggle.setAttribute('aria-expanded', String(!open));
+      navMenu.classList.toggle('open', !open);
+    });
+    // Close after following an in-page link
+    navMenu.querySelectorAll('a').forEach((a) => a.addEventListener('click', closeNav));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && navMenu.classList.contains('open')) {
+        closeNav();
+        (navToggle as HTMLElement).focus();
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!navMenu.contains(e.target as Node) && !navToggle.contains(e.target as Node)) closeNav();
+    });
+  }
+
+  // Language switcher dropdown
+  document.querySelectorAll('.lang-switcher').forEach((switcher) => {
+    const btn = switcher.querySelector('.lang-current');
+    const menu = switcher.querySelector('.lang-menu');
+    if (!btn || !menu) return;
+
+    const close = () => {
+      btn.setAttribute('aria-expanded', 'false');
+      menu.classList.remove('open');
+    };
+
+    btn.addEventListener('click', () => {
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      menu.classList.toggle('open', !expanded);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && menu.classList.contains('open')) {
+        close();
+        (btn as HTMLElement).focus();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!switcher.contains(e.target as Node)) close();
+    });
+  });
+</script>
 
 <style>
   .header {
@@ -30,22 +123,60 @@ import Logo from './Logo.astro';
     z-index: 100;
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border);
-    backdrop-filter: blur(8px);
   }
 
   .nav {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 60px;
+    height: 64px;
   }
+
+  /* Hamburger — hidden on desktop */
+  .nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color var(--transition-fast);
+  }
+  .nav-toggle:hover { border-color: var(--line-hover); }
+  .nav-toggle-bar {
+    display: block;
+    width: 18px;
+    height: 1.5px;
+    margin: 0 auto;
+    background: var(--color-ink);
+    border-radius: 2px;
+    transition: transform var(--transition-base), opacity var(--transition-base);
+  }
+  .nav-toggle[aria-expanded='true'] .nav-toggle-bar:nth-child(1) { transform: translateY(5.5px) rotate(45deg); }
+  .nav-toggle[aria-expanded='true'] .nav-toggle-bar:nth-child(2) { opacity: 0; }
+  .nav-toggle[aria-expanded='true'] .nav-toggle-bar:nth-child(3) { transform: translateY(-5.5px) rotate(-45deg); }
 
   .nav-links {
     display: flex;
     align-items: center;
-    gap: var(--space-6);
-    font-size: var(--text-sm);
+    gap: var(--space-1);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .nav-links a {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
     color: var(--color-muted);
+    transition: color var(--transition-fast);
   }
 
   .nav-links a:hover {
@@ -53,25 +184,126 @@ import Logo from './Logo.astro';
   }
 
   .nav-github {
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--color-border);
+    gap: 6px;
+    margin-left: var(--space-2);
+    border: 1px solid var(--line);
     border-radius: var(--radius-pill);
+    padding: 6px 14px;
     color: var(--color-ink);
+    font-weight: 500;
     transition: border-color var(--transition-fast), background var(--transition-fast);
   }
 
   .nav-github:hover {
-    background: var(--color-surface);
-    border-color: var(--color-border-strong);
+    background: var(--fill-hover);
+    border-color: var(--line-hover);
   }
 
-  @media (max-width: 600px) {
-    .nav-links {
-      gap: var(--space-4);
+  .lang-switcher {
+    position: relative;
+    margin-left: var(--space-2);
+  }
+
+  .lang-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+  }
+
+  .lang-current:hover {
+    color: var(--color-ink);
+    border-color: var(--line-hover);
+  }
+
+  .lang-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-1);
+    min-width: 80px;
+    z-index: 200;
+  }
+
+  .lang-menu.open {
+    display: block;
+  }
+
+  .lang-menu a {
+    display: block;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-muted);
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+  }
+
+  .lang-menu a:hover {
+    color: var(--color-ink);
+    background: var(--fill-hover);
+  }
+
+  @media (max-width: 768px) {
+    .nav-toggle {
+      display: flex;
     }
 
-    .nav-links li:first-child {
+    /* Collapse the links into a full-width dropdown panel */
+    .nav-links {
       display: none;
+      position: absolute;
+      top: calc(100% + 1px);
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+      padding: var(--space-3) var(--space-6) var(--space-5);
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+      box-shadow: var(--shadow-md);
+    }
+    .nav-links.open {
+      display: flex;
+    }
+    .nav-links li {
+      width: 100%;
+    }
+    .nav-links a {
+      width: 100%;
+      padding: var(--space-3);
+      font-size: var(--text-sm);
+    }
+    .nav-github {
+      margin-left: 0;
+      margin-top: var(--space-2);
+      justify-content: center;
+    }
+    .lang-switcher {
+      margin-left: 0;
+      margin-top: var(--space-2);
+    }
+    .lang-current {
+      width: 100%;
+      justify-content: space-between;
+    }
+    .lang-menu {
+      right: auto;
+      left: 0;
+      min-width: 120px;
     }
   }
 </style>

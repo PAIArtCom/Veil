@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://veil.sh/sitemap-index.xml

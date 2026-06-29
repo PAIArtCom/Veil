@@ -4,16 +4,32 @@ import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import HowItWorks from '../components/HowItWorks.astro';
 import Features from '../components/Features.astro';
+import Coverage from '../components/Coverage.astro';
+import Trust from '../components/Trust.astro';
+import Security from '../components/Security.astro';
 import Install from '../components/Install.astro';
+import Boundary from '../components/Boundary.astro';
+import FAQ from '../components/FAQ.astro';
 import Footer from '../components/Footer.astro';
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
 ---
-<Base title="Home">
+<Base
+  title={t.meta.title}
+  description={t.meta.description}
+>
   <Header />
-  <main>
+  <main id="main">
     <Hero />
-    <HowItWorks />
     <Features />
+    <Coverage />
+    <Trust />
+    <Security />
+    <HowItWorks />
     <Install />
+    <Boundary />
+    <FAQ />
   </main>
   <Footer />
 </Base>

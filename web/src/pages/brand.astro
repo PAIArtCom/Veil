@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 ---
-<Base title="Brand">
+<Base title="Brand" noindex>
   <div class="brand-shell">
 
     <aside class="sidebar">
@@ -194,7 +194,7 @@ import Base from '../layouts/Base.astro';
       <!-- ─── TYPOGRAPHY ─────────────────────────────────────── -->
       <section id="typography">
         <h2>Typography</h2>
-        <p class="type-meta">Inter · weights 400 / 500 · loaded via Google Fonts</p>
+        <p class="type-meta">Plus Jakarta Sans Variable · weights 200–800 · loaded via fontsource</p>
 
         <div class="type-scale">
           <div class="type-sample">
@@ -215,15 +215,15 @@ import Base from '../layouts/Base.astro';
           </div>
           <div class="type-sample">
             <span class="type-spec">lg · 1.125rem · 400</span>
-            <p style="font-size: 1.125rem; font-weight: 400; line-height: 1.7; color: var(--color-muted);">Body large — used for hero subheads and section introductions. Stays muted to let headings lead.</p>
+            <p style="font-size: 1.125rem; font-weight: 400; line-height: 1.7; color: var(--color-subtle);">Body large — used for hero subheads and section introductions. Stays muted to let headings lead.</p>
           </div>
           <div class="type-sample">
             <span class="type-spec">base · 1rem · 400</span>
-            <p style="font-size: 1rem; font-weight: 400; line-height: 1.7; color: var(--color-muted);">Body default — feature card descriptions, footer copy, navigation links.</p>
+            <p style="font-size: 1rem; font-weight: 400; line-height: 1.7; color: var(--color-subtle);">Body default — feature card descriptions, footer copy, navigation links.</p>
           </div>
           <div class="type-sample">
             <span class="type-spec">sm · 0.875rem · 400</span>
-            <p style="font-size: 0.875rem; font-weight: 400; line-height: 1.6; color: var(--color-muted);">Body small — install instructions, step descriptions, captions.</p>
+            <p style="font-size: 0.875rem; font-weight: 400; line-height: 1.6; color: var(--color-subtle);">Body small — install instructions, step descriptions, captions.</p>
           </div>
           <div class="type-sample">
             <span class="type-spec">xs · 0.75rem · 500 · 0.07em</span>
@@ -272,10 +272,10 @@ import Base from '../layouts/Base.astro';
                 <path d="M47.708 28.94 41.264 11.06H43.778L49.25 26.78H48.758L54.212 11.06H56.744L50.3 28.94Z M64.094 29.228Q62.222 29.228 60.749 28.34Q59.276 27.452 58.436 25.91Q57.596 24.368 57.596 22.436Q57.596 20.486 58.427 18.977Q59.258 17.468 60.683 16.598Q62.108 15.728 63.89 15.728Q65.324 15.728 66.443 16.238Q67.562 16.748 68.345 17.627Q69.128 18.506 69.542 19.616Q69.956 20.726 69.956 21.932Q69.956 22.208 69.929 22.526Q69.902 22.844 69.842 23.144H59.234V21.224H68.558L67.484 22.076Q67.706 20.828 67.253 19.844Q66.8 18.86 65.915 18.284Q65.03 17.708 63.89 17.708Q62.756 17.708 61.823 18.29Q60.89 18.872 60.374 19.931Q59.858 20.99 59.966 22.46Q59.852 23.888 60.401 24.953Q60.95 26.018 61.937 26.603Q62.924 27.188 64.106 27.188Q65.408 27.188 66.299 26.588Q67.19 25.988 67.736 25.064L69.608 26.018Q69.224 26.906 68.423 27.635Q67.622 28.364 66.521 28.796Q65.42 29.228 64.094 29.228Z M72.26 28.94V16.016H74.51V28.94ZM72.26 13.94V11.06H74.51V13.94Z M77.348 28.94V10.772H79.598V28.94Z" fill="#1C1A17"/>
               </svg>
             </div>
-            <div style="display:flex;gap:1.5rem;align-items:center;font-size:0.875rem;color:var(--color-muted);">
+            <div style="display:flex;gap:1.5rem;align-items:center;font-size:0.875rem;color:var(--color-subtle);">
               <span>How it works</span>
               <span>Install</span>
-              <span style="padding:6px 14px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-ink);">GitHub</span>
+              <span style="padding:6px 14px;border:1px solid rgba(255, 255, 255, 0.1);border-radius:999px;color:var(--color-code-text);">GitHub</span>
             </div>
           </div>
         </div>
@@ -309,11 +309,11 @@ import Base from '../layouts/Base.astro';
 
   .back {
     font-size: var(--text-sm);
-    color: var(--color-muted);
+    color: var(--color-subtle);
     transition: color var(--transition-fast);
   }
 
-  .back:hover { color: var(--color-ink); }
+  .back:hover { color: var(--color-code-text); }
 
   .sidebar-nav {
     display: flex;
@@ -323,15 +323,15 @@ import Base from '../layouts/Base.astro';
 
   .sidebar-nav a {
     font-size: var(--text-sm);
-    color: var(--color-muted);
+    color: var(--color-subtle);
     padding: var(--space-2) 0;
-    border-left: 2px solid var(--color-border);
+    border-left: 2px solid rgba(255, 255, 255, 0.1);
     padding-left: var(--space-4);
     transition: color var(--transition-fast), border-color var(--transition-fast);
   }
 
   .sidebar-nav a:hover {
-    color: var(--color-ink);
+    color: var(--color-code-text);
     border-color: var(--color-primary);
   }
 
@@ -343,7 +343,7 @@ import Base from '../layouts/Base.astro';
   .page-header {
     margin-bottom: var(--space-16);
     padding-bottom: var(--space-8);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .page-eyebrow {
@@ -362,13 +362,13 @@ import Base from '../layouts/Base.astro';
 
   .page-sub {
     font-size: var(--text-base);
-    color: var(--color-muted);
+    color: var(--color-subtle);
   }
 
   /* ── Sections ── */
   section {
     padding-top: var(--space-16);
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
     margin-top: var(--space-16);
   }
 
@@ -404,7 +404,7 @@ import Base from '../layouts/Base.astro';
     gap: var(--space-3);
     padding: var(--space-8) var(--space-10);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     min-width: 160px;
   }
 
@@ -414,7 +414,7 @@ import Base from '../layouts/Base.astro';
 
   .asset-label {
     font-size: var(--text-xs);
-    color: var(--color-muted);
+    color: var(--color-subtle);
   }
 
   .asset-label--inv {
@@ -427,7 +427,7 @@ import Base from '../layouts/Base.astro';
     align-items: center;
     padding: var(--space-6) var(--space-8);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .lockup-block--cream { background: #FAF8F4; }
@@ -452,7 +452,7 @@ import Base from '../layouts/Base.astro';
 
   .anatomy-swatch {
     background: #FAF8F4;
-    border: 1px solid var(--color-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-md);
     padding: var(--space-3);
   }
@@ -460,7 +460,7 @@ import Base from '../layouts/Base.astro';
   .anatomy-label {
     font-size: var(--text-xs);
     font-weight: 500;
-    color: var(--color-ink);
+    color: var(--color-code-text);
   }
 
   .anatomy-desc {
@@ -484,7 +484,7 @@ import Base from '../layouts/Base.astro';
     background: #FAF8F4;
     padding: var(--space-6);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .scale-item {
@@ -507,8 +507,8 @@ import Base from '../layouts/Base.astro';
   }
 
   .swatch {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-lg);
     overflow: hidden;
   }
@@ -527,7 +527,7 @@ import Base from '../layouts/Base.astro';
   .swatch-label {
     font-size: var(--text-sm);
     font-weight: 500;
-    color: var(--color-ink);
+    color: var(--color-code-text);
   }
 
   .swatch-token {
@@ -539,7 +539,7 @@ import Base from '../layouts/Base.astro';
   .swatch-hex {
     font-size: var(--text-xs);
     font-family: var(--font-mono);
-    color: var(--color-muted);
+    color: var(--color-subtle);
   }
 
   .swatch-use {
@@ -563,7 +563,7 @@ import Base from '../layouts/Base.astro';
 
   .type-sample {
     padding: var(--space-5) 0;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: grid;
     grid-template-columns: 240px 1fr;
     gap: var(--space-6);
@@ -584,8 +584,8 @@ import Base from '../layouts/Base.astro';
     gap: var(--space-4);
     flex-wrap: wrap;
     padding: var(--space-6);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-lg);
   }
 
@@ -637,8 +637,8 @@ import Base from '../layouts/Base.astro';
   .token-mark  { background: none; color: var(--color-token); }
 
   .nav-demo {
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
+    background: rgba(10, 10, 11, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-lg);
     padding: 0 var(--space-6);
   }
@@ -670,7 +670,7 @@ import Base from '../layouts/Base.astro';
 
     .sidebar-nav a {
       border-left: none;
-      border-bottom: 2px solid var(--color-border);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
       padding-left: 0;
       padding-bottom: var(--space-2);
     }

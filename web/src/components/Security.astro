@@ -1,0 +1,80 @@
+---
+import { useTranslations } from '../i18n';
+
+const t = useTranslations(Astro.currentLocale);
+---
+<section class="section" id="security">
+  <div class="container">
+    <div class="heading">
+      <p class="eyebrow">{t.security.eyebrow}</p>
+      <h2>{t.security.title}</h2>
+      <p class="section-sub">{t.security.sub}</p>
+    </div>
+
+    <div class="props">
+      {t.security.items.map((it) => (
+        <div class="prop">
+          <h3 class="prop-title">{it.title}</h3>
+          <p class="prop-desc">{it.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .section {
+    position: relative;
+    padding: var(--space-32) 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .heading {
+    max-width: 640px;
+    margin-bottom: var(--space-16);
+  }
+
+  h2 {
+    font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+    line-height: 1.1;
+    margin-bottom: var(--space-6);
+    color: var(--color-ink);
+  }
+
+  .section-sub {
+    font-size: var(--text-lg);
+    color: var(--color-muted);
+    line-height: 1.6;
+  }
+
+  .props {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-10) var(--space-12);
+  }
+
+  @media (max-width: 768px) {
+    .props {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+    }
+  }
+
+  .prop {
+    padding-left: var(--space-4);
+    border-left: 2px solid var(--color-primary);
+  }
+
+  .prop-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-ink);
+    margin-bottom: var(--space-3);
+  }
+
+  .prop-desc {
+    font-size: var(--text-sm);
+    color: var(--color-muted);
+    line-height: 1.7;
+  }
+</style>
