@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="web/public/logo-dark.svg">
-    <img src="web/public/logo.svg" alt="Veil" width="170">
-  </picture>
+  <img src="web/public/favicon.svg" alt="Veil logo mark" width="72">
 </p>
 
 <h1 align="center">Veil</h1>
