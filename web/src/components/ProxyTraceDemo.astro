@@ -283,6 +283,7 @@
 
 <style>
   .trace-demo {
+    container-type: inline-size;
     position: relative;
     background:
       radial-gradient(130% 90% at 50% -10%, rgba(43, 191, 126, 0.06), transparent 55%),
@@ -317,7 +318,7 @@
   .layer {
     position: relative; border-radius: 15px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.006));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 10px 28px rgba(0, 0, 0, 0.22);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 18px 42px rgba(0, 0, 0, 0.46);
     opacity: 0; transform: translateY(8px);
     transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
@@ -408,7 +409,7 @@
   }
 
   /* ===================== Responsive ===================== */
-  @media (max-width: 540px) {
+  @container (max-width: 540px) {
     .flying { font-size: 10.5px; }
     .prov-window { height: 142px; }
     .layer-name { font-size: 11px; }
@@ -463,7 +464,7 @@
     100% { background: rgba(224, 90, 58, 0); box-shadow: 0 0 0 0 transparent; }
   }
 
-  @media (max-width: 540px) {
+  @container (max-width: 540px) {
     .trace-demo .prov-entry, .trace-demo .local-slot .msg { font-size: 10.5px; }
   }
 </style>

@@ -5,8 +5,9 @@
 h1 {
   font-size: var(--text-5xl);
   font-weight: 500;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
   line-height: 1.1;
+  font-feature-settings: "ss01" on, "cv01" on;
 }
 
 h2 {
@@ -67,8 +68,12 @@ h2 em {
   font-size: var(--text-sm);
   font-weight: 500;
   letter-spacing: -0.01em;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform 50ms ease;
   white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
@@ -183,4 +188,25 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--line-strong);
+}
+
+/* Scroll Reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
